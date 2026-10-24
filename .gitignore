@@ -1,0 +1,70 @@
+# ---------------------------------------------------------------
+# .gitignore para proyectos de Unity
+# Va en la carpeta raiz del proyecto (la que contiene Assets,
+# Packages y ProjectSettings).
+# ---------------------------------------------------------------
+
+# Carpetas que Unity regenera solo: nunca se suben
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+
+# Los .meta SI se suben (guardan las conexiones entre objetos y scripts)
+!/[Aa]ssets/**/*.meta
+
+# Plugin autogenerado de JetBrains Rider
+/[Aa]ssets/Plugins/Editor/JetBrains*
+
+# Caches de editores de codigo
+.vs/
+.vscode/
+.idea/
+.gradle/
+
+# Archivos de solucion y proyecto que Unity regenera
+ExportedObj/
+.consulo/
+*.csproj
+*.unityproj
+*.sln
+*.slnx
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# Meta de archivos generados
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+
+# Reportes de crash
+sysinfo.txt
+crashlytics-build.properties
+
+# Builds y paquetes exportados
+*.apk
+*.aab
+*.unitypackage
+*.unitypackage.meta
+*.app
+
+# Addressables empaquetados
+/[Aa]ssets/[Aa]ddressable[Aa]ssets[Dd]ata/*/*.bin*
+
+# Assets temporales de Android
+/[Aa]ssets/[Ss]treamingAssets/aa.meta
+/[Aa]ssets/[Ss]treamingAssets/aa/*
