@@ -33,6 +33,9 @@ public class CorridorSegment : MonoBehaviour
     public int CurrentVariant { get; private set; } = -1;
     public int VariantCount => variants == null ? 0 : variants.Length;
 
+    /// <summary>Largo del modulo en metros, a lo largo de su eje Z. Lo usa la cinta para encadenar modulos.</summary>
+    public float Length => boundsSize.z * transform.lossyScale.z;
+
     /// <summary>Estado de visibilidad del ultimo frame. Lo escribe VisibilityChecker.</summary>
     public SegmentVisibility State { get; set; } = SegmentVisibility.Unknown;
 
@@ -66,6 +69,17 @@ public class CorridorSegment : MonoBehaviour
 
     /// <summary>El jugador ya vio el cambio.</summary>
     public void MarkDiscovered() => HasUnseenChange = false;
+
+    /// <summary>
+    /// Deja el modulo como nuevo antes de reciclarlo hacia adelante:
+    /// variante inicial, sin cambios pendientes y sin estado de visibilidad.
+    /// </summary>
+    public void ResetForReuse()
+    {
+        SetVariant(startVariant);
+        HasUnseenChange = false;
+        State = SegmentVisibility.Unknown;
+    }
 
     /// <summary>
     /// Pasa a la siguiente variante y lo marca como cambio sin ver.
