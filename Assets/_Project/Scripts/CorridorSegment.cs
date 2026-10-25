@@ -1,12 +1,12 @@
 using UnityEngine;
 
 /// <summary>
-/// Estado de visibilidad de un modulo. Lo calcula VisibilityChecker.
+/// Estado de visibilidad de un modulo. Lo calcula VisibilityChecker cada frame.
 /// </summary>
 public enum SegmentVisibility
 {
     Unknown,    // todavia no se evaluo
-    Visible,    // la camara del jugador lo puede ver
+    Visible,    // la camara del jugador lo puede ver (con margen de seguridad)
     BlindSpot,  // punto ciego: se puede cambiar sin que el jugador lo note
     Protected   // el jugador esta adentro o demasiado cerca: nunca se cambia
 }
@@ -14,6 +14,7 @@ public enum SegmentVisibility
 /// <summary>
 /// Un modulo de pasillo. Guarda varias versiones de si mismo (variantes) como hijos
 /// y solo deja encendida una a la vez. Cambiar el pasillo = cambiar de variante.
+/// Ademas recuerda si cambio y el jugador todavia no lo vio (HasUnseenChange).
 /// </summary>
 public class CorridorSegment : MonoBehaviour
 {
@@ -32,8 +33,11 @@ public class CorridorSegment : MonoBehaviour
     public int CurrentVariant { get; private set; } = -1;
     public int VariantCount => variants == null ? 0 : variants.Length;
 
-    /// <summary>Lo escribe VisibilityChecker; solo se usa para dibujar el gizmo.</summary>
-    public SegmentVisibility DebugState { get; set; } = SegmentVisibility.Unknown;
+    /// <summary>Estado de visibilidad del ultimo frame. Lo escribe VisibilityChecker.</summary>
+    public SegmentVisibility State { get; set; } = SegmentVisibility.Unknown;
+
+    /// <summary>true si el modulo cambio y el jugador todavia no lo vio.</summary>
+    public bool HasUnseenChange { get; private set; }
 
     private void Awake()
     {
@@ -57,9 +61,15 @@ public class CorridorSegment : MonoBehaviour
         CurrentVariant = index;
     }
 
+    /// <summary>Marca que el modulo cambio a espaldas del jugador.</summary>
+    public void MarkChanged() => HasUnseenChange = true;
+
+    /// <summary>El jugador ya vio el cambio.</summary>
+    public void MarkDiscovered() => HasUnseenChange = false;
+
     /// <summary>
-    /// Pasa a la siguiente variante. Aparece en el menu de tres puntos del componente
-    /// en el Inspector, para probar a mano.
+    /// Pasa a la siguiente variante y lo marca como cambio sin ver.
+    /// Aparece en el menu de tres puntos del componente, para probar a mano.
     /// </summary>
     [ContextMenu("Siguiente variante")]
     public void NextVariant()
@@ -67,6 +77,7 @@ public class CorridorSegment : MonoBehaviour
         if (VariantCount == 0) return;
         int current = FindActiveVariant(); // -1 si ninguna esta activa -> pasa a 0
         SetVariant((current + 1) % VariantCount);
+        if (Application.isPlaying) MarkChanged();
     }
 
     private int FindActiveVariant()
@@ -97,13 +108,13 @@ public class CorridorSegment : MonoBehaviour
         return world;
     }
 
-    // Dibuja la caja en la vista Scene: verde = visible, rojo = punto ciego,
-    // amarillo = protegido, blanco = sin evaluar.
+    // Vista Scene: verde = visible, rojo = punto ciego, amarillo = protegido,
+    // blanco = sin evaluar. Esfera magenta = cambio que el jugador todavia no vio.
     private void OnDrawGizmos()
     {
         Bounds b = GetWorldBounds();
 
-        Gizmos.color = DebugState switch
+        Gizmos.color = State switch
         {
             SegmentVisibility.Visible => Color.green,
             SegmentVisibility.BlindSpot => Color.red,
@@ -112,10 +123,16 @@ public class CorridorSegment : MonoBehaviour
         };
         Gizmos.DrawWireCube(b.center, b.size);
 
-        if (DebugState == SegmentVisibility.BlindSpot)
+        if (State == SegmentVisibility.BlindSpot)
         {
             Gizmos.color = new Color(1f, 0f, 0f, 0.15f);
             Gizmos.DrawCube(b.center, b.size);
+        }
+
+        if (HasUnseenChange)
+        {
+            Gizmos.color = Color.magenta;
+            Gizmos.DrawWireSphere(b.center, 0.75f);
         }
     }
 }

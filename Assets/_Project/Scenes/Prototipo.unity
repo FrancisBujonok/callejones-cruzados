@@ -934,6 +934,7 @@ GameObject:
   - component: {fileID: 1720921706}
   - component: {fileID: 1720921705}
   - component: {fileID: 1720921709}
+  - component: {fileID: 1720921710}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -1039,7 +1040,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FearMeter
   maxFear: 100
-  fearPerMutation: 15
+  fearPerDiscovery: 15
+  fearPerParanoia: 4
   decayPerSecond: 2
   decayDelay: 5
   onFearChanged:
@@ -1049,6 +1051,41 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   showDebugBar: 1
+--- !u!114 &1720921710
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1720921704}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: af1431730dec51b45bbb6959732cb381, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ParanoiaSensor
+  lookBackAngle: 120
+  lookBackTime: 0.8
+  paranoiaWindow: 12
+  lookBacksToTrigger: 3
+  onLookBack:
+    m_PersistentCalls:
+      m_Calls: []
+  onParanoia:
+    m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 1720921709}
+        m_TargetAssemblyTypeName: FearMeter, Assembly-CSharp
+        m_MethodName: OnParanoia
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+  showDebugOverlay: 1
 --- !u!1 &1723152935
 GameObject:
   m_ObjectHideFlags: 0
@@ -1277,7 +1314,22 @@ MonoBehaviour:
   player: {fileID: 1720921708}
   safetyMargin: 1
   minDistance: 4
-  updateDebugEveryFrame: 1
+  requireLineOfSight: 1
+  onChangeDiscovered:
+    m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 1720921709}
+        m_TargetAssemblyTypeName: FearMeter, Assembly-CSharp
+        m_MethodName: OnChangeDiscovered
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &2033901514
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1292,24 +1344,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MazeDirector
   stepCounter: {fileID: 1720921705}
   visibility: {fileID: 0}
+  selection: 0
   onlyBehind: 1
   waitForBlindSpot: 1
   maxWaitTime: 10
   onMutation:
     m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 1720921709}
-        m_TargetAssemblyTypeName: FearMeter, Assembly-CSharp
-        m_MethodName: OnMazeMutated
-        m_Mode: 1
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
+      m_Calls: []
 --- !u!4 &2070726906 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 2225442114905490237, guid: 8be327c7a2c73c24db07f2adfb73d705, type: 3}

@@ -4,13 +4,19 @@ using UnityEngine.Events;
 
 /// <summary>
 /// El "director" del laberinto. Cuando el jugador completa una racha de pasos,
-/// elige un modulo en punto ciego (por defecto, a su espalda) y le cambia la variante.
-/// Si en ese momento no hay ningun punto ciego, espera hasta que aparezca uno:
-/// el cambio ocurre en cuanto el jugador aparta la mirada.
+/// elige un modulo en punto ciego (por defecto, el mas cercano a su espalda),
+/// le cambia la variante y lo marca como "cambio sin ver".
+/// Si en ese momento no hay ningun punto ciego, espera hasta que aparezca uno.
 /// Va en el objeto "Laberinto", junto a VisibilityChecker.
 /// </summary>
 public class MazeDirector : MonoBehaviour
 {
+    public enum TargetSelection
+    {
+        Nearest, // el punto ciego mas cercano: el jugador lo nota al darse vuelta
+        Random   // cualquiera: mas impredecible, pero muchos cambios pasan desapercibidos
+    }
+
     [Header("Referencias")]
     [Tooltip("El StepCounter del Player. El director escucha su evento de racha completa.")]
     [SerializeField] private StepCounter stepCounter;
@@ -18,6 +24,8 @@ public class MazeDirector : MonoBehaviour
     [SerializeField] private VisibilityChecker visibility;
 
     [Header("Reglas")]
+    [Tooltip("Como elegir el modulo a cambiar entre todos los puntos ciegos.")]
+    [SerializeField] private TargetSelection selection = TargetSelection.Nearest;
     [Tooltip("Solo cambiar modulos que esten detras del jugador.")]
     [SerializeField] private bool onlyBehind = true;
     [Tooltip("Si no hay punto ciego al completar la racha, esperar a que aparezca uno.")]
@@ -26,7 +34,7 @@ public class MazeDirector : MonoBehaviour
     [SerializeField] private float maxWaitTime = 10f;
 
     [Header("Eventos")]
-    [Tooltip("Se dispara cada vez que el laberinto cambia. Aca se conecta el medidor de miedo.")]
+    [Tooltip("Se dispara cada vez que el laberinto cambia (aunque el jugador no lo vea). Util para sonidos.")]
     public UnityEvent onMutation;
 
     public int MutationCount { get; private set; }
@@ -90,18 +98,43 @@ public class MazeDirector : MonoBehaviour
     private bool TryMutate()
     {
         List<CorridorSegment> candidates = visibility.GetBlindSpotSegments(onlyBehind);
-        candidates.RemoveAll(s => s.VariantCount < 2); // sin alternativas no hay nada que cambiar
+
+        // Sin alternativas no hay nada que cambiar. Y si ya tiene un cambio sin ver,
+        // cambiarlo de nuevo lo podria devolver a como estaba y el susto se perderia.
+        candidates.RemoveAll(s => s.VariantCount < 2 || s.HasUnseenChange);
 
         if (candidates.Count == 0) return false;
 
-        CorridorSegment target = candidates[Random.Range(0, candidates.Count)];
+        CorridorSegment target = selection == TargetSelection.Nearest
+            ? FindNearest(candidates)
+            : candidates[Random.Range(0, candidates.Count)];
+
         int newVariant = PickDifferentVariant(target);
         target.SetVariant(newVariant);
+        target.MarkChanged();
 
         MutationCount++;
         Debug.Log($"[MazeDirector] Cambio #{MutationCount}: '{target.name}' pasa a la variante {newVariant}.");
         onMutation?.Invoke();
         return true;
+    }
+
+    private CorridorSegment FindNearest(List<CorridorSegment> candidates)
+    {
+        Vector3 playerPos = stepCounter.transform.position;
+        CorridorSegment best = null;
+        float bestDistance = float.MaxValue;
+
+        foreach (CorridorSegment s in candidates)
+        {
+            float d = s.GetWorldBounds().SqrDistance(playerPos);
+            if (d < bestDistance)
+            {
+                bestDistance = d;
+                best = s;
+            }
+        }
+        return best;
     }
 
     /// <summary>
