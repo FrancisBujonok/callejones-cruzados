@@ -18,6 +18,8 @@ using UnityEngine.SceneManagement;
 /// 4. Aplica los materiales al ModuloSalida de la escena.
 /// 5. Iluminacion nocturna: sin sol ni cielo, niebla y fondo del mismo marron oscuro.
 /// 6. Post-procesado: crea el perfil CallejonesVolume y le agrega FearPostFX al Global Volume.
+/// 7. Estilo PS1 (si esta activo): shader Callejones/PS1 Lit, escalado Point, sin SSAO y
+///    RetroSettings en la camara. Se cambia con Callejones > Estilo PS1 / Estilo moderno.
 ///
 /// Se puede ejecutar varias veces: reemplaza lo que genero antes en vez de duplicarlo.
 /// Esta carpeta se llama Editor a proposito: Unity no incluye este codigo en el juego final.
@@ -40,6 +42,19 @@ public static class AtmosphereBuilder
     // Paleta: ver la seccion "Direccion de arte" del doc.
     private static readonly Color FogColor = Hex("#1D0C07");
     private static readonly Color AmbientColor = Hex("#2A1810");
+    private static readonly Color LanternEmission = new Color(1f, 0.42f, 0.16f) * 6f;
+    private static readonly Color LanternLightColor = new Color(1f, 0.58f, 0.3f);
+
+    // Estilo PS1: se recuerda entre sesiones del editor. Por defecto, activado.
+    private const string PS1PrefKey = "Callejones.EstiloPS1";
+    private const string PS1ShaderName = "Callejones/PS1 Lit";
+    private const string LitShaderName = "Universal Render Pipeline/Lit";
+
+    private static bool UsePS1
+    {
+        get => EditorPrefs.GetBool(PS1PrefKey, true);
+        set => EditorPrefs.SetBool(PS1PrefKey, value);
+    }
 
     private class Mats
     {
@@ -59,11 +74,34 @@ public static class AtmosphereBuilder
         DecorateExitModule(mats);
         SetupNightLighting();
         SetupPostProcessing();
+        SetupRetro(UsePS1);
 
         AssetDatabase.SaveAssets();
         EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
         Debug.Log("[Callejones] Atmosfera construida en la escena '" + SceneManager.GetActiveScene().name +
-                  "'. Guarda con Ctrl+S.");
+                  "' (estilo " + (UsePS1 ? "PS1" : "moderno") + "). Guarda con Ctrl+S.");
+    }
+
+    [MenuItem("Callejones/Estilo PS1 (activar)", priority = 40)]
+    public static void EnablePS1()
+    {
+        if (!CanRun()) return;
+        UsePS1 = true;
+        BuildMaterials();
+        SetupRetro(true);
+        AssetDatabase.SaveAssets();
+        Debug.Log("[Callejones] Estilo PS1 activado. Guarda con Ctrl+S.");
+    }
+
+    [MenuItem("Callejones/Estilo moderno (sin PS1)", priority = 41)]
+    public static void DisablePS1()
+    {
+        if (!CanRun()) return;
+        UsePS1 = false;
+        BuildMaterials();
+        SetupRetro(false);
+        AssetDatabase.SaveAssets();
+        Debug.Log("[Callejones] Estilo moderno activado. Guarda con Ctrl+S.");
     }
 
     [MenuItem("Callejones/Solo iluminacion nocturna", priority = 20)]
@@ -95,9 +133,16 @@ public static class AtmosphereBuilder
             EditorUtility.DisplayDialog("Callejones", "No encuentro el prefab en " + ModuloPath + ".", "OK");
             return false;
         }
-        if (Shader.Find("Universal Render Pipeline/Lit") == null)
+        if (Shader.Find(LitShaderName) == null)
         {
             EditorUtility.DisplayDialog("Callejones", "No encuentro el shader de URP Lit. El proyecto tiene que usar URP.", "OK");
+            return false;
+        }
+        if (UsePS1 && Shader.Find(PS1ShaderName) == null)
+        {
+            EditorUtility.DisplayDialog("Callejones",
+                "No encuentro el shader " + PS1ShaderName + ". Revisa que Assets/_Project/Shaders/PS1Lit.shader " +
+                "exista y que la consola no muestre errores de shader.", "OK");
             return false;
         }
         return true;
@@ -111,36 +156,68 @@ public static class AtmosphereBuilder
         return new Mats
         {
             pared = Mat("Pared", Hex("#5A3A2E"), 0.15f),
-            piso = Mat("PisoMojado", Hex("#2A211D"), 0.85f),
-            persiana = Mat("Persiana", Hex("#4A3A33"), 0.45f, 0.55f),
+            piso = Mat("PisoMojado", Hex("#2A211D"), 0.85f, 0f, new Color(0.55f, 0.5f, 0.45f)),
+            persiana = Mat("Persiana", Hex("#4A3A33"), 0.45f, 0.55f, new Color(0.35f, 0.33f, 0.3f)),
             metal = Mat("MetalOscuro", Hex("#3A3633"), 0.35f, 0.3f),
             toldo = Mat("Toldo", Hex("#5A1A10"), 0.2f),
             cable = Mat("Cable", Hex("#0A0504"), 0.3f),
-            cartel = Mat("Cartel", Hex("#DCAD78"), 0.3f, 0f, Hex("#DCAD78") * 0.8f),
-            farolTela = Mat("FarolTela", Hex("#C84E25"), 0.2f, 0f, new Color(1f, 0.42f, 0.16f) * 3f),
+            cartel = Mat("Cartel", Hex("#DCAD78"), 0.3f, 0f, null, Hex("#DCAD78") * 0.8f),
+            farolTela = Mat("FarolTela", Hex("#C84E25"), 0.2f, 0f, null, LanternEmission),
             farolTapa = Mat("FarolTapa", Hex("#120806"), 0.3f),
         };
     }
 
-    private static Material Mat(string name, Color baseColor, float smoothness, float metallic = 0f, Color? emission = null)
+    /// <summary>
+    /// Crea o actualiza un material con el shader del estilo activo.
+    /// specular: color del brillo para el shader PS1 (null = sin brillo).
+    /// En el estilo moderno (URP Lit) el brillo sale de smoothness y metallic.
+    /// </summary>
+    private static Material Mat(string name, Color baseColor, float smoothness, float metallic = 0f,
+        Color? specular = null, Color? emission = null)
     {
         string path = MaterialsDir + "/" + name + ".mat";
-        Shader lit = Shader.Find("Universal Render Pipeline/Lit");
+        bool ps1 = UsePS1;
+        Shader shader = Shader.Find(ps1 ? PS1ShaderName : LitShaderName);
 
         Material m = AssetDatabase.LoadAssetAtPath<Material>(path);
         if (m == null)
         {
-            m = new Material(lit);
+            m = new Material(shader);
             AssetDatabase.CreateAsset(m, path);
         }
-        else if (m.shader != lit)
+        else if (m.shader != shader)
         {
-            m.shader = lit;
+            m.shader = shader;
         }
 
         m.SetColor("_BaseColor", baseColor);
         m.SetFloat("_Smoothness", smoothness);
-        m.SetFloat("_Metallic", metallic);
+
+        if (ps1)
+        {
+            // Simple Lit: el brillo es Blinn-Phong. _SpecularHighlights 0 = con brillo, 1 = sin brillo.
+            m.DisableKeyword("_SPECGLOSSMAP");
+            if (specular.HasValue)
+            {
+                Color s = specular.Value;
+                m.SetFloat("_SpecularHighlights", 0f);
+                m.SetColor("_SpecColor", new Color(s.r, s.g, s.b, smoothness));
+                m.EnableKeyword("_SPECULAR_COLOR");
+            }
+            else
+            {
+                m.SetFloat("_SpecularHighlights", 1f);
+                m.DisableKeyword("_SPECULAR_COLOR");
+            }
+        }
+        else
+        {
+            // URP Lit usa la misma propiedad al reves: 1 = con brillo.
+            m.SetFloat("_Metallic", metallic);
+            m.SetFloat("_SpecularHighlights", 1f);
+            m.DisableKeyword("_SPECULARHIGHLIGHTS_OFF");
+            m.DisableKeyword("_SPECULAR_COLOR");
+        }
 
         if (emission.HasValue)
         {
@@ -202,9 +279,9 @@ public static class AtmosphereBuilder
             lightGo.transform.localPosition = new Vector3(0f, -0.52f, 0f);
             Light light = lightGo.AddComponent<Light>();
             light.type = LightType.Point;
-            light.color = new Color(1f, 0.5f, 0.25f);
+            light.color = LanternLightColor;
             light.range = 5f;
-            light.intensity = 2f;
+            light.intensity = 2.5f;
             light.shadows = LightShadows.None;
 
             root.AddComponent<LanternLight>().Setup(light, bodyGo.GetComponent<MeshRenderer>());
@@ -450,6 +527,53 @@ public static class AtmosphereBuilder
     {
         parameter.overrideState = true;
         parameter.value = value;
+    }
+
+    // ------------------------------------------------------------------ 7. estilo PS1
+
+    /// <summary>
+    /// Prende o apaga lo que el estilo PS1 necesita fuera de los materiales:
+    /// - Escalado Point en el asset de URP: al agrandar la imagen de baja resolucion,
+    ///   cada pixel queda como un cuadrado duro en vez de borroso.
+    /// - Oclusion ambiental (SSAO) apagada: la PS1 no tenia y ensucia el dithering.
+    /// - RetroSettings en la camara: resolucion baja, temblor de vertices y colores.
+    /// </summary>
+    private static void SetupRetro(bool on)
+    {
+        var urp = GraphicsSettings.currentRenderPipeline as UniversalRenderPipelineAsset;
+        if (urp != null)
+        {
+            Undo.RecordObject(urp, "Estilo PS1");
+            urp.upscalingFilter = on ? UpscalingFilterSelection.Point : UpscalingFilterSelection.Auto;
+            EditorUtility.SetDirty(urp);
+
+            foreach (ScriptableRendererData data in urp.rendererDataList)
+            {
+                if (data == null) continue;
+                foreach (ScriptableRendererFeature feature in data.rendererFeatures)
+                {
+                    if (feature == null || feature.GetType().Name != "ScreenSpaceAmbientOcclusion") continue;
+                    feature.SetActive(!on);
+                    EditorUtility.SetDirty(feature);
+                }
+                data.SetDirty();
+                EditorUtility.SetDirty(data);
+            }
+        }
+
+        Camera cam = Camera.main != null ? Camera.main : FindInScene<Camera>(null);
+        if (cam != null)
+        {
+            RetroSettings retro = cam.GetComponent<RetroSettings>();
+            if (retro == null && on) retro = Undo.AddComponent<RetroSettings>(cam.gameObject);
+            if (retro != null)
+            {
+                Undo.RecordObject(retro, "Estilo PS1");
+                retro.enabled = on;
+            }
+        }
+
+        EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
     }
 
     // ------------------------------------------------------------------ mallas low-poly
