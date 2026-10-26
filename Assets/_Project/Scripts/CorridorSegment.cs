@@ -79,6 +79,10 @@ public class CorridorSegment : MonoBehaviour
         SetVariant(startVariant);
         HasUnseenChange = false;
         State = SegmentVisibility.Unknown;
+
+        // Nueva decoracion al azar: el tramo que aparece adelante no es igual al que quedo atras.
+        foreach (DecorRandomizer decor in GetComponentsInChildren<DecorRandomizer>(true))
+            decor.Randomize();
     }
 
     /// <summary>

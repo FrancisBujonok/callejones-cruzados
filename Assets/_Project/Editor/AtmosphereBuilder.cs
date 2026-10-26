@@ -24,7 +24,7 @@ using UnityEngine.SceneManagement;
 /// Se puede ejecutar varias veces: reemplaza lo que genero antes en vez de duplicarlo.
 /// Esta carpeta se llama Editor a proposito: Unity no incluye este codigo en el juego final.
 /// </summary>
-public static class AtmosphereBuilder
+public static partial class AtmosphereBuilder
 {
     private const string Root = "Assets/_Project";
     private const string MaterialsDir = Root + "/Materials";
@@ -61,6 +61,8 @@ public static class AtmosphereBuilder
     private class Mats
     {
         public Material pared, piso, persiana, metal, toldo, cable, cartel, farolTela, farolTapa;
+        public Material teja, madera, maceta, planta, balde, ventanaLuz, ventanaOscura, cartelRojo;
+        public Material torii, soga, papel, resplandor;
     }
 
     // ------------------------------------------------------------------ menus
@@ -155,17 +157,33 @@ public static class AtmosphereBuilder
     private static Mats BuildMaterials()
     {
         EnsureFolder(MaterialsDir);
+        Textures tex = BuildTextures();
+        Color paper = Hex("#DCAD78");
         return new Mats
         {
-            pared = Mat("Pared", Hex("#6B625B"), 0.15f),
-            piso = Mat("PisoMojado", Hex("#3A3533"), 0.85f, 0f, new Color(0.6f, 0.58f, 0.55f)),
+            // Con textura, el color base funciona como tinte: blanco = la textura tal cual.
+            pared = Mat("Pared", new Color(0.85f, 0.8f, 0.78f), 0.15f, baseMap: tex.ladrillo),
+            piso = Mat("PisoMojado", new Color(0.75f, 0.75f, 0.75f), 0.85f, 0f, new Color(0.6f, 0.58f, 0.55f), baseMap: tex.piedra),
             persiana = Mat("Persiana", Hex("#5E5A55"), 0.45f, 0.55f, new Color(0.4f, 0.4f, 0.38f)),
             metal = Mat("MetalOscuro", Hex("#4A4744"), 0.35f, 0.3f),
             toldo = Mat("Toldo", Hex("#5A1A10"), 0.2f),
             cable = Mat("Cable", Hex("#0A0504"), 0.3f),
-            cartel = Mat("Cartel", Hex("#DCAD78"), 0.3f, 0f, null, Hex("#DCAD78") * 0.8f),
+            cartel = Mat("Cartel", Color.white, 0.3f, 0f, null, paper * 0.9f, tex.kanbanPapel, tex.kanbanPapel),
+            cartelRojo = Mat("CartelRojo", Color.white, 0.3f, 0f, null, new Color(1f, 0.35f, 0.25f) * 1.3f, tex.kanbanRojo, tex.kanbanRojo),
             farolTela = Mat("FarolTela", Hex("#C84E25"), 0.2f, 0f, null, LanternEmission),
             farolTapa = Mat("FarolTapa", Hex("#120806"), 0.3f),
+            teja = Mat("Teja", Hex("#3A2A24"), 0.3f),
+            madera = Mat("Madera", Color.white, 0.2f, baseMap: tex.madera),
+            maceta = Mat("Maceta", Hex("#8A4A30"), 0.2f),
+            planta = Mat("Planta", Hex("#2E3A22"), 0.25f),
+            // Acento frio de la paleta: pocos objetos azules para que el rojo resalte.
+            balde = Mat("Balde", Hex("#2F4A6A"), 0.5f, 0f, new Color(0.3f, 0.3f, 0.3f)),
+            ventanaLuz = Mat("VentanaLuz", Hex("#E3B060"), 0.6f, 0f, null, Hex("#E3B060") * 1.1f),
+            ventanaOscura = Mat("VentanaOscura", Hex("#101418"), 0.9f, 0f, new Color(0.5f, 0.5f, 0.5f)),
+            torii = Mat("Torii", Hex("#B8301E"), 0.25f, 0f, null, new Color(0.5f, 0.06f, 0.03f) * 0.6f),
+            soga = Mat("Soga", Hex("#8C6A3C"), 0.1f),
+            papel = Mat("PapelShide", Hex("#E8E2D0"), 0.1f, 0f, null, Hex("#E8E2D0") * 0.55f),
+            resplandor = Mat("Resplandor", paper, 0.1f, 0f, null, paper * 1.3f),
         };
     }
 
@@ -175,7 +193,7 @@ public static class AtmosphereBuilder
     /// En el estilo moderno (URP Lit) el brillo sale de smoothness y metallic.
     /// </summary>
     private static Material Mat(string name, Color baseColor, float smoothness, float metallic = 0f,
-        Color? specular = null, Color? emission = null)
+        Color? specular = null, Color? emission = null, Texture2D baseMap = null, Texture2D emissionMap = null)
     {
         string path = MaterialsDir + "/" + name + ".mat";
         bool ps1 = UsePS1;
@@ -194,6 +212,9 @@ public static class AtmosphereBuilder
 
         m.SetColor("_BaseColor", baseColor);
         m.SetFloat("_Smoothness", smoothness);
+        m.SetTexture("_BaseMap", baseMap);
+        m.SetTextureScale("_BaseMap", Vector2.one);
+        m.SetTexture("_EmissionMap", emissionMap);
 
         if (ps1)
         {
@@ -313,6 +334,11 @@ public static class AtmosphereBuilder
         {
             ApplyStructureMaterials(root.transform, m);
 
+            // Paredes y piso con UV en metros, para que la textura no se estire.
+            foreach (Transform t in root.GetComponentsInChildren<Transform>(true))
+                if (t.name == "ParedIzq" || t.name == "ParedDer" || t.name == "Bloqueo" || t.name == "Piso")
+                    ConvertToMetric(t);
+
             // Decorado compartido por todas las variantes (arriba, lejos del camino).
             DestroyChild(root.transform, "Decorado");
             Transform deco = new GameObject("Decorado").transform;
@@ -330,8 +356,7 @@ public static class AtmosphereBuilder
             BoxChild(deco, "CableB", m.cable, new Vector3(0.7f, 3.15f, 0f), new Vector3(0.025f, 0.025f, 6f), Vector3.zero);
             BoxChild(deco, "CableCruzado", m.cable, new Vector3(0f, 3.0f, 0.6f), new Vector3(3f, 0.02f, 0.02f), new Vector3(0f, 0f, 3f));
             BoxChild(deco, "Toldo", m.toldo, new Vector3(-1.08f, 2.8f, 0f), new Vector3(0.7f, 0.04f, 5.8f), new Vector3(0f, 0f, -18f));
-            BoxChild(deco, "Cartel", m.cartel, new Vector3(WallInnerX - 0.03f, 2.0f, -2.0f), new Vector3(0.05f, 0.9f, 0.32f), Vector3.zero);
-            BoxChild(deco, "AireAcondicionado", m.metal, new Vector3(1.2f, 2.7f, -0.9f), new Vector3(0.38f, 0.32f, 0.62f), Vector3.zero);
+            BuildDecorSets(deco, m);
 
             // Persianas: van dentro de cada variante porque dependen de sus paredes.
             foreach (string variant in new[] { "Abierto", "Cerrado" })
@@ -391,6 +416,7 @@ public static class AtmosphereBuilder
         if (exit == null) return;
         Undo.RegisterFullObjectHierarchyUndo(exit.gameObject, "Materiales de la salida");
         ApplyStructureMaterials(exit, m);
+        BuildExitTorii(exit, m);
     }
 
     // ------------------------------------------------------------------ 5. iluminacion
