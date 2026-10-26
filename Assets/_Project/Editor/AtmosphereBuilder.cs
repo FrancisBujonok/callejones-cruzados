@@ -20,6 +20,7 @@ using UnityEngine.SceneManagement;
 /// 6. Post-procesado: crea el perfil CallejonesVolume y le agrega FearPostFX al Global Volume.
 /// 7. Estilo PS1 (si esta activo): shader Callejones/PS1 Lit, escalado Point, sin SSAO y
 ///    RetroSettings en la camara. Se cambia con Callejones > Estilo PS1 / Estilo moderno.
+/// 8. Sonido: sintetiza los clips y arma ambiente, pasos, faroles y torii (AtmosphereBuilder.Audio.cs).
 ///
 /// Se puede ejecutar varias veces: reemplaza lo que genero antes en vez de duplicarlo.
 /// Esta carpeta se llama Editor a proposito: Unity no incluye este codigo en el juego final.
@@ -79,6 +80,7 @@ public static partial class AtmosphereBuilder
         SetupNightLighting();
         SetupPostProcessing();
         SetupRetro(UsePS1);
+        SetupSound(BuildSounds()); // despues del torii: le agrega su sonido
 
         AssetDatabase.SaveAssets();
         EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());

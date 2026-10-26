@@ -1,10 +1,11 @@
 using UnityEngine;
 
 /// <summary>
-/// Farol de papel. Hace dos cosas:
+/// Farol de papel. Hace tres cosas:
 /// - Parpadeo: la luz y el brillo del papel varian suavemente (ruido Perlin).
 ///   Con miedo alto el parpadeo es mas fuerte y aparecen cortes breves.
 /// - Balanceo: el farol se mece un poco, colgado de su punto de enganche.
+/// - Zumbido: su volumen sigue al parpadeo, asi que en cada corte de luz el zumbido se corta tambien.
 /// El pivote de este objeto es el punto donde cuelga (arriba de la cuerda).
 /// Lee el miedo de FearMeter si hay uno en la escena; si no, parpadea en modo calma.
 /// </summary>
@@ -37,6 +38,11 @@ public class LanternLight : MonoBehaviour
     [SerializeField] private float swayAngle = 2.5f;
     [SerializeField] private float swaySpeed = 0.7f;
 
+    [Header("Sonido")]
+    [Tooltip("Zumbido electrico del farol (AudioSource 3D en loop).")]
+    [SerializeField] private AudioSource hum;
+    [SerializeField, Range(0f, 1f)] private float humVolume = 0.15f;
+
     // Compartido entre todos los faroles: hay un solo medidor de miedo.
     private static FearMeter fearMeter;
     private static readonly int EmissionId = Shader.PropertyToID("_EmissionColor");
@@ -54,6 +60,13 @@ public class LanternLight : MonoBehaviour
         glowRenderer = glow;
     }
 
+    /// <summary>Lo usa la herramienta de editor al agregar el sonido.</summary>
+    public void SetupAudio(AudioSource humSource, float volume)
+    {
+        hum = humSource;
+        humVolume = volume;
+    }
+
     private void Awake()
     {
         block = new MaterialPropertyBlock();
@@ -65,6 +78,15 @@ public class LanternLight : MonoBehaviour
     private void Start()
     {
         if (fearMeter == null) fearMeter = FindAnyObjectByType<FearMeter>();
+
+        // Cada farol arranca el loop en un punto distinto y con un tono apenas distinto:
+        // si todos sonaran sincronizados se sumarian en un solo zumbido artificial.
+        if (hum != null && hum.clip != null)
+        {
+            hum.pitch = Random.Range(0.97f, 1.03f);
+            hum.Play();
+            hum.timeSamples = Random.Range(0, hum.clip.samples);
+        }
     }
 
     private void Update()
@@ -90,6 +112,7 @@ public class LanternLight : MonoBehaviour
         }
 
         if (lanternLight != null) lanternLight.intensity = baseIntensity * factor;
+        if (hum != null) hum.volume = humVolume * factor;
 
         // MaterialPropertyBlock cambia el brillo de ESTE farol sin crear
         // una copia del material para cada uno.

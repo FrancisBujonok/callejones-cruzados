@@ -38,6 +38,8 @@ public class MazeDirector : MonoBehaviour
     public UnityEvent onMutation;
 
     public int MutationCount { get; private set; }
+    /// <summary>El ultimo modulo que cambio. Lo usa el sonido para ubicar el ruido lejano.</summary>
+    public CorridorSegment LastMutated { get; private set; }
 
     private bool pending;
     private float pendingTimer;
@@ -114,6 +116,7 @@ public class MazeDirector : MonoBehaviour
         target.MarkChanged();
 
         MutationCount++;
+        LastMutated = target;
         Debug.Log($"[MazeDirector] Cambio #{MutationCount}: '{target.name}' pasa a la variante {newVariant}.");
         onMutation?.Invoke();
         return true;
