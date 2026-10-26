@@ -222,8 +222,8 @@ Light:
   m_Enabled: 1
   serializedVersion: 12
   m_Type: 2
-  m_Color: {r: 1, g: 0.5, b: 0.25, a: 1}
-  m_Intensity: 2
+  m_Color: {r: 1, g: 0.58, b: 0.3, a: 1}
+  m_Intensity: 2.5
   m_Range: 5
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
@@ -600,7 +600,7 @@ MonoBehaviour:
   lanternLight: {fileID: 8895982716091877450}
   glowRenderer: {fileID: 3637042032299119325}
   emissionColor: {r: 1, g: 0.42, b: 0.16, a: 1}
-  emissionIntensity: 3
+  emissionIntensity: 6
   calmFlicker: 0.08
   fearFlicker: 0.55
   flickerSpeed: 3
