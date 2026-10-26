@@ -222,9 +222,9 @@ Light:
   m_Enabled: 1
   serializedVersion: 12
   m_Type: 2
-  m_Color: {r: 1, g: 0.58, b: 0.3, a: 1}
-  m_Intensity: 2.5
-  m_Range: 5
+  m_Color: {r: 1, g: 0.62, b: 0.35, a: 1}
+  m_Intensity: 1.4
+  m_Range: 4.5
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
   m_CookieSize2D: {x: 0.5, y: 0.5}
@@ -599,8 +599,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::LanternLight
   lanternLight: {fileID: 8895982716091877450}
   glowRenderer: {fileID: 3637042032299119325}
-  emissionColor: {r: 1, g: 0.42, b: 0.16, a: 1}
-  emissionIntensity: 6
+  emissionColor: {r: 1, g: 0.2, b: 0.05, a: 1}
+  emissionIntensity: 2.2
   calmFlicker: 0.08
   fearFlicker: 0.55
   flickerSpeed: 3

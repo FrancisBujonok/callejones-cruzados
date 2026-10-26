@@ -68,3 +68,6 @@ crashlytics-build.properties
 # Assets temporales de Android
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
+
+# Capturas que saca la herramienta MCP de Unity
+/[Cc]aptures/

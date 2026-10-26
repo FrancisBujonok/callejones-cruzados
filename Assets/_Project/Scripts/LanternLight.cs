@@ -17,8 +17,8 @@ public class LanternLight : MonoBehaviour
     [SerializeField] private Renderer glowRenderer;
 
     [Header("Brillo del papel")]
-    [SerializeField] private Color emissionColor = new Color(1f, 0.42f, 0.16f);
-    [SerializeField] private float emissionIntensity = 6f;
+    [SerializeField] private Color emissionColor = new Color(1f, 0.2f, 0.05f);
+    [SerializeField] private float emissionIntensity = 2.2f;
 
     [Header("Parpadeo")]
     [Tooltip("Cuanto varia la luz sin miedo (0 = fija, 1 = llega a apagarse).")]

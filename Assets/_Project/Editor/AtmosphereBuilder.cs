@@ -41,9 +41,11 @@ public static class AtmosphereBuilder
 
     // Paleta: ver la seccion "Direccion de arte" del doc.
     private static readonly Color FogColor = Hex("#1D0C07");
-    private static readonly Color AmbientColor = Hex("#2A1810");
-    private static readonly Color LanternEmission = new Color(1f, 0.42f, 0.16f) * 6f;
-    private static readonly Color LanternLightColor = new Color(1f, 0.58f, 0.3f);
+    private static readonly Color AmbientColor = Hex("#22160F");
+    private static readonly Color LanternEmission = new Color(1f, 0.2f, 0.05f) * 2.2f;
+    // Ambar y no rojo: la luz se multiplica por el color de cada superficie, y si las dos
+    // son rojizas el resultado queda rojo puro (sin verde ni azul).
+    private static readonly Color LanternLightColor = new Color(1f, 0.62f, 0.35f);
 
     // Estilo PS1: se recuerda entre sesiones del editor. Por defecto, activado.
     private const string PS1PrefKey = "Callejones.EstiloPS1";
@@ -155,10 +157,10 @@ public static class AtmosphereBuilder
         EnsureFolder(MaterialsDir);
         return new Mats
         {
-            pared = Mat("Pared", Hex("#5A3A2E"), 0.15f),
-            piso = Mat("PisoMojado", Hex("#2A211D"), 0.85f, 0f, new Color(0.55f, 0.5f, 0.45f)),
-            persiana = Mat("Persiana", Hex("#4A3A33"), 0.45f, 0.55f, new Color(0.35f, 0.33f, 0.3f)),
-            metal = Mat("MetalOscuro", Hex("#3A3633"), 0.35f, 0.3f),
+            pared = Mat("Pared", Hex("#6B625B"), 0.15f),
+            piso = Mat("PisoMojado", Hex("#3A3533"), 0.85f, 0f, new Color(0.6f, 0.58f, 0.55f)),
+            persiana = Mat("Persiana", Hex("#5E5A55"), 0.45f, 0.55f, new Color(0.4f, 0.4f, 0.38f)),
+            metal = Mat("MetalOscuro", Hex("#4A4744"), 0.35f, 0.3f),
             toldo = Mat("Toldo", Hex("#5A1A10"), 0.2f),
             cable = Mat("Cable", Hex("#0A0504"), 0.3f),
             cartel = Mat("Cartel", Hex("#DCAD78"), 0.3f, 0f, null, Hex("#DCAD78") * 0.8f),
@@ -223,7 +225,10 @@ public static class AtmosphereBuilder
         {
             m.EnableKeyword("_EMISSION");
             m.SetColor("_EmissionColor", emission.Value);
-            m.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None;
+            // Importante: el inspector de URP apaga _EMISSION si el material no esta
+            // marcado como emisivo para la iluminacion global. Con None, la emision se
+            // borraba sola cada vez que Unity validaba el material.
+            m.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
         }
         else
         {
@@ -280,8 +285,8 @@ public static class AtmosphereBuilder
             Light light = lightGo.AddComponent<Light>();
             light.type = LightType.Point;
             light.color = LanternLightColor;
-            light.range = 5f;
-            light.intensity = 2.5f;
+            light.range = 4.5f;
+            light.intensity = 1.4f;
             light.shadows = LightShadows.None;
 
             root.AddComponent<LanternLight>().Setup(light, bodyGo.GetComponent<MeshRenderer>());
@@ -451,20 +456,21 @@ public static class AtmosphereBuilder
         bloom.highQualityFiltering.overrideState = true;
         bloom.highQualityFiltering.value = true;
 
-        // ACES: las luces fuertes se van a amarillo en el centro, como en las fotos.
+        // Neutral y no ACES: en una escena tan oscura, ACES aplasta las sombras
+        // y se come el verde y el azul (todo quedaba rojo puro).
         Tonemapping tone = Comp<Tonemapping>(profile);
         tone.mode.overrideState = true;
-        tone.mode.value = TonemappingMode.ACES;
+        tone.mode.value = TonemappingMode.Neutral;
 
         ColorAdjustments color = Comp<ColorAdjustments>(profile);
-        Set(color.postExposure, 0.3f);
+        Set(color.postExposure, -0.1f);
         Set(color.contrast, 18f);
         Set(color.saturation, 10f);
         color.colorFilter.overrideState = true;
-        color.colorFilter.value = new Color(1f, 0.93f, 0.86f);
+        color.colorFilter.value = new Color(1f, 0.96f, 0.92f);
 
         WhiteBalance white = Comp<WhiteBalance>(profile);
-        Set(white.temperature, 12f);
+        Set(white.temperature, 5f);
 
         Vignette vignette = Comp<Vignette>(profile);
         Set(vignette.intensity, 0.32f);
