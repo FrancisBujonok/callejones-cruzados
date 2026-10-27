@@ -44,14 +44,16 @@ public class FirstPersonController : MonoBehaviour
         }
     }
 
+    // Si en la escena hay un GameFlow, el decide cuando se bloquea el cursor (titulo, pausa, final).
+    // Si no hay (por ejemplo, en una escena de prueba), este script lo maneja solo, como antes.
     private void Start()
     {
-        LockCursor(true);
+        if (GameFlow.Instance == null) LockCursor(true);
     }
 
     private void Update()
     {
-        HandleCursor();
+        if (GameFlow.Instance == null) HandleCursor();
 
         // Mientras el cursor esta libre (Escape), no movemos la camara ni el cuerpo.
         if (Cursor.lockState != CursorLockMode.Locked) return;

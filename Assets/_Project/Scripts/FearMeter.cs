@@ -89,7 +89,7 @@ public class FearMeter : MonoBehaviour
     // Barra en pantalla sin Canvas. Solo para el prototipo.
     private void OnGUI()
     {
-        if (!showDebugBar) return;
+        if (!showDebugBar || !DebugOverlay.Visible) return;
 
         GUI.Label(new Rect(12, 60, 400, 22), $"Miedo: {Fear:0} / {maxFear:0}");
         GUI.Box(new Rect(12, 82, 204, 14), GUIContent.none);

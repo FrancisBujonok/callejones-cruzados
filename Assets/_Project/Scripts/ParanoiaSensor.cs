@@ -98,7 +98,7 @@ public class ParanoiaSensor : MonoBehaviour
 
     private void OnGUI()
     {
-        if (!showDebugOverlay) return;
+        if (!showDebugOverlay || !DebugOverlay.Visible) return;
         GUI.Label(new Rect(12, 100, 400, 22), $"Miradas atras recientes: {RecentLookBacks}");
     }
 }

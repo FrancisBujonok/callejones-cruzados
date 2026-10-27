@@ -104,7 +104,7 @@ public class ExitCondition : MonoBehaviour
 
     private void OnGUI()
     {
-        if (!showDebugOverlay) return;
+        if (!showDebugOverlay || !DebugOverlay.Visible) return;
         string text = Done
             ? "Salida: abierta"
             : mode == Mode.Manual

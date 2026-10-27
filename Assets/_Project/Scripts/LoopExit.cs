@@ -42,7 +42,7 @@ public class LoopExit : MonoBehaviour
 
     private void OnGUI()
     {
-        if (!showDebugMessage || !Completed) return;
+        if (!showDebugMessage || !Completed || !DebugOverlay.Visible) return;
 
         var style = new GUIStyle(GUI.skin.label)
         {

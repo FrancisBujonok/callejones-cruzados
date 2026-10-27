@@ -38,6 +38,13 @@ public class StepCounter : MonoBehaviour
     public int CurrentStreak { get; private set; }
     public int TotalSteps { get; private set; }
     public int StepsToTrigger => stepsToTrigger;
+    /// <summary>Velocidad horizontal de este frame, en m/s. La usa CameraFeel.</summary>
+    public float Speed { get; private set; }
+    /// <summary>
+    /// Cuanto se avanzo hacia el proximo paso: 0 justo al dar un paso, casi 1 justo antes del siguiente.
+    /// CameraFeel lo usa para que el balanceo de la cabeza caiga en el mismo instante que el sonido.
+    /// </summary>
+    public float StepProgress => stepLength > 0f ? distanceAccumulator / stepLength : 0f;
 
     private Vector3 lastPosition;
     private float distanceAccumulator;
@@ -58,9 +65,14 @@ public class StepCounter : MonoBehaviour
         float distance = delta.magnitude;
 
         // 2. Un salto enorme en un frame es un teletransporte, no una caminata.
-        if (distance > teleportThreshold) return;
+        if (distance > teleportThreshold)
+        {
+            Speed = 0f;
+            return;
+        }
 
         float speed = distance / Mathf.Max(Time.deltaTime, 0.0001f);
+        Speed = speed;
 
         // 3. Quieto: contar cuanto tiempo; si pasa el limite, se rompe la racha.
         if (speed < minSpeedToCount)
@@ -124,7 +136,7 @@ public class StepCounter : MonoBehaviour
     // Texto en pantalla sin necesidad de armar un Canvas. Solo para el prototipo.
     private void OnGUI()
     {
-        if (!showDebugOverlay) return;
+        if (!showDebugOverlay || !DebugOverlay.Visible) return;
         GUI.Label(new Rect(12, 12, 400, 22), $"Racha: {CurrentStreak} / {stepsToTrigger}");
         GUI.Label(new Rect(12, 34, 400, 22), $"Pasos totales: {TotalSteps}");
     }
