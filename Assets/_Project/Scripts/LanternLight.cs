@@ -78,19 +78,34 @@ public class LanternLight : MonoBehaviour
     private void Start()
     {
         if (fearMeter == null) fearMeter = FindAnyObjectByType<FearMeter>();
+    }
 
+    // El generador de caminos apaga y prende piezas todo el tiempo. Al apagarse, el AudioSource
+    // se detiene solo; al volver a prenderse hay que arrancarlo de nuevo. Start corre una sola
+    // vez en la vida del objeto, asi que se marca en OnEnable y se arranca en el primer Update
+    // (en ese momento ya es seguro que el AudioSource esta activo).
+    private bool humStarted;
+
+    private void OnEnable()
+    {
+        humStarted = false;
+    }
+
+    private void StartHum()
+    {
+        humStarted = true;
+        if (hum == null || hum.clip == null || !hum.isActiveAndEnabled) return;
         // Cada farol arranca el loop en un punto distinto y con un tono apenas distinto:
         // si todos sonaran sincronizados se sumarian en un solo zumbido artificial.
-        if (hum != null && hum.clip != null)
-        {
-            hum.pitch = Random.Range(0.97f, 1.03f);
-            hum.Play();
-            hum.timeSamples = Random.Range(0, hum.clip.samples);
-        }
+        hum.pitch = Random.Range(0.97f, 1.03f);
+        hum.Play();
+        hum.timeSamples = Random.Range(0, hum.clip.samples);
     }
 
     private void Update()
     {
+        if (!humStarted) StartHum();
+
         float fear = fearMeter != null ? fearMeter.Normalized : 0f;
 
         // 1. Parpadeo continuo: PerlinNoise da valores suaves entre 0 y 1.
@@ -118,6 +133,8 @@ public class LanternLight : MonoBehaviour
         // una copia del material para cada uno.
         if (glowRenderer != null)
         {
+            // Si Unity recompila los scripts en pleno Play, los campos sin guardar vuelven a null.
+            if (block == null) block = new MaterialPropertyBlock();
             glowRenderer.GetPropertyBlock(block);
             block.SetColor(EmissionId, emissionColor * (emissionIntensity * factor));
             glowRenderer.SetPropertyBlock(block);

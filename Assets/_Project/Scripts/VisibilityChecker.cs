@@ -62,6 +62,13 @@ public class VisibilityChecker : MonoBehaviour
 
         foreach (CorridorSegment s in segments)
         {
+            // Las piezas guardadas (apagadas) por el generador no cuentan.
+            if (!s.gameObject.activeInHierarchy)
+            {
+                s.State = SegmentVisibility.Unknown;
+                continue;
+            }
+
             s.State = Evaluate(s, out bool inView);
 
             if (s.HasUnseenChange && inView && HasLineOfSight(s))
@@ -127,6 +134,25 @@ public class VisibilityChecker : MonoBehaviour
     }
 
     /// <summary>
+    /// Para el generador de caminos: si una pieza puesta en esa caja podria verse aparecer.
+    /// Se ve si esta dentro del campo de vision, mas cerca que maxDistance (despues la niebla
+    /// la tapa) y no hay ninguna pared entre la camara y su centro.
+    /// </summary>
+    public bool CouldBeSeen(Bounds box, float maxDistance)
+    {
+        RefreshFrustum();
+        Bounds safe = box;
+        safe.Expand(safetyMargin * 2f);
+        if (!GeometryUtility.TestPlanesAABB(frustumPlanes, safe)) return false;
+
+        Vector3 from = playerCamera.transform.position;
+        if (box.SqrDistance(from) > maxDistance * maxDistance) return false;
+
+        // Si algo tapa la linea hasta el centro, no se ve.
+        return !Physics.Linecast(from, box.center, ~0, QueryTriggerInteraction.Ignore);
+    }
+
+    /// <summary>
     /// Devuelve los modulos en punto ciego. Con onlyBehind = true, solo los que
     /// quedan a la espalda de la camara (producto punto negativo).
     /// </summary>
@@ -142,6 +168,7 @@ public class VisibilityChecker : MonoBehaviour
         var result = new List<CorridorSegment>();
         foreach (CorridorSegment s in segments)
         {
+            if (!s.gameObject.activeInHierarchy) continue;
             if (Evaluate(s, out _) != SegmentVisibility.BlindSpot) continue;
 
             if (onlyBehind)

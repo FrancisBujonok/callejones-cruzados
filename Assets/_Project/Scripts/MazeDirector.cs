@@ -43,10 +43,14 @@ public class MazeDirector : MonoBehaviour
 
     private bool pending;
     private float pendingTimer;
+    // El generador de caminos sabe como estan conectadas las piezas: lo usamos para no
+    // cerrar un pasillo que deje al jugador encerrado.
+    private CorridorTreadmill paths;
 
     private void Awake()
     {
         if (visibility == null) visibility = GetComponent<VisibilityChecker>();
+        paths = GetComponent<CorridorTreadmill>();
 
         if (stepCounter == null || visibility == null)
         {
@@ -105,13 +109,28 @@ public class MazeDirector : MonoBehaviour
         // cambiarlo de nuevo lo podria devolver a como estaba y el susto se perderia.
         candidates.RemoveAll(s => s.VariantCount < 2 || s.HasUnseenChange);
 
-        if (candidates.Count == 0) return false;
+        // Se prueban candidatos hasta encontrar uno cuyo cambio no encierre al jugador.
+        CorridorSegment target = null;
+        int newVariant = 0;
+        while (candidates.Count > 0)
+        {
+            CorridorSegment option = selection == TargetSelection.Nearest
+                ? FindNearest(candidates)
+                : candidates[Random.Range(0, candidates.Count)];
+            int variant = PickDifferentVariant(option);
 
-        CorridorSegment target = selection == TargetSelection.Nearest
-            ? FindNearest(candidates)
-            : candidates[Random.Range(0, candidates.Count)];
+            bool traps = option.WouldBlock(variant) && paths != null && !paths.IsSafeToBlock(option);
+            if (!traps)
+            {
+                target = option;
+                newVariant = variant;
+                break;
+            }
+            candidates.Remove(option);
+        }
 
-        int newVariant = PickDifferentVariant(target);
+        if (target == null) return false;
+
         target.SetVariant(newVariant);
         target.MarkChanged();
 
