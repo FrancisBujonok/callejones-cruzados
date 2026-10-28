@@ -21,6 +21,7 @@ using UnityEngine.SceneManagement;
 /// 7. Estilo PS1 (si esta activo): shader Callejones/PS1 Lit, escalado Point, sin SSAO y
 ///    RetroSettings en la camara. Se cambia con Callejones > Estilo PS1 / Estilo moderno.
 /// 8. Sonido: sintetiza los clips y arma ambiente, pasos, faroles y torii (AtmosphereBuilder.Audio.cs).
+/// 9. Laberinto con giros: piezas Esquina, Cruce, Fondo y Tapa, y el deposito (AtmosphereBuilder.Maze.cs).
 ///
 /// Se puede ejecutar varias veces: reemplaza lo que genero antes en vez de duplicarlo.
 /// Esta carpeta se llama Editor a proposito: Unity no incluye este codigo en el juego final.
@@ -77,6 +78,7 @@ public static partial class AtmosphereBuilder
         GameObject farol = BuildLanternPrefab(mats);
         DecorateModule(mats, farol);
         DecorateExitModule(mats);
+        BuildMaze(mats, farol);
         SetupNightLighting();
         SetupPostProcessing();
         SetupRetro(UsePS1);
