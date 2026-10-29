@@ -82,6 +82,12 @@ public class CorridorSegment : MonoBehaviour
     /// <summary>true si el modulo cambio y el jugador todavia no lo vio.</summary>
     public bool HasUnseenChange { get; private set; }
 
+    /// <summary>
+    /// true mientras la pieza es parte de un bucle (un tramo que se repite): MazeDirector no la
+    /// cambia, porque todas las copias tienen que verse identicas. Lo maneja CorridorTreadmill.
+    /// </summary>
+    public bool Locked { get; set; }
+
     private void Awake()
     {
         SetVariant(startVariant);
@@ -117,11 +123,16 @@ public class CorridorSegment : MonoBehaviour
     {
         SetVariant(startVariant);
         HasUnseenChange = false;
+        Locked = false;
         State = SegmentVisibility.Unknown;
 
         // Nueva decoracion al azar: el tramo que aparece adelante no es igual al que quedo atras.
         foreach (DecorRandomizer decor in GetComponentsInChildren<DecorRandomizer>(true))
             decor.Randomize();
+
+        // Sin anomalias de un bucle anterior: farol prendido y persiana bajada.
+        foreach (SegmentAnomalies anomalies in GetComponentsInChildren<SegmentAnomalies>(true))
+            anomalies.Clear();
     }
 
     /// <summary>

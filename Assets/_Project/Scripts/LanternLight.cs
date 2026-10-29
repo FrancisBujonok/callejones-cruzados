@@ -48,6 +48,7 @@ public class LanternLight : MonoBehaviour
     private static readonly int EmissionId = Shader.PropertyToID("_EmissionColor");
 
     private MaterialPropertyBlock block;
+    private bool off;
     private float baseIntensity;
     private Quaternion baseRotation;
     private float seed;
@@ -66,6 +67,12 @@ public class LanternLight : MonoBehaviour
         hum = humSource;
         humVolume = volume;
     }
+
+    /// <summary>
+    /// Apaga o prende el farol (una anomalia de los bucles). Apagado: sin luz, sin brillo
+    /// y sin zumbido, pero se sigue meciendo.
+    /// </summary>
+    public void SetOff(bool value) => off = value;
 
     private void Awake()
     {
@@ -125,6 +132,8 @@ public class LanternLight : MonoBehaviour
             if (Random.value < dropoutsPerSecondAtMax * t * Time.deltaTime)
                 dropoutTimer = Random.Range(0.05f, 0.18f);
         }
+
+        if (off) factor = 0f;
 
         if (lanternLight != null) lanternLight.intensity = baseIntensity * factor;
         if (hum != null) hum.volume = humVolume * factor;

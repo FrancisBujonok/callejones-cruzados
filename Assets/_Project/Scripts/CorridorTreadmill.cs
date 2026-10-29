@@ -32,9 +32,12 @@ using UnityEngine.Events;
 /// rellene adelante del jugador. Si el jugador se aleja por otro camino, el torii se recicla
 /// y vuelve a aparecer mas adelante: la salida "lo sigue".
 ///
+/// Los bucles (un mismo tramo que se repite varias veces seguidas) estan en
+/// CorridorTreadmill.Loops.cs: es la misma clase, partida en dos archivos (partial).
+///
 /// Va en el objeto "Laberinto"; todas las piezas son hijas de Laberinto (el deposito).
 /// </summary>
-public class CorridorTreadmill : MonoBehaviour
+public partial class CorridorTreadmill : MonoBehaviour
 {
     [Header("Referencias")]
     [Tooltip("El objeto Player.")]
@@ -101,6 +104,11 @@ public class CorridorTreadmill : MonoBehaviour
         public int straightNeeded;    // rectos obligados antes del proximo giro
         public bool hasDeadEnd;       // cruces: ya tiene un lado sin salida
         public float dist;            // distancia por el camino hasta el jugador
+
+        // Si la pieza es parte de un bucle: cual, en que copia y que paso de la plantilla.
+        public LoopPlan loop;
+        public int loopCopy = -1;
+        public int loopStep = -1;
     }
 
     private struct Option
@@ -146,6 +154,7 @@ public class CorridorTreadmill : MonoBehaviour
         forwardAxis = transform.forward;
         forwardAxis.y = 0f;
         forwardAxis.Normalize();
+        InitLoops();
 
         // 1. Todas las piezas hijas van al deposito, apagadas.
         foreach (CorridorSegment s in GetComponentsInChildren<CorridorSegment>(true))
@@ -207,6 +216,7 @@ public class CorridorTreadmill : MonoBehaviour
         if (!ready) return;
 
         UpdateCurrent();
+        UpdateLoops();
         ComputeDistances();
         deferred.Clear();
 
@@ -302,6 +312,10 @@ public class CorridorTreadmill : MonoBehaviour
         // Excepcion: si la conexion ya esta muy cerca, se pone igual. Que algo aparezca de golpe
         // es raro, pero un agujero al vacio delante del jugador es mucho peor.
         bool urgent = bestDist < urgentDistance;
+
+        // Si esta conexion le toca a un bucle, la pieza no se sortea: es la que dice la plantilla.
+        if (FillLoopSocket(bestNode, bestSocket, initial, urgent)) return true;
+
         BuildOptions(bestNode, bestSocket);
         foreach (Option o in options)
         {
@@ -411,15 +425,20 @@ public class CorridorTreadmill : MonoBehaviour
     /// Donde y como girada tiene que quedar una pieza para que su conexion 'via'
     /// coincida con la conexion 'target', mirandose de frente.
     /// </summary>
-    private static void Pose(CorridorSegment proto, int via, Transform target, out Vector3 pos, out Quaternion rot)
+    private static void Pose(CorridorSegment proto, int via, Transform target, out Vector3 pos, out Quaternion rot) =>
+        PoseAt(proto, via, target.position, target.forward, out pos, out rot);
+
+    /// <summary>Lo mismo, pero con una conexion "imaginaria" (posicion y hacia donde mira).</summary>
+    private static void PoseAt(CorridorSegment proto, int via, Vector3 targetPos, Vector3 targetForward,
+        out Vector3 pos, out Quaternion rot)
     {
         Transform s = proto.GetSocket(via);
         Vector3 localFwd = s.localRotation * Vector3.forward;
-        Vector3 want = -target.forward;
+        Vector3 want = -targetForward;
         float yaw = Mathf.Atan2(want.x, want.z) * Mathf.Rad2Deg - Mathf.Atan2(localFwd.x, localFwd.z) * Mathf.Rad2Deg;
         yaw = Mathf.Round(yaw / 90f) * 90f; // siempre angulos rectos: evita errores de redondeo
         rot = Quaternion.Euler(0f, yaw, 0f);
-        pos = target.position - rot * s.localPosition;
+        pos = targetPos - rot * s.localPosition;
     }
 
     private Node PlaceKind(Node parent, int socket, SegmentKind kind, int via)
@@ -478,6 +497,7 @@ public class CorridorTreadmill : MonoBehaviour
             Vector2Int c = CellOf(seg.transform.TransformPoint(seg.LocalCellCenter(i)));
             node.cells.Add(c);
             occupied[c] = node;
+            reserved.Remove(c); // si era una celda reservada por un bucle, ya tiene su pieza
         }
         nodes[seg] = node;
 
@@ -655,10 +675,18 @@ public class CorridorTreadmill : MonoBehaviour
         return new Vector2Int(Mathf.RoundToInt(local.x / CellSize), Mathf.RoundToInt(local.z / CellSize));
     }
 
-    private bool CellsFree(CorridorSegment proto, Vector3 pos, Quaternion rot)
+    /// <summary>
+    /// true si las celdas de la pieza estan libres. Las celdas reservadas por un bucle cuentan
+    /// como ocupadas, salvo para las piezas de ese mismo bucle ('owner').
+    /// </summary>
+    private bool CellsFree(CorridorSegment proto, Vector3 pos, Quaternion rot, LoopPlan owner = null)
     {
         for (int i = 0; i < proto.CellCount; i++)
-            if (occupied.ContainsKey(CellOf(pos + rot * proto.LocalCellCenter(i)))) return false;
+        {
+            Vector2Int c = CellOf(pos + rot * proto.LocalCellCenter(i));
+            if (occupied.ContainsKey(c)) return false;
+            if (reserved.TryGetValue(c, out LoopPlan plan) && plan != owner) return false;
+        }
         return true;
     }
 
@@ -714,5 +742,6 @@ public class CorridorTreadmill : MonoBehaviour
         foreach (var list in pool.Values) stored += list.Count;
         GUI.Label(new Rect(12, 144, 500, 22),
             $"Camino: {nodes.Count} piezas activas, {stored} en deposito, actual: {(current != null ? current.seg.name : "-")}");
+        GUI.Label(new Rect(12, 166, 700, 22), LoopDebugText());
     }
 }
