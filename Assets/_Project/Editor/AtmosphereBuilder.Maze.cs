@@ -16,6 +16,8 @@ using UnityEngine.SceneManagement;
 /// 4. Al ModuloSalida le agrega CorridorSegment (tipo Salida) y su conexion.
 /// 5. Llena el deposito: copias de cada pieza como hijas de Laberinto, apagadas.
 ///    El generador (CorridorTreadmill) las va prendiendo y apagando durante el juego.
+/// 6. Anomalias de los bucles: cada pieza de 3 x 3 trae, apagadas, una persiana a medio subir
+///    y el hueco oscuro de abajo, y el componente SegmentAnomalies que las prende.
 ///
 /// Convencion de las piezas de 3 x 3: el centro en (0, 0, 0) y cuatro lados:
 ///   S (z = -1.5, mira hacia -Z), N (z = +1.5), E (x = +1.5), O (x = -1.5).
@@ -28,8 +30,12 @@ public static partial class AtmosphereBuilder
     private const string FondoPath = Root + "/Prefabs/Fondo.prefab";
     private const string TapaPath = Root + "/Prefabs/Tapa.prefab";
 
-    // Cuantas copias de cada pieza hay en el deposito. Alcanza para un radio de ~30 m con cruces.
-    private const int PoolRecto = 20, PoolEsquina = 8, PoolCruce = 5, PoolFondo = 5;
+    // Cuantas copias de cada pieza hay en el deposito. Alcanza para un radio de ~30 m con cruces
+    // y para un bucle (cada copia usa hasta 7 rectos, 2 esquinas, 1 cruce y 1 fondo).
+    private const int PoolRecto = 26, PoolEsquina = 10, PoolCruce = 6, PoolFondo = 7;
+
+    // Persiana a medio subir (anomalia): el panel mide esto y abajo queda un hueco de 0.9 m.
+    private const float HalfShutterHeight = 1.5f;
 
     [System.Flags]
     private enum Side { None = 0, S = 1, N = 2, E = 4, O = 8 }
@@ -53,11 +59,14 @@ public static partial class AtmosphereBuilder
     {
         Mesh shutter = GetOrCreateMesh("Persiana");
         BuildShutter(shutter, ShutterWidth, ShutterHeight, 0.12f, 0.04f);
+        // Mismas bandas, pero mas corta: es la persiana levantada hasta la mitad.
+        Mesh halfShutter = GetOrCreateMesh("PersianaMedia");
+        BuildShutter(halfShutter, ShutterWidth, HalfShutterHeight, 0.12f, 0.04f);
 
         SetupRectoConnections();
-        GameObject esquina = BuildCellPrefab(EsquinaPath, "Esquina", SegmentKind.Esquina, Side.S | Side.E, m, farol, shutter);
-        GameObject cruce = BuildCellPrefab(CrucePath, "Cruce", SegmentKind.Cruce, Side.S | Side.E | Side.O, m, farol, shutter);
-        GameObject fondo = BuildCellPrefab(FondoPath, "Fondo", SegmentKind.Fondo, Side.S, m, farol, shutter);
+        GameObject esquina = BuildCellPrefab(EsquinaPath, "Esquina", SegmentKind.Esquina, Side.S | Side.E, m, farol, shutter, halfShutter);
+        GameObject cruce = BuildCellPrefab(CrucePath, "Cruce", SegmentKind.Cruce, Side.S | Side.E | Side.O, m, farol, shutter, halfShutter);
+        GameObject fondo = BuildCellPrefab(FondoPath, "Fondo", SegmentKind.Fondo, Side.S, m, farol, shutter, halfShutter);
         GameObject tapa = BuildCapPrefab(m, shutter);
         SetupExitConnection();
         FillPool(esquina, cruce, fondo, tapa);
@@ -103,7 +112,7 @@ public static partial class AtmosphereBuilder
     // ------------------------------------------------------------------ 2. piezas de 3 x 3
 
     private static GameObject BuildCellPrefab(string path, string name, SegmentKind kind, Side open,
-        Mats m, GameObject farol, Mesh shutter)
+        Mats m, GameObject farol, Mesh shutter, Mesh halfShutter)
     {
         var root = new GameObject(name);
         try
@@ -136,7 +145,22 @@ public static partial class AtmosphereBuilder
             }
 
             // Persiana en la pared del fondo (N), como un local cerrado.
-            if ((open & Side.N) == 0) CreateShutterYaw(structure, "PersianaN", new Vector3(0f, 0f, 1.4f), 90f, shutter, m);
+            GameObject shutterN = null;
+            if ((open & Side.N) == 0) shutterN = CreateShutterYaw(structure, "PersianaN", new Vector3(0f, 0f, 1.4f), 90f, shutter, m);
+
+            // Para la anomalia de los bucles: la misma persiana levantada hasta la mitad y, abajo,
+            // un hueco negro pegado a la pared (parece el interior oscuro del local). Apagados.
+            GameObject shutterDown = null, shutterHalf = null, darkGap = null;
+            if (shutterN != null)
+            {
+                float gap = ShutterHeight - HalfShutterHeight;
+                shutterDown = shutterN.transform.Find("Panel").gameObject;
+                shutterHalf = MeshChild(shutterN.transform, "PanelEntreabierto", halfShutter, m.persiana, new Vector3(0f, gap, 0f));
+                darkGap = BoxChild(shutterN.transform, "Hueco", m.hueco, new Vector3(0.007f, gap * 0.5f, 0f),
+                    new Vector3(0.01f, gap, ShutterWidth), Vector3.zero);
+                shutterHalf.SetActive(false);
+                darkGap.SetActive(false);
+            }
 
             // Farol colgando en el centro, de un cable de pared a pared.
             Transform deco = Group(root.transform, "Decorado");
@@ -154,6 +178,8 @@ public static partial class AtmosphereBuilder
 
             root.AddComponent<CorridorSegment>().Setup(kind, sockets.ToArray(),
                 new[] { structure.gameObject }, -1, new Vector3(3f, 3f, 3f));
+            root.AddComponent<SegmentAnomalies>().Setup(lantern.GetComponentInChildren<LanternLight>(true),
+                shutterDown, shutterHalf, darkGap);
 
             return PrefabUtility.SaveAsPrefabAsset(root, path);
         }
@@ -225,7 +251,7 @@ public static partial class AtmosphereBuilder
     }
 
     /// <summary>Persiana como las del recto, pero con cualquier giro (la malla mira hacia +X).</summary>
-    private static void CreateShutterYaw(Transform parent, string name, Vector3 wallPoint, float yaw, Mesh mesh, Mats m)
+    private static GameObject CreateShutterYaw(Transform parent, string name, Vector3 wallPoint, float yaw, Mesh mesh, Mats m)
     {
         var go = new GameObject(name);
         go.transform.SetParent(parent, false);
@@ -236,6 +262,7 @@ public static partial class AtmosphereBuilder
         BoxChild(go.transform, "Caja", m.metal, new Vector3(0.11f, ShutterHeight + 0.13f, 0f), new Vector3(0.22f, 0.26f, ShutterWidth + 0.1f), Vector3.zero);
         BoxChild(go.transform, "GuiaA", m.metal, new Vector3(0.04f, ShutterHeight * 0.5f, -ShutterWidth * 0.5f - 0.03f), new Vector3(0.08f, ShutterHeight, 0.06f), Vector3.zero);
         BoxChild(go.transform, "GuiaB", m.metal, new Vector3(0.04f, ShutterHeight * 0.5f, ShutterWidth * 0.5f + 0.03f), new Vector3(0.08f, ShutterHeight, 0.06f), Vector3.zero);
+        return go;
     }
 
     // ------------------------------------------------------------------ 3. la tapa

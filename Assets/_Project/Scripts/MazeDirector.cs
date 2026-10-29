@@ -107,7 +107,8 @@ public class MazeDirector : MonoBehaviour
 
         // Sin alternativas no hay nada que cambiar. Y si ya tiene un cambio sin ver,
         // cambiarlo de nuevo lo podria devolver a como estaba y el susto se perderia.
-        candidates.RemoveAll(s => s.VariantCount < 2 || s.HasUnseenChange);
+        // Las piezas de un bucle tampoco: sus copias tienen que verse identicas.
+        candidates.RemoveAll(s => s.VariantCount < 2 || s.HasUnseenChange || s.Locked);
 
         // Se prueban candidatos hasta encontrar uno cuyo cambio no encierre al jugador.
         CorridorSegment target = null;

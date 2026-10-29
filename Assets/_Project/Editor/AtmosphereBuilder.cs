@@ -21,7 +21,8 @@ using UnityEngine.SceneManagement;
 /// 7. Estilo PS1 (si esta activo): shader Callejones/PS1 Lit, escalado Point, sin SSAO y
 ///    RetroSettings en la camara. Se cambia con Callejones > Estilo PS1 / Estilo moderno.
 /// 8. Sonido: sintetiza los clips y arma ambiente, pasos, faroles y torii (AtmosphereBuilder.Audio.cs).
-/// 9. Laberinto con giros: piezas Esquina, Cruce, Fondo y Tapa, y el deposito (AtmosphereBuilder.Maze.cs).
+/// 9. Laberinto con giros: piezas Esquina, Cruce, Fondo y Tapa, el deposito y las partes de las
+///    anomalias de los bucles (AtmosphereBuilder.Maze.cs).
 ///
 /// Se puede ejecutar varias veces: reemplaza lo que genero antes en vez de duplicarlo.
 /// Esta carpeta se llama Editor a proposito: Unity no incluye este codigo en el juego final.
@@ -64,7 +65,7 @@ public static partial class AtmosphereBuilder
     {
         public Material pared, piso, persiana, metal, toldo, cable, cartel, farolTela, farolTapa;
         public Material teja, madera, maceta, planta, balde, ventanaLuz, ventanaOscura, cartelRojo;
-        public Material torii, soga, papel, resplandor;
+        public Material torii, soga, papel, resplandor, hueco;
     }
 
     // ------------------------------------------------------------------ menus
@@ -188,6 +189,8 @@ public static partial class AtmosphereBuilder
             soga = Mat("Soga", Hex("#8C6A3C"), 0.1f),
             papel = Mat("PapelShide", Hex("#E8E2D0"), 0.1f, 0f, null, Hex("#E8E2D0") * 0.55f),
             resplandor = Mat("Resplandor", paper, 0.1f, 0f, null, paper * 1.3f),
+            // Negro puro y mate: el interior de un local con la persiana levantada.
+            hueco = Mat("Hueco", Color.black, 0f),
         };
     }
 
