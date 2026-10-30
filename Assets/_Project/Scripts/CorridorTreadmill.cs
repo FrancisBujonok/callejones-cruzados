@@ -109,6 +109,21 @@ public partial class CorridorTreadmill : MonoBehaviour
     public float PathDistance(CorridorSegment segment) =>
         segment != null && nodes.TryGetValue(segment, out Node node) ? node.dist : float.PositiveInfinity;
 
+    /// <summary>
+    /// El centro de la celda de 3 x 3 m que contiene ese punto (a la misma altura que 'world').
+    /// Ojo: el jugador NO empieza en el centro de una celda sino en el centro de un recto,
+    /// que ocupa dos celdas; es decir, justo en el borde entre ellas. Lo usa TitleWalker.
+    /// </summary>
+    public Vector3 CellCenter(Vector3 world)
+    {
+        Vector2Int cell = CellOf(world);
+        Vector3 center = transform.TransformPoint(gridOrigin + new Vector3(cell.x * CellSize, 0f, cell.y * CellSize));
+        return new Vector3(center.x, world.y, center.z);
+    }
+
+    /// <summary>true si en la celda de ese punto hay una pieza puesta (si no, ahi no hay nada todavia).</summary>
+    public bool IsBuilt(Vector3 world) => occupied.ContainsKey(CellOf(world));
+
     // ------------------------------------------------------------------ datos internos
 
     /// <summary>Una pieza puesta en el camino y con quien esta unida.</summary>

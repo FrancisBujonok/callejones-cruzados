@@ -65,11 +65,14 @@ public class FirstPersonController : MonoBehaviour
     // ---------- Mirada ----------
     private void Look(Vector2 delta)
     {
+        // La sensibilidad del Inspector, multiplicada por la que eligio el jugador en Opciones.
+        float sensitivity = mouseSensitivity * GameSettings.SensitivityScale;
+
         // Izquierda/derecha: gira todo el cuerpo en Y.
-        transform.Rotate(Vector3.up, delta.x * mouseSensitivity);
+        transform.Rotate(Vector3.up, delta.x * sensitivity);
 
         // Arriba/abajo: solo la camara, limitada para no dar la vuelta.
-        pitch -= delta.y * mouseSensitivity;
+        pitch -= delta.y * sensitivity;
         pitch = Mathf.Clamp(pitch, -maxLookAngle, maxLookAngle);
         cameraPivot.localRotation = Quaternion.Euler(pitch, 0f, 0f);
     }
