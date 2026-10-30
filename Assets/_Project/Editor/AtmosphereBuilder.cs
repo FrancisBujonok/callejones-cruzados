@@ -23,6 +23,8 @@ using UnityEngine.SceneManagement;
 /// 8. Sonido: sintetiza los clips y arma ambiente, pasos, faroles y torii (AtmosphereBuilder.Audio.cs).
 /// 9. Laberinto con giros: piezas Esquina, Cruce, Fondo y Tapa, el deposito y las partes de las
 ///    anomalias de los bucles (AtmosphereBuilder.Maze.cs).
+/// 10. Fachadas variadas, cosas colgadas arriba y los lugares que mienten (AtmosphereBuilder.Places.cs).
+/// 11. Carteles con texto de verdad en chino, japones y coreano (AtmosphereBuilder.Signs.cs).
 ///
 /// Se puede ejecutar varias veces: reemplaza lo que genero antes en vez de duplicarlo.
 /// Esta carpeta se llama Editor a proposito: Unity no incluye este codigo en el juego final.
@@ -66,6 +68,10 @@ public static partial class AtmosphereBuilder
         public Material pared, piso, persiana, metal, toldo, cable, cartel, farolTela, farolTapa;
         public Material teja, madera, maceta, planta, balde, ventanaLuz, ventanaOscura, cartelRojo;
         public Material torii, soga, papel, resplandor, hueco;
+        public Material noren, piedra, maquina, maquinaLuz, telefono, telefonoLuz, luzRoja;
+        // Carteles con texto (Paso 16): un grupo por formato y la placa del torii.
+        public SignSet signsV5, signsV2, signsH5, signsP;
+        public Material signTorii;
     }
 
     // ------------------------------------------------------------------ menus
@@ -84,6 +90,7 @@ public static partial class AtmosphereBuilder
         SetupPostProcessing();
         SetupRetro(UsePS1);
         SetupSound(BuildSounds()); // despues del torii: le agrega su sonido
+        BuildLandmarks(mats);      // despues del sonido: la maquina y el altar usan sus clips
 
         AssetDatabase.SaveAssets();
         EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
@@ -164,7 +171,7 @@ public static partial class AtmosphereBuilder
         EnsureFolder(MaterialsDir);
         Textures tex = BuildTextures();
         Color paper = Hex("#DCAD78");
-        return new Mats
+        var mats = new Mats
         {
             // Con textura, el color base funciona como tinte: blanco = la textura tal cual.
             pared = Mat("Pared", new Color(0.85f, 0.8f, 0.78f), 0.15f, baseMap: tex.ladrillo),
@@ -191,7 +198,19 @@ public static partial class AtmosphereBuilder
             resplandor = Mat("Resplandor", paper, 0.1f, 0f, null, paper * 1.3f),
             // Negro puro y mate: el interior de un local con la persiana levantada.
             hueco = Mat("Hueco", Color.black, 0f),
+            // Fachadas y lugares (Paso 15).
+            noren = Mat("Noren", Hex("#3A5687"), 0.15f),
+            piedra = Mat("Piedra", Hex("#6E6A64"), 0.2f),
+            maquina = Mat("Maquina", Hex("#C9C4BA"), 0.45f, 0f, new Color(0.35f, 0.35f, 0.35f)),
+            // Luz fria: lo unico blanco azulado del callejon, para reconocer la maquina de lejos.
+            maquinaLuz = Mat("MaquinaLuz", Hex("#BFE3F2"), 0.6f, 0f, null, Hex("#BFE3F2") * 1.4f),
+            telefono = Mat("Telefono", Hex("#3F7A57"), 0.5f, 0f, new Color(0.3f, 0.3f, 0.3f)),
+            telefonoLuz = Mat("TelefonoLuz", Hex("#9FE0A0"), 0.4f, 0f, null, Hex("#9FE0A0") * 1.2f),
+            // Lucecitas rojas lisas (botones, medidores): antes usaban la textura de los carteles.
+            luzRoja = Mat("LuzRoja", Hex("#B8281A"), 0.3f, 0f, null, new Color(1f, 0.25f, 0.15f) * 1.2f),
         };
+        BuildSigns(mats); // un material por cada PNG de Textures/Carteles
+        return mats;
     }
 
     /// <summary>
@@ -365,17 +384,9 @@ public static partial class AtmosphereBuilder
             BoxChild(deco, "Toldo", m.toldo, new Vector3(-1.08f, 2.8f, 0f), new Vector3(0.7f, 0.04f, 5.8f), new Vector3(0f, 0f, -18f));
             BuildDecorSets(deco, m);
 
-            // Persianas: van dentro de cada variante porque dependen de sus paredes.
-            foreach (string variant in new[] { "Abierto", "Cerrado" })
-            {
-                Transform v = root.transform.Find(variant);
-                if (v == null) continue;
-                DestroyChild(v, "Persianas");
-                Transform group = new GameObject("Persianas").transform;
-                group.SetParent(v, false);
-                CreateShutter(group, "PersianaIzq", new Vector3(-WallInnerX, 0f, -1.5f), false, shutterMesh, m);
-                CreateShutter(group, "PersianaDer", new Vector3(WallInnerX, 0f, 1.5f), true, shutterMesh, m);
-            }
+            // Fachadas variadas (persiana, puerta, vidriera, noren o equipos) y lo de arriba.
+            // Antes eran siempre persianas: ver AtmosphereBuilder.Places.cs.
+            BuildRectoFacades(root.transform, m, shutterMesh);
 
             PrefabUtility.SaveAsPrefabAsset(root, ModuloPath);
         }

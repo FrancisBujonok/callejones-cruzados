@@ -144,9 +144,12 @@ public static partial class AtmosphereBuilder
                     MetricWall(structure, "Columna", m.pared, new Vector3(x, 1.5f, z), new Vector3(0.3f, 3f, 0.3f));
             }
 
-            // Persiana en la pared del fondo (N), como un local cerrado.
+            // Pared del fondo (N). El Cruce tiene siempre una persiana: ahi va la anomalia de los
+            // bucles. La Esquina y el Fondo sortean su fachada (mas abajo, en Decorado).
             GameObject shutterN = null;
-            if ((open & Side.N) == 0) shutterN = CreateShutterYaw(structure, "PersianaN", new Vector3(0f, 0f, 1.4f), 90f, shutter, m);
+            bool closedN = (open & Side.N) == 0;
+            if (closedN && kind == SegmentKind.Cruce)
+                shutterN = CreateShutterYaw(structure, "PersianaN", new Vector3(0f, 0f, 1.4f), 90f, shutter, m);
 
             // Para la anomalia de los bucles: la misma persiana levantada hasta la mitad y, abajo,
             // un hueco negro pegado a la pared (parece el interior oscuro del local). Apagados.
@@ -169,6 +172,9 @@ public static partial class AtmosphereBuilder
             lantern.transform.localPosition = new Vector3(0.2f, 3.15f, 0.2f);
             BoxChild(deco, "Cable", m.cable, new Vector3(0f, 3.15f, 0.2f), new Vector3(3f, 0.025f, 0.025f), Vector3.zero);
             BuildCellDecor(deco, open, m);
+            // Fachada sorteada en la pared del fondo (y lugar posible para un Landmark).
+            if (closedN && kind != SegmentKind.Cruce)
+                BuildFacadeSlot(deco, "FachadaN", new Vector3(0f, 0f, 1.4f), 90f, m, shutter);
 
             // Conexiones: S siempre primero (es por donde se entra), despues E y O.
             var sockets = new List<Transform> { Connection(root.transform, "Conexion_S", new Vector3(0f, 0f, -1.5f), 180f) };
@@ -224,13 +230,13 @@ public static partial class AtmosphereBuilder
         // Carteles y ventanas en las paredes de los costados, si estan cerradas.
         if ((open & Side.O) == 0)
         {
-            CreateHangingSign(a, "CartelColgante", new Vector3(-WallInnerX, 2.3f, 0.3f), false, m.cartelRojo, m);
+            CreateHangingSign(a, "CartelColgante", new Vector3(-WallInnerX, 2.3f, 0.3f), false, m);
             CreateWindow(c, "Ventana", new Vector3(-WallInnerX, 1.8f, 0f), false, true, m);
         }
         if ((open & Side.E) == 0)
         {
             CreateWindow(a, "Ventana", new Vector3(WallInnerX, 1.8f, 0f), true, false, m);
-            CreateHangingSign(b, "CartelColgante", new Vector3(WallInnerX, 2.2f, -0.3f), true, m.cartel, m);
+            CreateHangingSign(b, "CartelColgante", new Vector3(WallInnerX, 2.2f, -0.3f), true, m);
         }
 
         b.gameObject.SetActive(false);

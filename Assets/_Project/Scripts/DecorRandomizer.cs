@@ -6,17 +6,15 @@ using UnityEngine;
 /// (CorridorSegment.ResetForReuse lo llama). Asi el callejon no se repite cada 6 metros,
 /// y quien preste atencion puede notar que un tramo "ya no es el mismo".
 /// Los bucles hacen lo contrario a proposito: con Show eligen el MISMO juego en todas las copias.
+/// El sorteo en si esta en RandomPick (la base comun con SignRandomizer).
 /// </summary>
-public class DecorRandomizer : MonoBehaviour
+public class DecorRandomizer : RandomPick
 {
     [Tooltip("Cada elemento es un hijo con un juego completo de decoracion.")]
     [SerializeField] private GameObject[] sets;
 
     /// <summary>Cuantos juegos hay.</summary>
-    public int Count => sets == null ? 0 : sets.Length;
-
-    /// <summary>El juego que se ve ahora (-1 = todavia ninguno).</summary>
-    public int Current { get; private set; } = -1;
+    public override int Count => sets == null ? 0 : sets.Length;
 
     /// <summary>Lo usa la herramienta de editor al armar el modulo.</summary>
     public void Setup(GameObject[] newSets)
@@ -24,20 +22,8 @@ public class DecorRandomizer : MonoBehaviour
         sets = newSets;
     }
 
-    private void Awake()
-    {
-        // Si el generador ya eligio uno antes de prender la pieza, no se vuelve a sortear.
-        if (Current < 0) Randomize();
-    }
-
-    public void Randomize()
-    {
-        if (Count == 0) return;
-        Show(Random.Range(0, sets.Length));
-    }
-
     /// <summary>Muestra el juego indicado y apaga los demas.</summary>
-    public void Show(int index)
+    public override void Show(int index)
     {
         if (Count == 0) return;
         index = Mathf.Clamp(index, 0, sets.Length - 1);

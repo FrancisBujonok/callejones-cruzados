@@ -43,7 +43,7 @@ public static partial class AtmosphereBuilder
 
         // A: cartel de papel y aire acondicionado a la derecha, ventana encendida a la izquierda.
         Transform a = Group(sets, "SetA");
-        BoxChild(a, "Cartel", m.cartel, new Vector3(WallInnerX - 0.03f, 2.0f, -2.0f), new Vector3(0.05f, 0.9f, 0.32f), Vector3.zero);
+        CreateWallSign(a, "Cartel", new Vector3(WallInnerX - 0.035f, 2.0f, -2.0f), m);
         BoxChild(a, "AireAcondicionado", m.metal, new Vector3(1.2f, 2.7f, -0.9f), new Vector3(0.38f, 0.32f, 0.62f), Vector3.zero);
         CreateWindow(a, "Ventana", new Vector3(-WallInnerX, 1.75f, 1.8f), false, true, m);
         CreatePlant(a, "MacetaIzq", new Vector3(-1.12f, 0f, 0.7f), pot, bush, m);
@@ -51,10 +51,10 @@ public static partial class AtmosphereBuilder
 
         // B: cartel rojo colgante y cano a la derecha, medidor y cajones a la izquierda.
         Transform b = Group(sets, "SetB");
-        CreateHangingSign(b, "CartelColgante", new Vector3(WallInnerX, 2.3f, -1.7f), true, m.cartelRojo, m);
+        CreateHangingSign(b, "CartelColgante", new Vector3(WallInnerX, 2.3f, -1.7f), true, m);
         CreatePipe(b, "Cano", new Vector3(1.34f, 0f, -0.45f), pipe, m);
         BoxChild(b, "Medidor", m.metal, new Vector3(-1.33f, 1.5f, 1.0f), new Vector3(0.12f, 0.4f, 0.3f), Vector3.zero);
-        BoxChild(b, "MedidorLuz", m.cartelRojo, new Vector3(-1.265f, 1.62f, 1.08f), new Vector3(0.02f, 0.04f, 0.04f), Vector3.zero);
+        BoxChild(b, "MedidorLuz", m.luzRoja, new Vector3(-1.265f, 1.62f, 1.08f), new Vector3(0.02f, 0.04f, 0.04f), Vector3.zero);
         BoxChild(b, "Conducto", m.metal, new Vector3(-1.36f, 0.65f, 1.1f), new Vector3(0.04f, 1.3f, 0.04f), Vector3.zero);
         SolidBoxChild(b, "Cajon", m.madera, new Vector3(-1.12f, 0.25f, 2.3f), new Vector3(0.5f, 0.5f, 0.5f), new Vector3(0f, 4f, 0f));
         SolidBoxChild(b, "CajonChico", m.madera, new Vector3(-1.1f, 0.69f, 2.32f), new Vector3(0.38f, 0.38f, 0.38f), new Vector3(0f, 17f, 0f));
@@ -64,7 +64,7 @@ public static partial class AtmosphereBuilder
         Transform c = Group(sets, "SetC");
         CreateWindow(c, "Ventana", new Vector3(WallInnerX, 1.8f, -1.8f), true, false, m);
         CreateSolidLathe(c, "Balde", new Vector3(1.12f, 0f, -0.7f), bucket, m.balde, new Vector3(0.34f, 0.34f, 0.34f));
-        CreateHangingSign(c, "CartelColgante", new Vector3(-WallInnerX, 2.15f, 1.7f), false, m.cartel, m);
+        CreateHangingSign(c, "CartelColgante", new Vector3(-WallInnerX, 2.15f, 1.7f), false, m);
         CreatePlant(c, "Maceta", new Vector3(-1.12f, 0f, 0.6f), pot, bush, m);
         Transform ivy = Group(c, "Enredadera");
         float[] ivyZ = { -2.6f, -2.3f, -1.95f, -1.5f, -1.2f };
@@ -124,8 +124,9 @@ public static partial class AtmosphereBuilder
         BoxChild(t, "Alfeizar", m.metal, new Vector3(0.07f, -0.5f, 0f), new Vector3(0.14f, 0.04f, 0.85f), Vector3.zero);
     }
 
-    // Cartel colgante perpendicular a la pared, con su soporte.
-    private static void CreateHangingSign(Transform parent, string name, Vector3 wallPoint, bool rightWall, Material board, Mats m)
+    // Cartel colgante perpendicular a la pared, con su soporte. Tiene dos caras (se ve desde los
+    // dos lados del pasillo) y un solo SignRandomizer, asi las dos dicen lo mismo.
+    private static void CreateHangingSign(Transform parent, string name, Vector3 wallPoint, bool rightWall, Mats m)
     {
         var go = new GameObject(name);
         go.transform.SetParent(parent, false);
@@ -133,7 +134,11 @@ public static partial class AtmosphereBuilder
         go.transform.localRotation = rightWall ? Quaternion.Euler(0f, 180f, 0f) : Quaternion.identity;
 
         BoxChild(go.transform, "Soporte", m.metal, new Vector3(0.24f, 0.45f, 0f), new Vector3(0.48f, 0.03f, 0.03f), Vector3.zero);
-        BoxChild(go.transform, "Tabla", board, new Vector3(0.24f, 0f, 0f), new Vector3(0.42f, 0.85f, 0.06f), Vector3.zero);
+        BoxChild(go.transform, "Tabla", m.cable, new Vector3(0.24f, 0f, 0f), new Vector3(SignV2Size.x + 0.04f, SignV2Size.y + 0.04f, 0.05f), Vector3.zero);
+        Material first = FirstOr(m.signsV2, m.cartel);
+        MeshRenderer front = SignFace(go.transform, "CaraA", new Vector3(0.24f, 0f, -0.027f), SignV2Size, 0f, first);
+        MeshRenderer back = SignFace(go.transform, "CaraB", new Vector3(0.24f, 0f, 0.027f), SignV2Size, 180f, first);
+        AddSignPick(go, m.signsV2, front, back);
     }
 
     private static void CreatePipe(Transform parent, string name, Vector3 floorPoint, Mesh pipe, Mats m)

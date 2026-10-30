@@ -54,7 +54,7 @@ public partial class CorridorTreadmill
         public SegmentKind kind;
         public int via;      // por cual de SUS conexiones se engancha
         public int[] next;   // por conexion: el paso que va ahi, NoStep o EndOfCopy
-        public int[] decor;  // juego de cada DecorRandomizer de la pieza (igual en todas las copias)
+        public int[] decor;  // opcion de cada RandomPick de la pieza: decoracion y carteles (igual en todas las copias)
     }
 
     /// <summary>Un bucle: la plantilla y en que va.</summary>
@@ -65,7 +65,8 @@ public partial class CorridorTreadmill
         public int crossStep;        // el cruce: ahi se cuentan las pasadas y va la anomalia
         public int lastCopy;         // la copia con la anomalia (las anteriores son identicas)
         public Anomaly anomaly;
-        public int anomalyDecor;     // para OtraDecoracion: el juego distinto
+        public int anomalyPick = -1; // para OtraDecoracion: cual sorteo del cruce cambia (sus Sets)
+        public int anomalyDecor;     // y que juego muestra en la ultima pasada
         public int reachedCopy = -1; // la ultima copia cuyo cruce piso el jugador
         public bool finished;        // ya se vio la anomalia, o se cancelo
         public bool canceled;        // se corto antes de tiempo: no se arman mas copias
@@ -218,8 +219,9 @@ public partial class CorridorTreadmill
     /// <summary>Misma decoracion en todas las copias, y la anomalia en el cruce de la ultima.</summary>
     private void DressLoopPiece(Node node, LoopPlan plan, LoopStep step, int copy, int stepIndex)
     {
-        DecorRandomizer[] decor = node.seg.GetComponentsInChildren<DecorRandomizer>(true);
-        for (int i = 0; i < decor.Length && i < step.decor.Length; i++) decor[i].Show(step.decor[i]);
+        // Decoracion, fachadas y carteles: todo lo que se sortea (RandomPick), igual que en la plantilla.
+        RandomPick[] picks = node.seg.GetComponentsInChildren<RandomPick>(true);
+        for (int i = 0; i < picks.Length && i < step.decor.Length; i++) picks[i].Show(step.decor[i]);
 
         if (!plan.finished) node.seg.Locked = true;
 
@@ -227,7 +229,7 @@ public partial class CorridorTreadmill
 
         if (plan.anomaly == Anomaly.OtraDecoracion)
         {
-            if (decor.Length > 0) decor[0].Show(plan.anomalyDecor);
+            if (plan.anomalyPick >= 0 && plan.anomalyPick < picks.Length) picks[plan.anomalyPick].Show(plan.anomalyDecor);
         }
         else
         {
@@ -351,14 +353,17 @@ public partial class CorridorTreadmill
         SegmentAnomalies anomalies = cruce.GetComponent<SegmentAnomalies>();
         if (anomalies != null && anomalies.Supports(Anomaly.FarolApagado)) choices.Add(Anomaly.FarolApagado);
         if (anomalies != null && anomalies.Supports(Anomaly.PersianaEntreabierta)) choices.Add(Anomaly.PersianaEntreabierta);
-        DecorRandomizer[] crossDecor = cruce.GetComponentsInChildren<DecorRandomizer>(true);
-        if (crossDecor.Length > 0 && crossDecor[0].Count > 1) choices.Add(Anomaly.OtraDecoracion);
+        // Otra decoracion: cambian los Sets del cruce (el primer DecorRandomizer, no un cartel).
+        RandomPick[] crossPicks = cruce.GetComponentsInChildren<RandomPick>(true);
+        int setsPick = System.Array.FindIndex(crossPicks, p => p is DecorRandomizer && p.Count > 1);
+        if (setsPick >= 0) choices.Add(Anomaly.OtraDecoracion);
         if (choices.Count == 0) return null;
         plan.anomaly = choices[rng.Next(choices.Count)];
         if (plan.anomaly == Anomaly.OtraDecoracion)
         {
-            int n = crossDecor[0].Count;
-            plan.anomalyDecor = (steps[plan.crossStep].decor[0] + 1 + rng.Next(n - 1)) % n; // cualquiera menos el de siempre
+            int n = crossPicks[setsPick].Count;
+            plan.anomalyPick = setsPick;
+            plan.anomalyDecor = (steps[plan.crossStep].decor[setsPick] + 1 + rng.Next(n - 1)) % n; // cualquiera menos el de siempre
         }
 
         plan.steps = steps.ToArray();
@@ -375,15 +380,18 @@ public partial class CorridorTreadmill
         mainOut.Add(outSocket);
     }
 
-    /// <summary>Agrega un paso y le sortea la decoracion de una vez: la misma para todas las copias.</summary>
+    /// <summary>
+    /// Agrega un paso y le sortea de una vez todo lo que se sortea (decoracion, fachadas, carteles):
+    /// lo mismo para todas las copias.
+    /// </summary>
     private void AddStep(List<LoopStep> steps, CorridorSegment proto, int via)
     {
         var step = new LoopStep { kind = proto.Kind, via = via, next = new int[proto.SocketCount] };
         for (int i = 0; i < step.next.Length; i++) step.next[i] = NoStep;
 
-        DecorRandomizer[] decor = proto.GetComponentsInChildren<DecorRandomizer>(true);
-        step.decor = new int[decor.Length];
-        for (int i = 0; i < decor.Length; i++) step.decor[i] = decor[i].Count > 0 ? rng.Next(decor[i].Count) : 0;
+        RandomPick[] picks = proto.GetComponentsInChildren<RandomPick>(true);
+        step.decor = new int[picks.Length];
+        for (int i = 0; i < picks.Length; i++) step.decor[i] = picks[i].Count > 0 ? picks[i].PickIndex(rng) : 0;
         steps.Add(step);
     }
 

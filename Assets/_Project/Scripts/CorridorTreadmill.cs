@@ -91,6 +91,24 @@ public partial class CorridorTreadmill : MonoBehaviour
     public int RecycledCount { get; private set; }
     public CorridorSegment CurrentSegment => current != null ? current.seg : null;
 
+    /// <summary>true cuando ya se armo el laberinto inicial.</summary>
+    public bool Ready => ready;
+    public Transform Player => player;
+    /// <summary>El "adelante" del laberinto, en el mundo.</summary>
+    public Vector3 ForwardAxis => forwardAxis;
+
+    /// <summary>
+    /// Se dispara cuando el azar normal pone una pieza nueva (no las de un bucle ni la salida).
+    /// La usa LandmarkDirector para decidir si ahi va un lugar.
+    /// </summary>
+    public event System.Action<CorridorSegment> PiecePlaced;
+    /// <summary>Se dispara justo antes de que una pieza vuelva al deposito.</summary>
+    public event System.Action<CorridorSegment> PieceRecycled;
+
+    /// <summary>Metros por el camino desde la pieza del jugador hasta esa pieza (infinito si no esta puesta).</summary>
+    public float PathDistance(CorridorSegment segment) =>
+        segment != null && nodes.TryGetValue(segment, out Node node) ? node.dist : float.PositiveInfinity;
+
     // ------------------------------------------------------------------ datos internos
 
     /// <summary>Una pieza puesta en el camino y con quien esta unida.</summary>
@@ -333,7 +351,11 @@ public partial class CorridorTreadmill : MonoBehaviour
             Node placed = o.kind == SegmentKind.Salida
                 ? PlaceExit(bestNode, bestSocket, o.via, pos, rot)
                 : Place(bestNode, bestSocket, Take(o.kind), o.via, pos, rot);
-            if (placed != null) return true;
+            if (placed != null)
+            {
+                if (o.kind != SegmentKind.Salida) PiecePlaced?.Invoke(placed.seg);
+                return true;
+            }
         }
 
         // Nada entra (otra pieza ocupa ese lugar): se tapa con una persiana.
@@ -455,6 +477,8 @@ public partial class CorridorTreadmill : MonoBehaviour
         if (seg == null) return null;
         seg.transform.SetPositionAndRotation(pos, rot);
         Node node = Activate(seg, parent, socket, via);
+        // Distancia provisoria hasta el proximo calculo (la usa quien escuche PiecePlaced).
+        node.dist = parent.dist + Vector3.Distance(parent.seg.transform.position, pos);
 
         // Cuantos rectos seguidos lleva este camino, y cuantos faltan para el proximo giro.
         if (seg.Kind == SegmentKind.Recto)
@@ -557,6 +581,7 @@ public partial class CorridorTreadmill : MonoBehaviour
         }
         else
         {
+            PieceRecycled?.Invoke(node.seg);
             ReturnToPool(node.seg);
         }
 

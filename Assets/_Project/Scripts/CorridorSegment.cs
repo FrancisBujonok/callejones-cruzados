@@ -126,9 +126,9 @@ public class CorridorSegment : MonoBehaviour
         Locked = false;
         State = SegmentVisibility.Unknown;
 
-        // Nueva decoracion al azar: el tramo que aparece adelante no es igual al que quedo atras.
-        foreach (DecorRandomizer decor in GetComponentsInChildren<DecorRandomizer>(true))
-            decor.Randomize();
+        // Nueva decoracion y carteles al azar: el tramo que aparece adelante no es igual al que quedo atras.
+        foreach (RandomPick pick in GetComponentsInChildren<RandomPick>(true))
+            pick.Randomize();
 
         // Sin anomalias de un bucle anterior: farol prendido y persiana bajada.
         foreach (SegmentAnomalies anomalies in GetComponentsInChildren<SegmentAnomalies>(true))
