@@ -1,0 +1,35 @@
+archivo,formato,idioma,texto,significado
+V5_tw_01_rojo.png,V5,tw,牛肉麵,Fideos con carne
+V5_tw_02_papel.png,V5,tw,雜貨店,Almacen
+V5_tw_03_papel.png,V5,tw,中藥行,Herboristeria china
+V5_tw_04_rojo.png,V5,tw,營業中,Abierto
+V5_tw_05_papel.png,V5,tw,禁止停車,Prohibido estacionar
+V5_tw_06_papel.png,V5,tw,請勿回頭,"Por favor, no mires atras"
+V5_tw_07_rojo.png,V5,tw,此路不通,Este camino no tiene salida
+V5_tw_08_rojo.png,V5,tw,九份老街,Calle vieja de Jiufen
+V2_tw_01_rojo.png,V2,tw,涼茶,Te de hierbas
+V2_tw_02_papel.png,V2,tw,當舖,Casa de empeno
+V2_tw_03_papel.png,V2,tw,旅社,Pension
+V2_tw_04_rojo.png,V2,tw,理髮,Peluqueria
+V2_tw_05_rojo.png,V2,tw,平安,Paz (que estes a salvo)
+V2_tw_06_papel.png,V2,tw,出租,Se alquila
+V2_tw_07_rojo.png,V2,tw,出口,Salida
+H5_tw_01_rojo.png,H5,tw,歡迎光臨,Bienvenidos
+H5_tw_02_rojo.png,H5,tw,中元普渡,Fiesta de los fantasmas (mes de los espiritus)
+H5_tw_03_papel.png,H5,tw,老街夜市,Mercado nocturno de la calle vieja
+P_tw_01_papel.png,P,tw,尋人,Se busca a una persona
+P_tw_02_papel.png,P,tw,失蹤,Desaparecido
+T_tw_01_negro.png,T,tw,歸途,El camino de vuelta (placa del torii)
+V5_jp_01_rojo.png,V5,jp,ラーメン,Ramen
+V5_jp_02_papel.png,V5,jp,居酒屋,Taberna
+V5_jp_03_papel.png,V5,jp,振り返るな,No te des vuelta
+V2_jp_01_papel.png,V2,jp,薬局,Farmacia
+V2_jp_02_rojo.png,V2,jp,喫茶,Cafe
+H5_jp_01_papel.png,H5,jp,迷子に注意,"Cuidado, es facil perderse"
+P_jp_01_papel.png,P,jp,迷子,Persona perdida
+V5_kr_01_rojo.png,V5,kr,노래방,Karaoke
+V5_kr_02_papel.png,V5,kr,영업중,Abierto
+V2_kr_01_rojo.png,V2,kr,식당,Comedor
+V2_kr_02_papel.png,V2,kr,출구,Salida
+H5_kr_01_rojo.png,H5,kr,돌아가세요,"Por favor, volve"
+P_kr_01_papel.png,P,kr,실종,Desaparecido

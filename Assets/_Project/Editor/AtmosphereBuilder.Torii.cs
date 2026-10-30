@@ -99,10 +99,9 @@ public static partial class AtmosphereBuilder
         BoxChild(torii, "KasagiPuntaIzq", m.torii, new Vector3(-1.66f, 3.25f, 0f), new Vector3(0.6f, 0.16f, 0.28f), new Vector3(0f, 0f, -10f));
         BoxChild(torii, "KasagiPuntaDer", m.torii, new Vector3(1.66f, 3.25f, 0f), new Vector3(0.6f, 0.16f, 0.28f), new Vector3(0f, 0f, 10f));
 
-        // Poste central y placa con caracteres inventados.
+        // Poste central y placa con su nombre: 歸途, "el camino de vuelta" (AtmosphereBuilder.Signs.cs).
         BoxChild(torii, "Gakuzuka", m.torii, new Vector3(0f, 2.75f, 0f), new Vector3(0.12f, 0.5f, 0.1f), Vector3.zero);
-        BoxChild(torii, "Placa", m.cable, new Vector3(0f, 2.75f, -0.07f), new Vector3(0.34f, 0.44f, 0.04f), Vector3.zero);
-        BoxChild(torii, "PlacaLetras", m.cartel, new Vector3(0f, 2.75f, -0.095f), new Vector3(0.26f, 0.36f, 0.01f), Vector3.zero);
+        BuildToriiPlaque(torii, m);
 
         // Shimenawa: soga de paja que cuelga un poco en el medio (dos mitades inclinadas).
         GameObject ropeL = MeshChild(torii, "SogaIzq", ropeHalf, m.soga, new Vector3(-0.62f, 2.17f, -0.08f));
