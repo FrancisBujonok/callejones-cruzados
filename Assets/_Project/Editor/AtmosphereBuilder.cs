@@ -16,7 +16,8 @@ using UnityEngine.SceneManagement;
 /// 2. Genera las mallas low-poly (farol y persiana) y el prefab Farol.
 /// 3. Decora el prefab Modulo: materiales, persianas, faroles, cables, toldo, cartel.
 /// 4. Aplica los materiales al ModuloSalida de la escena.
-/// 5. Iluminacion nocturna: sin sol ni cielo, niebla y fondo del mismo marron oscuro.
+/// 5. Iluminacion nocturna: sin sol, niebla marron oscura y cielo nocturno que abajo tiene el
+///    mismo color de la niebla (AtmosphereBuilder.Sky.cs).
 /// 6. Post-procesado: crea el perfil CallejonesVolume y le agrega FearPostFX al Global Volume.
 /// 7. Estilo PS1 (si esta activo): shader Callejones/PS1 Lit, escalado Point, sin SSAO y
 ///    RetroSettings en la camara. Se cambia con Callejones > Estilo PS1 / Estilo moderno.
@@ -25,6 +26,7 @@ using UnityEngine.SceneManagement;
 ///    anomalias de los bucles (AtmosphereBuilder.Maze.cs).
 /// 10. Fachadas variadas, cosas colgadas arriba y los lugares que mienten (AtmosphereBuilder.Places.cs).
 /// 11. Carteles con texto de verdad en chino, japones y coreano (AtmosphereBuilder.Signs.cs).
+/// 12. Lo de arriba: cables, postes, cajas de luz y neones contra el cielo (AtmosphereBuilder.Overhead.cs).
 ///
 /// Se puede ejecutar varias veces: reemplaza lo que genero antes en vez de duplicarlo.
 /// Esta carpeta se llama Editor a proposito: Unity no incluye este codigo en el juego final.
@@ -72,6 +74,9 @@ public static partial class AtmosphereBuilder
         // Carteles con texto (Paso 16): un grupo por formato y la placa del torii.
         public SignSet signsV5, signsV2, signsH5, signsP;
         public Material signTorii;
+        // Paso 18: cajas de luz salientes (S), neones sueltos (N), placas y flechas (D y F)
+        // y papelitos pegados (A).
+        public SignSet signsS, signsN, signsPlaca, signsA;
     }
 
     // ------------------------------------------------------------------ menus
@@ -448,8 +453,10 @@ public static partial class AtmosphereBuilder
         RenderSettings.fogStartDistance = 4f;
         RenderSettings.fogEndDistance = 16f;
 
-        // Sin cielo: la luz ambiente es un marron muy oscuro y parejo.
-        RenderSettings.skybox = null;
+        // Cielo nocturno (Paso 18). Abajo tiene el MISMO color de la niebla, asi el fondo de los
+        // pasillos sigue sin corte. La luz ambiente NO sale del cielo: sigue el marron parejo.
+        Material sky = BuildSkyMaterial();
+        RenderSettings.skybox = sky;
         RenderSettings.ambientMode = AmbientMode.Flat;
         RenderSettings.ambientLight = AmbientColor;
         RenderSettings.reflectionIntensity = 0.25f;
@@ -466,9 +473,21 @@ public static partial class AtmosphereBuilder
         Camera cam = Camera.main != null ? Camera.main : FindInScene<Camera>(null);
         if (cam != null)
         {
+            // Con cielo, la camara lo dibuja de fondo; sin el shader, queda el color de la niebla.
+            CameraClearFlags clear = sky != null ? CameraClearFlags.Skybox : CameraClearFlags.SolidColor;
             Undo.RecordObject(cam, "Fondo de camara");
-            cam.clearFlags = CameraClearFlags.SolidColor;
+            cam.clearFlags = clear;
             cam.backgroundColor = FogColor;
+
+            // La camara de los menus (ventana del inicio y foto de la pausa) tambien ve el cielo.
+            Transform menus = cam.transform.Find("CamaraMenus");
+            Camera menuCam = menus != null ? menus.GetComponent<Camera>() : null;
+            if (menuCam != null)
+            {
+                Undo.RecordObject(menuCam, "Fondo de camara de menus");
+                menuCam.clearFlags = clear;
+                menuCam.backgroundColor = FogColor;
+            }
 
             UniversalAdditionalCameraData data = cam.GetUniversalAdditionalCameraData();
             Undo.RecordObject(data, "Post-procesado de camara");

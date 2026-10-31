@@ -175,6 +175,9 @@ public static partial class AtmosphereBuilder
             // Fachada sorteada en la pared del fondo (y lugar posible para un Landmark).
             if (closedN && kind != SegmentKind.Cruce)
                 BuildFacadeSlot(deco, "FachadaN", new Vector3(0f, 0f, 1.4f), 90f, m, shutter);
+            // Lo de arriba (Paso 18): poste, cables hacia los lados abiertos y un cartel alto.
+            // Va al final: la anomalia "otra decoracion" usa el PRIMER sorteo de la pieza (Sets).
+            BuildCellHigh(deco, name, open, m);
 
             // Conexiones: S siempre primero (es por donde se entra), despues E y O.
             var sockets = new List<Transform> { Connection(root.transform, "Conexion_S", new Vector3(0f, 0f, -1.5f), 180f) };
@@ -237,6 +240,17 @@ public static partial class AtmosphereBuilder
         {
             CreateWindow(a, "Ventana", new Vector3(WallInnerX, 1.8f, 0f), true, false, m);
             CreateHangingSign(b, "CartelColgante", new Vector3(WallInnerX, 2.2f, -0.3f), true, m);
+        }
+
+        // Placas de direccion o flechas de salida (Paso 18): SetA prefiere la pared O y SetB la E.
+        // Del lado de la entrada (z negativo en A, positivo en B), lejos de los colgantes y ventanas.
+        bool closedO = (open & Side.O) == 0, closedE = (open & Side.E) == 0;
+        if (closedO || closedE)
+        {
+            bool plateARight = !closedO;
+            CreatePlate(a, "Placa", new Vector3(plateARight ? WallInnerX : -WallInnerX, 1.85f, -0.8f), plateARight, m);
+            bool plateBRight = closedE;
+            CreatePlate(b, "Placa", new Vector3(plateBRight ? WallInnerX : -WallInnerX, 1.9f, 0.8f), plateBRight, m);
         }
 
         b.gameObject.SetActive(false);
