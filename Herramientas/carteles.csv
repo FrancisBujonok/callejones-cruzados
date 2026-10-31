@@ -33,3 +33,42 @@ V2_kr_01_rojo.png,V2,kr,식당,Comedor
 V2_kr_02_papel.png,V2,kr,출구,Salida
 H5_kr_01_rojo.png,H5,kr,돌아가세요,"Por favor, volve"
 P_kr_01_papel.png,P,kr,실종,Desaparecido
+S_tw_01_caja-rojo.png,S,tw,中醫診所,Clinica de medicina china
+S_tw_02_caja-azul.png,S,tw,牙科,Dentista
+S_tw_03_caja-verde.png,S,tw,自助餐,Comida por peso
+S_tw_04_caja-rojo.png,S,tw,旅館,Hotel
+S_tw_05_caja-azul.png,S,tw,早餐店,Desayunos
+S_tw_06_neon-rosa.png,S,tw,按摩,Masajes
+S_tw_07_neon-cian.png,S,tw,網咖,Cibercafe
+S_tw_08_neon-verde.png,S,tw,當舖,Casa de empeno
+S_tw_09_neon-ambar.png,S,tw,歌廳,Salon de canto
+S_jp_01_caja-rojo.png,S,jp,スナック,Bar snack
+S_jp_02_neon-rosa.png,S,jp,カラオケ,Karaoke
+S_kr_01_caja-azul.png,S,kr,약국,Farmacia
+S_kr_02_neon-cian.png,S,kr,호프,Cerveceria
+N_tw_01_neon-rosa.png,N,tw,不夜城,La ciudad que no duerme
+N_tw_02_neon-cian.png,N,tw,夜市,Mercado nocturno
+N_tw_03_neon-ambar.png,N,tw,大吉,Gran suerte
+N_tw_04_neon-rojo.png,N,tw,迷津,El vado donde uno pierde el camino
+N_jp_01_neon-verde.png,N,jp,パチンコ,Pachinko
+N_kr_01_neon-rosa.png,N,kr,맥주,Cerveza
+D_tw_01_placa-azul.png,D,tw,長安街|17巷3號,"Calle Chang'an, pasaje 17, numero 3"
+D_tw_02_placa-azul.png,D,tw,民生路|5巷12號,"Calle Minsheng, pasaje 5, numero 12"
+D_tw_03_placa-azul.png,D,tw,永和街|9號,"Calle Yonghe, numero 9"
+D_tw_04_placa-azul.png,D,tw,迷津巷|4號,"Pasaje Mijin, numero 4"
+D_tw_05_placa-azul.png,D,tw,福德街|2弄7號,"Calle Fude, callejon 2, numero 7"
+D_tw_06_placa-azul.png,D,tw,和平巷|13號,"Pasaje Heping, numero 13"
+D_jp_01_placa-azul.png,D,jp,迷町|3丁目,"Barrio Mayoi, distrito 3"
+D_kr_01_placa-azul.png,D,kr,미로길|12,Calle del laberinto 12
+F_tw_01_flecha-der.png,F,tw,出口,Salida (flecha a la derecha)
+F_tw_02_flecha-izq.png,F,tw,出口,Salida (flecha a la izquierda)
+F_tw_03_flecha-arr.png,F,tw,出口,Salida (flecha hacia adelante)
+F_jp_01_flecha-der.png,F,jp,出口,Salida (flecha a la derecha)
+F_kr_01_flecha-izq.png,F,kr,출구,Salida (flecha a la izquierda)
+A_tw_01_pegado.png,A,tw,通水管|借款|搬家,"Destapaciones, prestamos, mudanzas"
+A_tw_02_pegado.png,A,tw,開鎖|收購|徵人,"Cerrajero, compramos, buscamos personal"
+A_tw_03_pegado.png,A,tw,借款|通水管|開鎖|租,"Prestamos, destapaciones, cerrajero, se alquila"
+A_tw_04_pegado.png,A,tw,尋貓|搬家,"Se busca gato, mudanzas"
+A_jp_01_pegado.png,A,jp,求人|鍵,"Buscamos personal, llaves"
+A_kr_01_pegado.png,A,kr,대출|이사,"Prestamos, mudanzas"
+P_tw_03_papel.png,P,tw,尋貓,Se busca gato
