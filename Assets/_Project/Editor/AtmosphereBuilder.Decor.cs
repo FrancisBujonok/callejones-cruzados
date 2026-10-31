@@ -11,6 +11,7 @@ using UnityEngine;
 /// Zonas libres (las persianas ocupan el resto):
 /// - Pared izquierda (x = -1.4): z de 0.3 a 2.9, por debajo del toldo (2.7 m).
 /// - Pared derecha (x = +1.4): z de -2.9 a -0.3.
+/// Paso 18: cada juego trae ademas una placa chica (direccion azul o flecha verde de salida).
 /// </summary>
 public static partial class AtmosphereBuilder
 {
@@ -48,6 +49,7 @@ public static partial class AtmosphereBuilder
         CreateWindow(a, "Ventana", new Vector3(-WallInnerX, 1.75f, 1.8f), false, true, m);
         CreatePlant(a, "MacetaIzq", new Vector3(-1.12f, 0f, 0.7f), pot, bush, m);
         CreatePlant(a, "MacetaDer", new Vector3(1.12f, 0f, -2.6f), pot, bush, m);
+        CreatePlate(a, "Placa", new Vector3(-WallInnerX, 2.05f, 0.6f), false, m); // direccion o flecha (Paso 18)
 
         // B: cartel rojo colgante y cano a la derecha, medidor y cajones a la izquierda.
         Transform b = Group(sets, "SetB");
@@ -58,6 +60,7 @@ public static partial class AtmosphereBuilder
         BoxChild(b, "Conducto", m.metal, new Vector3(-1.36f, 0.65f, 1.1f), new Vector3(0.04f, 1.3f, 0.04f), Vector3.zero);
         SolidBoxChild(b, "Cajon", m.madera, new Vector3(-1.12f, 0.25f, 2.3f), new Vector3(0.5f, 0.5f, 0.5f), new Vector3(0f, 4f, 0f));
         SolidBoxChild(b, "CajonChico", m.madera, new Vector3(-1.1f, 0.69f, 2.32f), new Vector3(0.38f, 0.38f, 0.38f), new Vector3(0f, 17f, 0f));
+        CreatePlate(b, "Placa", new Vector3(WallInnerX, 1.95f, -2.55f), true, m);
 
         // C: ventana apagada y balde a la derecha, cartel de papel colgante y planta a la izquierda,
         // enredadera cayendo del tejadillo.
@@ -66,6 +69,7 @@ public static partial class AtmosphereBuilder
         CreateSolidLathe(c, "Balde", new Vector3(1.12f, 0f, -0.7f), bucket, m.balde, new Vector3(0.34f, 0.34f, 0.34f));
         CreateHangingSign(c, "CartelColgante", new Vector3(-WallInnerX, 2.15f, 1.7f), false, m);
         CreatePlant(c, "Maceta", new Vector3(-1.12f, 0f, 0.6f), pot, bush, m);
+        CreatePlate(c, "Placa", new Vector3(-WallInnerX, 2.1f, 2.55f), false, m);
         Transform ivy = Group(c, "Enredadera");
         float[] ivyZ = { -2.6f, -2.3f, -1.95f, -1.5f, -1.2f };
         float[] ivyLen = { 0.5f, 0.85f, 0.4f, 0.7f, 0.55f };
