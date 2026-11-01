@@ -12,6 +12,9 @@
 //      a lo lejos aparecen ahi, y contra un cielo liso (y del color de la niebla) no se notan.
 //   6. Al final, los mismos pocos colores con dithering que el resto del juego (PS1Quantize).
 //
+// Con el miedo (Paso 19, variables globales que escribe SkyDirector): se apagan ventanas, la
+// vuelta al mundo se frena y sus lamparitas se ponen rojas, y la luna se corre de lugar.
+//
 // Las alturas y tamanos se escriben en grados, que es como se piensan al mirar el cielo.
 Shader "Callejones/Cielo Nocturno"
 {
@@ -88,6 +91,12 @@ Shader "Callejones/Cielo Nocturno"
             // Las escribe RetroSettings (igual que para el shader PS1 Lit).
             float _PS1ColorLevels;
             float _PS1DitherStrength;
+
+            // Las escribe SkyDirector durante el juego (Paso 19). Fuera de Play valen 0.
+            float _CallejonesSkyFear;     // miedo del cielo, de 0 a 1 (sigue al del jugador, despacio)
+            float _CallejonesWheelAngle;  // giro acumulado de la vuelta al mundo, en radianes
+            float _CallejonesBulbStep;    // cambios de color acumulados de las lamparitas
+            float _CallejonesMoonOffset;  // cuanto se corrio la luna, en grados (la luna que miente)
 
             static const float kBayer[16] =
             {
@@ -189,13 +198,16 @@ Shader "Callejones/Cielo Nocturno"
 
                 col = _CityColor.rgb;
                 float2 wc = floor(float2(az / 0.45, elev / 0.55));
-                if (elev < h - 0.6 && Hash21(wc + ci) < _WindowAmount) col = _WindowColor.rgb * 0.65;
+                // Con miedo se apagan ventanas: cada una tiene su numero fijo y se apaga cuando
+                // el umbral baja de ese numero, asi se van apagando de a una (no titilan).
+                float lit = _WindowAmount * (1.0 - 0.85 * _CallejonesSkyFear);
+                if (elev < h - 0.6 && Hash21(wc + ci) < lit) col = _WindowColor.rgb * 0.65;
 
                 // Luz roja de las torres: parpadea lento, cada torre a su ritmo.
                 float center = (ci + 0.5) * w;
                 if (tower && elev > h - 0.5 && abs(az - center) < 0.25)
                 {
-                    float blink = step(0.0, sin(_Time.y * 2.2 + ci));
+                    float blink = step(0.0, sin(_Time.y * (2.2 + 3.0 * _CallejonesSkyFear) + ci));
                     col = lerp(col, float3(1.0, 0.12, 0.06) * 1.6, blink);
                 }
                 return col;
@@ -227,7 +239,7 @@ Shader "Callejones/Cielo Nocturno"
                 float structure = 0.0;
                 structure += step(abs(r - R), t);
                 structure += step(abs(r - R * 0.9), t * 0.6);
-                float th = atan2(p.y, p.x) + _Time.y * 0.05;
+                float th = atan2(p.y, p.x) + _CallejonesWheelAngle;
                 float spokeAngle = (frac(th / 6.2831853 * 16.0 + 0.5) - 0.5) * (6.2831853 / 16.0);
                 structure += step(abs(spokeAngle) * r, t * 0.7) * step(r, R);
                 structure += step(SegmentDistance(p, float2(0, 0), float2(-R * 0.62, -R * 1.45)), t);
@@ -236,15 +248,18 @@ Shader "Callejones/Cielo Nocturno"
 
                 // Lamparitas: rosa, ambar y cian, que van cambiando como en una feria.
                 float k = floor(frac(th / 6.2831853) * 24.0);
-                float bulbAngle = (k + 0.5) / 24.0 * 6.2831853 - _Time.y * 0.05;
+                float bulbAngle = (k + 0.5) / 24.0 * 6.2831853 - _CallejonesWheelAngle;
                 float2 bulb = float2(cos(bulbAngle), sin(bulbAngle)) * R;
                 if (length(p - bulb) < t * 2.2)
                 {
-                    float phase = frac(k / 3.0 + floor(_Time.y * 1.5) / 3.0);
+                    float phase = frac(k / 3.0 + floor(_CallejonesBulbStep) / 3.0);
                     float3 bulbColor = phase < 0.33 ? float3(1.0, 0.31, 0.64)
                                      : phase < 0.66 ? float3(1.0, 0.7, 0.28)
                                                     : float3(0.28, 0.9, 1.0);
-                    col = bulbColor * 1.4;
+                    // Con miedo: se ponen rojas y hasta la mitad se apagan (siempre las mismas).
+                    float dead = smoothstep(0.45, 0.9, _CallejonesSkyFear);
+                    bulbColor = lerp(bulbColor, float3(0.75, 0.06, 0.03), dead);
+                    if (Hash11(k * 3.7 + 1.3) >= dead * 0.5) col = bulbColor * 1.4;
                 }
                 return col;
             }
@@ -284,9 +299,11 @@ Shader "Callejones/Cielo Nocturno"
                 col += _StarColor.rgb * Stars(d) * starVisible * 0.9;
 
                 // 3. Luna: halo, disco con manchas (en bloques, pixelado) y borde mas oscuro.
-                float3 moonDir = DirFrom(_MoonAzimuth, _MoonElevation);
+                // Con miedo alto SkyDirector la corre de lugar y se pone apenas rojiza.
+                float3 moonDir = DirFrom(_MoonAzimuth + _CallejonesMoonOffset, _MoonElevation);
+                float3 moonColor = lerp(_MoonColor.rgb, _MoonColor.rgb * float3(1.05, 0.62, 0.5), 0.5 * _CallejonesSkyFear);
                 float ang = degrees(acos(clamp(dot(d, moonDir), -1.0, 1.0)));
-                col += _MoonColor.rgb * _MoonHalo * 0.25 * exp(-max(ang - _MoonSize, 0.0) / (_MoonSize * 2.5));
+                col += moonColor * _MoonHalo * 0.25 * exp(-max(ang - _MoonSize, 0.0) / (_MoonSize * 2.5));
                 if (ang < _MoonSize)
                 {
                     float3 right = normalize(cross(float3(0, 1, 0), moonDir));
@@ -295,7 +312,7 @@ Shader "Callejones/Cielo Nocturno"
                     mp = floor(mp * 12.0) / 12.0;
                     float maria = Fbm(mp * 2.2 + 3.1);
                     float limb = sqrt(saturate(1.0 - dot(mp, mp)));
-                    col = _MoonColor.rgb * (0.75 + 0.25 * limb) * (1.0 - 0.22 * step(0.55, maria));
+                    col = moonColor * (0.75 + 0.25 * limb) * (1.0 - 0.22 * step(0.55, maria));
                 }
 
                 // Nubes: un techo plano lejano. Tres tonos, como pintadas; cerca de la luna, el
@@ -305,7 +322,7 @@ Shader "Callejones/Cielo Nocturno"
                 float cover = smoothstep(1.0 - _CloudAmount, 1.0 - _CloudAmount + 0.22, n);
                 cover = floor(cover * 3.0 + 0.5) / 3.0;
                 cover *= saturate((elev - 4.0) / 12.0);
-                float3 cloudColor = _CloudColor.rgb + _MoonColor.rgb * 0.25 * exp(-ang / 20.0);
+                float3 cloudColor = _CloudColor.rgb + moonColor * 0.25 * exp(-ang / 20.0);
                 col = lerp(col, cloudColor, cover * 0.85);
 
                 // 4. La ciudad lejana, delante de todo lo anterior. 5. La bruma.

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -24,6 +25,8 @@ using UnityEngine.Rendering;
 /// - Todo sin collider: no frena al jugador ni tapa la linea de vision de VisibilityChecker.
 /// - Los cables de cada variante son UNA malla (Meshes/Cables_{pieza}_{variante}): un objeto
 ///   en vez de cientos de cubitos.
+///
+/// Paso 19: cada neon y caja de luz lleva NeonFlicker (falla con el miedo) y su zumbido.
 /// </summary>
 public static partial class AtmosphereBuilder
 {
@@ -310,6 +313,7 @@ public static partial class AtmosphereBuilder
         MeshRenderer front = SignFace(t, "CaraA", new Vector3(cx, 0f, -0.05f), size, 0f, first);
         MeshRenderer back = SignFace(t, "CaraB", new Vector3(cx, 0f, 0.05f), size, 180f, first);
         AddSignPick(t.gameObject, m.signsS, front, back);
+        AddNeonFlicker(t.gameObject, new Vector3(cx, 0f, 0f), m.signsXS, front, back);
     }
 
     /// <summary>
@@ -335,6 +339,7 @@ public static partial class AtmosphereBuilder
         BoxChild(t, "PataDer", m.metal, new Vector3(hw - 0.12f, legs * 0.5f, back), new Vector3(0.03f, legs, 0.03f), Vector3.zero);
         MeshRenderer face = SignFace(t, "Letras", new Vector3(0f, cy, 0f), SignNSize, 0f, FirstOr(m.signsN, m.cartelRojo));
         AddSignPick(t.gameObject, m.signsN, face);
+        AddNeonFlicker(t.gameObject, new Vector3(0f, cy, 0f), m.signsXN, face);
     }
 
     /// <summary>Arco de neon de pared a pared: una barra apoyada en las dos paredes y el cartel colgado, con dos caras.</summary>
@@ -353,6 +358,26 @@ public static partial class AtmosphereBuilder
         MeshRenderer front = SignFace(t, "CaraA", new Vector3(0f, signY, -0.004f), SignNSize, 0f, first);
         MeshRenderer back = SignFace(t, "CaraB", new Vector3(0f, signY, 0.004f), SignNSize, 180f, first);
         AddSignPick(t.gameObject, m.signsN, front, back);
+        AddNeonFlicker(t.gameObject, new Vector3(0f, signY, 0f), m.signsXN, front, back);
+    }
+
+    /// <summary>
+    /// Paso 19: el cartel falla con el miedo (NeonFlicker) y zumba. El zumbido es el de los
+    /// faroles, mas agudo; si todavia no se genero el sonido (Callejones > Solo sonido), el
+    /// cartel falla igual, mudo.
+    /// </summary>
+    private static void AddNeonFlicker(GameObject owner, Vector3 humPos, SignSet messages, params Renderer[] faces)
+    {
+        AudioClip clip = AssetDatabase.LoadAssetAtPath<AudioClip>(AudioDir + "/Farol_Zumbido.wav");
+        AudioSource hum = null;
+        if (clip != null)
+        {
+            hum = NewSource(owner.transform, "Zumbido", clip, true, 200); // 200: lo primero que se corta si hay muchos sonidos
+            hum.transform.localPosition = humPos;
+            Make3D(hum, 0.5f, 5f);
+        }
+        Material[] texts = messages != null ? messages.mats.ToArray() : new Material[0];
+        owner.AddComponent<NeonFlicker>().Setup(faces, texts, hum);
     }
 
     // ------------------------------------------------------------------ la malla de los cables
