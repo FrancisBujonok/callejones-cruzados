@@ -77,6 +77,8 @@ public static partial class AtmosphereBuilder
         // Paso 18: cajas de luz salientes (S), neones sueltos (N), placas y flechas (D y F)
         // y papelitos pegados (A).
         public SignSet signsS, signsN, signsPlaca, signsA;
+        // Paso 19: mensajes escondidos que muestran los neones al fallar (no se sortean).
+        public SignSet signsXS, signsXN;
     }
 
     // ------------------------------------------------------------------ menus
@@ -492,6 +494,9 @@ public static partial class AtmosphereBuilder
             UniversalAdditionalCameraData data = cam.GetUniversalAdditionalCameraData();
             Undo.RecordObject(data, "Post-procesado de camara");
             data.renderPostProcessing = true;
+
+            // Paso 19: el cielo reacciona al miedo (ciudad, carnaval y la luna que miente).
+            if (sky != null) SetupSkyDirector(cam);
         }
 
         EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());

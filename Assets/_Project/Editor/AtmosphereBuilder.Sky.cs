@@ -13,6 +13,9 @@ using UnityEngine;
 ///
 /// El menu tambien rearma las piezas, porque los cables, los postes y los carteles nuevos
 /// (AtmosphereBuilder.Overhead.cs y AtmosphereBuilder.Signs.cs) viven adentro de los prefabs.
+///
+/// Paso 19: agrega SkyDirector a la Main Camera (el cielo con el miedo) y NeonFlicker a cada
+/// neon y caja de luz (fallas con el miedo y mensajes escondidos).
 /// </summary>
 public static partial class AtmosphereBuilder
 {
@@ -36,6 +39,19 @@ public static partial class AtmosphereBuilder
         SetupNightLighting();       // ahora con el cielo
         AssetDatabase.SaveAssets();
         Debug.Log("[Callejones] Cielo nocturno, cables y carteles listos. Guarda con Ctrl+S.");
+    }
+
+    /// <summary>
+    /// Paso 19: SkyDirector en la Main Camera. Durante el juego escribe las variables globales
+    /// que el shader del cielo usa para reaccionar al miedo.
+    /// </summary>
+    private static void SetupSkyDirector(Camera cam)
+    {
+        SkyDirector director = cam.GetComponent<SkyDirector>();
+        if (director == null) director = Undo.AddComponent<SkyDirector>(cam.gameObject);
+        Undo.RecordObject(director, "Cielo con miedo");
+        director.Setup(FindInScene<FearMeter>(null), FindInScene<CorridorTreadmill>(null), cam);
+        EditorUtility.SetDirty(director);
     }
 
     /// <summary>

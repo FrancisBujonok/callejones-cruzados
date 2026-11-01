@@ -14,6 +14,8 @@ using UnityEngine;
 /// D (placa de direccion azul), F (flecha de salida verde) y A (papelitos pegados, sin fondo).
 /// Los N y los A tienen fondo transparente: su material recorta (alpha clipping) y solo quedan
 /// las letras o los papeles, que se ven contra el cielo o la pared.
+/// Paso 19: XS y XN son mensajes escondidos con el dibujo de S y N. No entran en ningun sorteo:
+/// NeonFlicker los muestra un instante cuando un neon o una caja de luz falla con el miedo alto.
 ///
 /// Aca se arma un material por PNG y se agrupan por formato. Cada cartel de la escena es un
 /// plano (Quad) con un SignRandomizer que sortea entre los de su formato; los de Taiwan pesan
@@ -60,6 +62,8 @@ public static partial class AtmosphereBuilder
         m.signsN = new SignSet();
         m.signsPlaca = new SignSet();
         m.signsA = new SignSet();
+        m.signsXS = new SignSet();
+        m.signsXN = new SignSet();
         m.signTorii = null;
         if (!AssetDatabase.IsValidFolder(SignsDir))
         {
@@ -81,8 +85,9 @@ public static partial class AtmosphereBuilder
             SetupSignImport(path);
             Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
             Material mat = Mat("Carteles/" + name, Color.white, 0.3f, 0f, null, SignEmission(parts[3]), tex, tex);
-            // Neones sueltos y papelitos: sin fondo. El resto es un rectangulo lleno.
-            SetCutout(mat, parts[0] == "N" || parts[0] == "A");
+            // Neones sueltos, papelitos y el mensaje de los neones: sin fondo. El resto es un
+            // rectangulo lleno.
+            SetCutout(mat, parts[0] == "N" || parts[0] == "A" || parts[0] == "XN");
             float weight = parts[1] == "tw" ? TaiwanWeight : 1f;
 
             SignSet set = parts[0] switch
@@ -96,6 +101,9 @@ public static partial class AtmosphereBuilder
                 "D" => m.signsPlaca,
                 "F" => m.signsPlaca, // las flechas de salida comparten lugar con las placas
                 "A" => m.signsA,
+                // Paso 19: mensajes escondidos. No se sortean: los usa NeonFlicker.
+                "XS" => m.signsXS,
+                "XN" => m.signsXN,
                 _ => null,
             };
             if (parts[0] == "T") m.signTorii = mat;
