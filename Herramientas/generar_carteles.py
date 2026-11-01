@@ -17,6 +17,8 @@ como en la PS1. El nombre del archivo le dice a Unity como usarlo:
              D  = placa de direccion azul (calle y numero, en dos renglones)
              F  = flecha de salida verde (出口 con una flecha que no siempre dice la verdad)
              A  = papelitos pegados en la pared (fondo transparente)
+             XN, XS = mensajes escondidos (Paso 19): se dibujan como N y S pero no entran en
+                  ningun sorteo; el juego los muestra un instante cuando un neon falla
     idioma   tw = chino tradicional (Taiwan), jp = japones, kr = coreano
     estilo   papel, rojo o negro; caja-rojo, caja-azul, caja-verde; neon-rosa, neon-cian,
              neon-verde, neon-ambar, neon-rojo; placa-azul; flecha-der, flecha-izq, flecha-arr; pegado
@@ -124,6 +126,11 @@ CARTELES = [
     ("A", "kr", "pegado", "대출|이사",          "Prestamos, mudanzas"),
     # --- un afiche mas: se busca gato (斑斑 = "Manchas")
     ("P",  "tw", "papel", "尋貓",     "Se busca gato"),
+    # --- Paso 19: mensajes escondidos. No entran en ningun sorteo: NeonFlicker los muestra un
+    #     instante, cuando un neon o una caja de luz vuelve a prenderse con el miedo alto.
+    ("XN", "tw", "neon-rojo", "別回頭",   "No mires atras"),
+    ("XS", "tw", "caja-rojo", "你在哪裡", "Donde estas?"),
+    ("XS", "tw", "neon-rojo", "你在哪裡", "Donde estas?"),
 ]
 
 ESTILOS = {  # (fondo, tinta)
@@ -410,9 +417,9 @@ def main():
             img = cartel_lineal(texto, f, estilo, 2, True)
         elif formato == "H5":
             img = cartel_lineal(texto, f, estilo, 5, False)
-        elif formato == "S":
+        elif formato in ("S", "XS"):
             img = cartel_saliente(texto, f, estilo)
-        elif formato == "N":
+        elif formato in ("N", "XN"):
             img = neon_suelto(texto, f, estilo)
         elif formato == "D":
             img = placa(texto, f)
