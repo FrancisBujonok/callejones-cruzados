@@ -4599,6 +4599,7 @@ GameObject:
   - component: {fileID: 330585544}
   - component: {fileID: 330585547}
   - component: {fileID: 330585548}
+  - component: {fileID: 330585549}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -4744,6 +4745,30 @@ MonoBehaviour:
   vertexSnap: 160
   colorLevels: 32
   dither: 0.8
+--- !u!114 &330585549
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 330585543}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: de30fef8d3a6570419ea15f755a993c4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SkyDirector
+  fear: {fileID: 1720921709}
+  treadmill: {fileID: 2033901516}
+  view: {fileID: 330585545}
+  response: 0.08
+  wheelSpeed: 0.05
+  bulbRate: 1.5
+  wheelStopFear: 0.75
+  moonLiesFromFear: 0.5
+  moonReturnsBelowFear: 0.25
+  unseenSeconds: 6
+  jumpDegrees: {x: 70, y: 160}
+  frameMargin: 0.1
 --- !u!1 &347921236
 GameObject:
   m_ObjectHideFlags: 0
