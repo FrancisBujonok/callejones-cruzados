@@ -52,6 +52,9 @@ public static partial class AtmosphereBuilder
         Undo.RecordObject(director, "Cielo con miedo");
         director.Setup(FindInScene<FearMeter>(null), FindInScene<CorridorTreadmill>(null), cam);
         EditorUtility.SetDirty(director);
+
+        // Paso 20: la niebla toma el color del cielo (lo lejano y lo alto se funden con el).
+        if (cam.GetComponent<SkyFog>() == null) Undo.AddComponent<SkyFog>(cam.gameObject);
     }
 
     /// <summary>

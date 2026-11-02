@@ -80,6 +80,7 @@ public static partial class AtmosphereBuilder
         BuildFacadeSlot(facades, "FachadaDer", new Vector3(WallInnerX, 0f, 1.5f), 180f, m, shutter);
         BuildOverhead(deco, m);
         BuildRectoHigh(deco, m); // Paso 18: cables, postes y carteles por encima de las paredes
+        BuildRectoBuildings(deco, m); // Paso 20: las casas de arriba, con tres alturas por lado
     }
 
     /// <summary>

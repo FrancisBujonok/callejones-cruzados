@@ -82,6 +82,7 @@ public static partial class AtmosphereBuilder
         {
             Transform a = Connection(root.transform, "Conexion_A", new Vector3(0f, 0f, -3f), 180f);
             Transform b = Connection(root.transform, "Conexion_B", new Vector3(0f, 0f, 3f), 0f);
+            AddCurtains(new[] { a, b }); // Paso 20: telones de niebla (los prende CorridorTreadmill)
             GameObject open = root.transform.Find("Abierto").gameObject;
             GameObject closed = root.transform.Find("Cerrado").gameObject;
             // Variante 1 (Cerrado) tiene la pared en el medio: corta el paso.
@@ -141,7 +142,11 @@ public static partial class AtmosphereBuilder
                 Side sx = x > 0f ? Side.E : Side.O;
                 Side sz = z > 0f ? Side.N : Side.S;
                 if ((open & sx) != 0 && (open & sz) != 0)
+                {
                     MetricWall(structure, "Columna", m.pared, new Vector3(x, 1.5f, z), new Vector3(0.3f, 3f, 0.3f));
+                    // Paso 20: la columna sube hasta arriba de los edificios (sin collider: es decorado).
+                    TallColumn(structure, new Vector3(x, 0f, z), m);
+                }
             }
 
             // Pared del fondo (N). El Cruce tiene siempre una persiana: ahi va la anomalia de los
@@ -178,12 +183,15 @@ public static partial class AtmosphereBuilder
             // Lo de arriba (Paso 18): poste, cables hacia los lados abiertos y un cartel alto.
             // Va al final: la anomalia "otra decoracion" usa el PRIMER sorteo de la pieza (Sets).
             BuildCellHigh(deco, name, open, m);
+            // Paso 20: edificios en las paredes cerradas. El Cruce es el patio: sin voladizos.
+            BuildCellBuildings(deco, kind, open, m);
 
             // Conexiones: S siempre primero (es por donde se entra), despues E y O.
             var sockets = new List<Transform> { Connection(root.transform, "Conexion_S", new Vector3(0f, 0f, -1.5f), 180f) };
             if ((open & Side.E) != 0) sockets.Add(Connection(root.transform, "Conexion_E", new Vector3(1.5f, 0f, 0f), 90f));
             if ((open & Side.O) != 0) sockets.Add(Connection(root.transform, "Conexion_O", new Vector3(-1.5f, 0f, 0f), -90f));
             if ((open & Side.N) != 0) sockets.Add(Connection(root.transform, "Conexion_N", new Vector3(0f, 0f, 1.5f), 0f));
+            AddCurtains(sockets.ToArray()); // Paso 20: telones de niebla (los prende CorridorTreadmill)
 
             root.AddComponent<CorridorSegment>().Setup(kind, sockets.ToArray(),
                 new[] { structure.gameObject }, -1, new Vector3(3f, 3f, 3f));
@@ -298,6 +306,7 @@ public static partial class AtmosphereBuilder
         {
             MetricWall(root.transform, "Pared", m.pared, new Vector3(0f, 1.5f, 0f), new Vector3(3f, 3f, 0.1f));
             CreateShutterYaw(root.transform, "Persiana", new Vector3(0f, 0f, -0.05f), 90f, shutter, m);
+            BuildCapBuilding(root.transform, m); // Paso 20: un edificio arriba, asi el pasillo no termina en cielo
             return PrefabUtility.SaveAsPrefabAsset(root, TapaPath);
         }
         finally

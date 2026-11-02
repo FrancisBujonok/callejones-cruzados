@@ -239,6 +239,7 @@ public partial class CorridorTreadmill : MonoBehaviour
         for (int i = 0; i < 400 && FillStep(true); i++) ComputeDistances();
 
         ready = true;
+        UpdateCurtains();
         Debug.Log($"[CorridorTreadmill] Laberinto listo: {nodes.Count} piezas activas.");
     }
 
@@ -271,6 +272,20 @@ public partial class CorridorTreadmill : MonoBehaviour
             escapeTimer = 1f;
             if (!HasEscape(null)) OpenHiddenBlock();
         }
+
+        UpdateCurtains();
+    }
+
+    /// <summary>
+    /// Paso 20: cada conexion sin vecina ni persiana muestra su telon de niebla. Con edificios de
+    /// 30 m, sin el telon se veia el cielo al fondo de los pasillos largos, y se tapaba de golpe
+    /// al aparecer la pieza siguiente. SetCurtain solo toca el objeto si cambia.
+    /// </summary>
+    private void UpdateCurtains()
+    {
+        foreach (Node n in nodes.Values)
+            for (int i = 0; i < n.links.Length; i++)
+                n.seg.SetCurtain(i, n.links[i] == null && n.caps[i] == null);
     }
 
     /// <summary>La pieza donde esta el jugador: la que ocupa su celda.</summary>

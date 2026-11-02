@@ -58,6 +58,29 @@ public class CorridorSegment : MonoBehaviour
     public int SocketCount => sockets == null ? 0 : sockets.Length;
     public Transform GetSocket(int index) => sockets[index];
 
+    // Paso 20: telon de niebla de cada conexion (hijo "Telon"; null si la pieza no tiene).
+    private GameObject[] curtains;
+
+    /// <summary>
+    /// Prende o apaga el telon de niebla de una conexion. Lo llama CorridorTreadmill: prendido
+    /// mientras la conexion no tiene vecina, para que el fondo de un pasillo se vea como niebla
+    /// y no como cielo abierto.
+    /// </summary>
+    public void SetCurtain(int socket, bool show)
+    {
+        if (curtains == null)
+        {
+            curtains = new GameObject[SocketCount];
+            for (int i = 0; i < curtains.Length; i++)
+            {
+                Transform t = sockets[i] != null ? sockets[i].Find("Telon") : null;
+                curtains[i] = t != null ? t.gameObject : null;
+            }
+        }
+        if (socket < 0 || socket >= curtains.Length || curtains[socket] == null) return;
+        if (curtains[socket].activeSelf != show) curtains[socket].SetActive(show);
+    }
+
     /// <summary>true si la variante actual corta el paso.</summary>
     public bool IsBlocking => blockingVariant >= 0 && CurrentVariant == blockingVariant;
     /// <summary>true si pasar a esa variante cortaria el paso.</summary>

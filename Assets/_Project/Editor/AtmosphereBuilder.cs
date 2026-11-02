@@ -27,6 +27,7 @@ using UnityEngine.SceneManagement;
 /// 10. Fachadas variadas, cosas colgadas arriba y los lugares que mienten (AtmosphereBuilder.Places.cs).
 /// 11. Carteles con texto de verdad en chino, japones y coreano (AtmosphereBuilder.Signs.cs).
 /// 12. Lo de arriba: cables, postes, cajas de luz y neones contra el cielo (AtmosphereBuilder.Overhead.cs).
+/// 13. Edificios de viviendas arriba de los puestos, tramos techados y el patio (AtmosphereBuilder.Buildings.cs).
 ///
 /// Se puede ejecutar varias veces: reemplaza lo que genero antes en vez de duplicarlo.
 /// Esta carpeta se llama Editor a proposito: Unity no incluye este codigo en el juego final.
@@ -79,6 +80,9 @@ public static partial class AtmosphereBuilder
         public SignSet signsS, signsN, signsPlaca, signsA;
         // Paso 19: mensajes escondidos que muestran los neones al fallar (no se sortean).
         public SignSet signsXS, signsXN;
+        // Paso 20: edificios. Fachadas con ventanas, el fondo mas oscuro, los detalles (todos con
+        // la paleta) y los tubos fluorescentes del techado.
+        public Material fachada, fachadaFondo, detalles, tuboLuz;
     }
 
     // ------------------------------------------------------------------ menus
@@ -217,6 +221,7 @@ public static partial class AtmosphereBuilder
             luzRoja = Mat("LuzRoja", Hex("#B8281A"), 0.3f, 0f, null, new Color(1f, 0.25f, 0.15f) * 1.2f),
         };
         BuildSigns(mats); // un material por cada PNG de Textures/Carteles
+        BuildBuildingMaterials(mats); // Paso 20: los de los edificios (Textures/Edificios)
         return mats;
     }
 
