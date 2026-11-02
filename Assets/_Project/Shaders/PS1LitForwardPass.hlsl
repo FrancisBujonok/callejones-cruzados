@@ -1,5 +1,6 @@
 // Callejones: copia de SimpleLitForwardPass.hlsl (URP 17.3) con dos agregados estilo PS1,
-// marcados con "PS1:". El resto es el codigo original de Unity.
+// marcados con "PS1:", y la niebla del color del cielo (Paso 20), marcada con "CIELO:".
+// El resto es el codigo original de Unity.
 #ifndef CALLEJONES_PS1_LIT_PASS_INCLUDED
 #define CALLEJONES_PS1_LIT_PASS_INCLUDED
 
@@ -49,6 +50,46 @@ half3 PS1Quantize(half3 color, float2 pixel)
     float3 c = pow(max(float3(color), 0.0), 1.0 / 2.2);
     c = floor(c * _PS1ColorLevels + threshold * _PS1DitherStrength + 0.5) / _PS1ColorLevels;
     return half3(pow(max(c, 0.0), 2.2));
+}
+
+// CIELO: niebla del color del cielo (Paso 20). Las variables las escribe SkyFog (Main Camera)
+// copiando el degrade del material del cielo. Sin SkyFog, la niebla es la de siempre.
+float _CallejonesSkyFogOn;          // 1 = encendida
+float4 _CallejonesSkyHorizon;       // colores del degrade, en espacio lineal
+float4 _CallejonesSkyGlow;
+float4 _CallejonesSkyMid;
+float4 _CallejonesSkyZenith;
+float4 _CallejonesSkyHeights;       // x, y, z: alturas del degrade (grados); w: peso de lo vertical
+
+// El color que tiene el cielo detras de este punto, sin estrellas ni nubes: el mismo degrade
+// que dibuja CieloNocturno.shader.
+half3 CallejonesSkyColor(float3 dir)
+{
+    float4 h = _CallejonesSkyHeights;
+    float elev = degrees(asin(clamp(dir.y, -1.0, 1.0)));
+    float t1 = saturate((elev - h.x) / max(h.y - h.x, 0.01));
+    float t2 = saturate((elev - h.y) / max(h.z - h.y, 0.01));
+    float t3 = saturate((elev - h.z) / max(90.0 - h.z, 0.01));
+    float3 sky = lerp(_CallejonesSkyHorizon.rgb, _CallejonesSkyGlow.rgb, smoothstep(0.0, 1.0, t1));
+    sky = lerp(sky, _CallejonesSkyMid.rgb, smoothstep(0.0, 1.0, t2));
+    return half3(lerp(sky, _CallejonesSkyZenith.rgb, t3));
+}
+
+// Niebla lineal medida desde la camara (no por profundidad), con lo vertical atenuado para que
+// las alturas de los edificios se sigan leyendo, y tenida con el cielo de atras.
+half3 CallejonesMixFog(half3 color, float3 positionWS, float fogCoord)
+{
+#if defined(FOG_LINEAR)
+    if (_CallejonesSkyFogOn > 0.5)
+    {
+        float3 d = positionWS - _WorldSpaceCameraPos;
+        float distance = length(float3(d.x, d.y * _CallejonesSkyHeights.w, d.z));
+        // unity_FogParams.z = -1 / (fin - inicio), unity_FogParams.w = fin / (fin - inicio)
+        float visible = saturate(distance * unity_FogParams.z + unity_FogParams.w);
+        return lerp(CallejonesSkyColor(normalize(d)), color, visible);
+    }
+#endif
+    return MixFog(color, fogCoord);
 }
 
 struct Attributes
@@ -263,7 +304,7 @@ void LitPassFragmentSimple(
     InitializeBakedGIData(input, inputData);
 
     half4 color = UniversalFragmentBlinnPhong(inputData, surfaceData);
-    color.rgb = MixFog(color.rgb, inputData.fogCoord);
+    color.rgb = CallejonesMixFog(color.rgb, inputData.positionWS, inputData.fogCoord); // CIELO: niebla del color del cielo
     color.rgb = PS1Quantize(color.rgb, input.positionCS.xy); // PS1: pocos colores + dithering
     color.a = OutputAlpha(color.a, IsSurfaceTypeTransparent(_Surface));
 

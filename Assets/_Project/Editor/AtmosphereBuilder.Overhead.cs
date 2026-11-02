@@ -27,11 +27,15 @@ using UnityEngine.Rendering;
 ///   en vez de cientos de cubitos.
 ///
 /// Paso 19: cada neon y caja de luz lleva NeonFlicker (falla con el miedo) y su zumbido.
+/// Paso 20: arriba de las paredes ahora hay edificios. Los cables pasan 5 cm por delante de las
+/// fachadas, el neon va pegado al primer piso y hay una sexta variante: el tramo techado.
 /// </summary>
 public static partial class AtmosphereBuilder
 {
     private const float CableHeight = 3.75f;   // altura de las puntas en el borde de cada pieza
-    private const float CableEdge = 1.45f;     // a 5 cm del eje de la pared (x = 1.5)
+    // Paso 20: 5 cm por delante de la cara de la pared (1.4). Antes iban sobre la pared, a 1.45,
+    // pero ahora arriba de la pared hay edificios y los cables quedarian adentro.
+    private const float CableEdge = 1.35f;
     private const float CableThickness = 0.022f;
     private const float PoleTop = 3.97f;       // donde se atan los cables al poste
 
@@ -72,12 +76,13 @@ public static partial class AtmosphereBuilder
             wallLines.Add(new Span(new Vector3(x, CableHeight, -3f), new Vector3(x, CableHeight, 0f), 0.14f));
             wallLines.Add(new Span(new Vector3(x, CableHeight, 0f), new Vector3(x, CableHeight, 3f), 0.14f));
             string side = x < 0f ? "Izq" : "Der";
-            BoxChild(lines, "Soporte" + side, m.metal, new Vector3(x, 3.38f, 0f), new Vector3(0.035f, 0.76f, 0.035f), Vector3.zero);
+            // Mensula corta desde la fachada (antes era un soporte parado sobre la pared).
+            BoxChild(lines, "Soporte" + side, m.metal, new Vector3(x + Mathf.Sign(x) * 0.03f, 3.76f, 0f), new Vector3(0.08f, 0.03f, 0.03f), Vector3.zero);
             BoxChild(lines, "Aislador" + side, m.maquina, new Vector3(x, 3.77f, 0f), new Vector3(0.05f, 0.04f, 0.05f), Vector3.zero);
         }
         CablesChild(lines, "Modulo_Lineas", wallLines, m);
 
-        // Uno de cinco, sorteado (DecorRandomizer). Las lineas de arriba quedan siempre.
+        // Uno de seis, sorteado (DecorRandomizer). Las lineas de arriba quedan siempre.
         Transform variants = Group(alto, "Variantes");
         var options = new List<GameObject>();
 
@@ -113,7 +118,8 @@ public static partial class AtmosphereBuilder
 
         // 3. Neon parado sobre la pared derecha, de cara al pasillo: letras sueltas contra el cielo.
         Transform neon = Group(variants, "Neon");
-        CreateRoofNeon(neon, "Letras", new Vector3(WallInnerX + 0.07f, 3f, -1.4f), 90f, m);
+        // Paso 20: pegado a la fachada del primer piso (antes, parado sobre la pared).
+        CreateRoofNeon(neon, "Letras", new Vector3(WallInnerX - 0.02f, 3f, -1.4f), 90f, m);
         CablesChild(neon, "Modulo_Neon", new List<Span>
         {
             new Span(new Vector3(-CableEdge, 3.74f, 2.4f), new Vector3(CableEdge, 3.7f, 1.6f), 0.3f),
@@ -144,6 +150,11 @@ public static partial class AtmosphereBuilder
             new Span(new Vector3(-CableEdge, 3.7f, 1.9f), new Vector3(CableEdge, 3.7f, 2.9f), 0.2f),
         }, m);
         options.Add(tangle.gameObject);
+
+        // 6. Tramo techado (Paso 20): chapas, un panel de plastico, canos y tubos fluorescentes.
+        Transform roof = Group(variants, "Techado");
+        BuildCoveredRoof(roof, m);
+        options.Add(roof.gameObject);
 
         for (int i = 1; i < options.Count; i++) options[i].SetActive(false); // en el editor se ve el poste
         variants.gameObject.AddComponent<DecorRandomizer>().Setup(options.ToArray());
@@ -198,7 +209,7 @@ public static partial class AtmosphereBuilder
         else if ((closed & Side.E) != 0)
             CreateProjectingSign(b, "CajaDeLuz", new Vector3(WallInnerX, 2.85f, -0.95f), true, SignSSize, m);
         else if ((closed & Side.N) != 0)
-            CreateRoofNeon(b, "Neon", new Vector3(0f, 3f, WallInnerX + 0.07f), 0f, m);
+            CreateRoofNeon(b, "Neon", new Vector3(0f, 3f, WallInnerX - 0.02f), 0f, m);
 
         b.gameObject.SetActive(false);
         variants.gameObject.AddComponent<DecorRandomizer>().Setup(new[] { a.gameObject, b.gameObject });
