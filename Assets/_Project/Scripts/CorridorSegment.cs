@@ -52,6 +52,11 @@ public class CorridorSegment : MonoBehaviour
     [Tooltip("Tamano de la caja: ancho, alto, largo del modulo en metros.")]
     [SerializeField] private Vector3 boundsSize = new Vector3(3f, 3f, 6f);
 
+    [Header("Celdas de mas (Paso 22)")]
+    [Tooltip("Centros de celdas de 3 x 3 m que la pieza ocupa ademas de las de su caja, en coordenadas locales. " +
+             "La salida reserva el lugar de la calle que se ve detras del torii: ninguna otra pieza se mete ahi.")]
+    [SerializeField] private Vector3[] extraCells = new Vector3[0];
+
     public int CurrentVariant { get; private set; } = -1;
     public int VariantCount => variants == null ? 0 : variants.Length;
     public SegmentKind Kind => kind;
@@ -90,14 +95,21 @@ public class CorridorSegment : MonoBehaviour
     public float Length => boundsSize.z * transform.lossyScale.z;
 
     /// <summary>
-    /// Cuantas celdas de 3 x 3 m ocupa a lo largo de su eje Z (Recto 2, Esquina 1...).
-    /// El generador usa una grilla de celdas para no encimar piezas.
+    /// Cuantas celdas de 3 x 3 m ocupa a lo largo de su eje Z (Recto 2, Esquina 1...), mas las
+    /// celdas de mas (la calle de la salida). El generador usa una grilla de celdas para no
+    /// encimar piezas.
     /// </summary>
-    public int CellCount => Mathf.Max(1, Mathf.RoundToInt(boundsSize.z / 3f));
+    public int CellCount => BoxCellCount + (extraCells == null ? 0 : extraCells.Length);
+
+    private int BoxCellCount => Mathf.Max(1, Mathf.RoundToInt(boundsSize.z / 3f));
 
     /// <summary>Centro de la celda i, en coordenadas locales de la pieza.</summary>
-    public Vector3 LocalCellCenter(int i) =>
-        new Vector3(boundsCenter.x, 0f, boundsCenter.z - boundsSize.z * 0.5f + 1.5f + 3f * i);
+    public Vector3 LocalCellCenter(int i) => i < BoxCellCount
+        ? new Vector3(boundsCenter.x, 0f, boundsCenter.z - boundsSize.z * 0.5f + 1.5f + 3f * i)
+        : extraCells[i - BoxCellCount];
+
+    /// <summary>Lo usa la herramienta de editor (la calle detras del torii).</summary>
+    public void SetExtraCells(Vector3[] cells) => extraCells = cells ?? new Vector3[0];
 
     /// <summary>Estado de visibilidad del ultimo frame. Lo escribe VisibilityChecker.</summary>
     public SegmentVisibility State { get; set; } = SegmentVisibility.Unknown;

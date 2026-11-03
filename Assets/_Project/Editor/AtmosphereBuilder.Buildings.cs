@@ -127,7 +127,7 @@ public static partial class AtmosphereBuilder
         GameObject roofObject = roof != null ? roof.gameObject : null;
         BuildSideChoices(group, "Izq", new Vector3(-WallInnerX, 0f, 0f), 0f, "Recto_Izq", 6f, 1100, true, m, roofObject, false);
         BuildSideChoices(group, "Der", new Vector3(WallInnerX, 0f, 0f), 180f, "Recto_Der", 6f, 2200, true, m, roofObject, true);
-        BuildRectoDrips(deco); // Paso 21: los bordes de los toldos
+        BuildRectoDrips(deco); // Paso 22: borra el goteo viejo de los toldos
     }
 
     /// <summary>
@@ -235,11 +235,12 @@ public static partial class AtmosphereBuilder
                 float w = 0.3f + 0.25f * (float)rng.NextDouble(), h = 0.45f + 0.35f * (float)rng.NextDouble();
                 Vector3 along = new Vector3(b.x - a.x, 0f, b.z - a.z).normalized;
                 cloth.Panel(p + Vector3.down * (h * 0.5f), along, w, h, ClothColors[rng.Next(ClothColors.Length)]);
-                // Paso 21: la ropa recien colgada (la de la soga mas baja) todavia gotea.
-                if (i == 0 && k < 2)
+                // Paso 21: la ropa recien colgada (la de la soga mas baja) todavia gotea. Paso 22: una
+                // sola prenda, mas espaciado.
+                if (i == 0 && k == 0)
                 {
-                    AddDrip(patio, "GoteoRopa" + k, new Vector3(p.x, p.y - h - 0.02f, p.z), new Vector2(2f, 5f), null, 0f);
-                    AddPuddle(patio, "CharcoRopa" + k, new Vector3(p.x, 0f, p.z), 0.45f + 0.1f * k, 40f + 75f * k);
+                    AddDrip(patio, "GoteoRopa", new Vector3(p.x, p.y - h - 0.02f, p.z), new Vector2(4f, 9f), null, 0f);
+                    AddPuddle(patio, "CharcoRopa", new Vector3(p.x, 0f, p.z), 0.45f, 40f);
                 }
             }
         }
@@ -348,11 +349,10 @@ public static partial class AtmosphereBuilder
         d.Box(new Vector3(0.9f, y - 0.25f, 0f), new Vector3(0.05f, 0.05f, 6f), PalCano);
         DraftChild(roof, "Techo", "Edif_Techado", d, m.detalles);
 
-        // Paso 21: dos goteras, en la junta entre dos chapas y en el borde de la media chapa.
-        AddDrip(roof, "GoteraJunta", new Vector3(-0.45f, y - 0.06f, 1.5f), new Vector2(1.6f, 4f), null, 0f);
-        AddPuddle(roof, "CharcoJunta", new Vector3(-0.45f, 0f, 1.5f), 0.75f, 20f);
-        AddDrip(roof, "GoteraBorde", new Vector3(-0.03f, y - 0.03f, -0.6f), new Vector2(2.2f, 5.5f), null, 0f);
-        AddPuddle(roof, "CharcoBorde", new Vector3(-0.03f, 0f, -0.6f), 0.6f, 130f);
+        // Paso 21: una gotera en la junta entre dos chapas, con su charco (Paso 22: era cada 1.6 a
+        // 4 s y habia otra en el borde de la media chapa).
+        AddDrip(roof, "GoteraJunta", new Vector3(-0.45f, y - 0.06f, 1.5f), new Vector2(4f, 9f), null, 0f);
+        AddPuddle(roof, "CharcoJunta", new Vector3(-0.45f, 0f, 1.5f), 0.7f, 20f);
 
         // Tubos fluorescentes (brillan) con sus alambres, y la luz fria que tiran.
         foreach (float z in new[] { -1.2f, 1.3f })
@@ -457,18 +457,11 @@ public static partial class AtmosphereBuilder
         DraftChild(parent, "Fondo", prefix + "_Fondo", back, m.fachadaFondo);
         DraftChild(parent, "Detalles", prefix + "_Detalles", detail, m.detalles);
 
-        // Paso 21: la mitad de los aires de los pisos 5 a 7 gotea (desde ahi la gota no toca los
-        // toldos ni las rejas de abajo), con su charco en el piso.
-        var dripRng = new System.Random(seed * 7 + 3);
+        // Paso 21: la mitad de los aires de los pisos 5 a 7 goteaba, cada uno con su charco. Paso 22:
+        // ya no (eran la mayoria de los charcos). Los puntos se siguen juntando en 'drips' por si
+        // se quieren volver a usar: AddDrip(parent, "GoteoAire", drips[i], intervalo, roof, 3.97f, false)
+        // gotea sin charco (solo suena); roof y roofGap dicen si la gota cae sobre el techado.
         if (!overhangs) drips.Clear(); // sin voladizos, la gota pasaria por los aires de abajo
-        for (int i = 0; i < drips.Count; i++)
-        {
-            if (dripRng.NextDouble() < 0.5) continue;
-            Vector3 p = drips[i];
-            GameObject below = roofGap && p.z >= 0f ? null : roof;
-            AddDrip(parent, "GoteoAire" + i, p, new Vector2(4f, 10f), below, 3.97f);
-            AddPuddle(parent, "CharcoAire" + i, new Vector3(p.x, 0f, p.z), 0.5f + 0.2f * (float)dripRng.NextDouble(), (float)dripRng.NextDouble() * 360f);
-        }
     }
 
     /// <summary>

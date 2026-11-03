@@ -9,9 +9,10 @@ using UnityEngine.Rendering;
 /// Menu: Callejones > Goteo, ventanas y carteles (tambien corre con "Edificios, techados y patio"
 /// y con "Construir atmosfera (todo)").
 ///
-/// Goteo:
-/// - Puntos de goteo (DripSource) en el borde de los toldos del recto, en los aires de los pisos
-///   5 a 7 (Buildings), en el techado y en la ropa del patio, cada uno con su charco abajo.
+/// Goteo (Paso 22: mucho menos):
+/// - Puntos de goteo (DripSource): una gotera en el techado y la ropa recien colgada del patio,
+///   cada una con su charco. Los toldos del recto y los aires ya no gotean (eran casi todos los
+///   charcos).
 /// - DripSystem en la Main Camera: gotas, ondas y sonido (Shaders/Agua.shader, Audio/Goteo_*).
 /// - Texturas y sonidos: Herramientas/generar_goteo.py.
 ///
@@ -75,29 +76,25 @@ public static partial class AtmosphereBuilder
     // ------------------------------------------------------------------ goteo: piezas
 
     /// <summary>
-    /// Recto: una gota en el borde de cada toldo. El toldo izquierdo baja hacia el pasillo y su
-    /// borde queda en x = -0.75, a 2.69 m; el tejadillo derecho, en x = 0.87, a 2.87 m.
+    /// Recto: en el Paso 21 goteaban los bordes de los dos toldos, cada uno con su charco. Como el
+    /// recto es la pieza mas comun, habia charcos por todos lados: en el Paso 22 se sacaron. Queda
+    /// la funcion para borrar el grupo viejo.
     /// </summary>
     private static void BuildRectoDrips(Transform deco)
     {
         DestroyChild(deco, "Goteo");
-        Transform group = Group(deco, "Goteo");
-        var rng = new System.Random(8800);
-        float zl = -2.3f + 4.6f * (float)rng.NextDouble();
-        AddDrip(group, "ToldoIzq", new Vector3(-0.75f, 2.66f, zl), new Vector2(3f, 8f), null, 0f);
-        AddPuddle(group, "CharcoIzq", new Vector3(-0.75f, 0f, zl), 0.6f, (float)rng.NextDouble() * 360f);
-        float zr = -2.3f + 4.6f * (float)rng.NextDouble();
-        AddDrip(group, "TejadilloDer", new Vector3(0.875f, 2.83f, zr), new Vector2(3.5f, 9f), null, 0f);
-        AddPuddle(group, "CharcoDer", new Vector3(0.875f, 0f, zr), 0.55f, (float)rng.NextDouble() * 360f);
     }
 
-    /// <summary>Un punto de goteo. roof: techo que puede haber debajo (o null).</summary>
-    private static void AddDrip(Transform parent, string name, Vector3 localPos, Vector2 interval, GameObject roof, float roofHeight)
+    /// <summary>
+    /// Un punto de goteo. roof: techo que puede haber debajo (o null). ripple: si abajo hay un
+    /// charco (la gota deja una onda); sin charco, la gota solo suena.
+    /// </summary>
+    private static void AddDrip(Transform parent, string name, Vector3 localPos, Vector2 interval, GameObject roof, float roofHeight, bool ripple = true)
     {
         var go = new GameObject(name);
         go.transform.SetParent(parent, false);
         go.transform.localPosition = localPos;
-        go.AddComponent<DripSource>().Setup(interval, roof, roofHeight);
+        go.AddComponent<DripSource>().Setup(interval, roof, roofHeight, ripple);
     }
 
     /// <summary>Un charco en el piso (y = 0 de la pieza), con su forma irregular girada.</summary>
@@ -203,10 +200,20 @@ public static partial class AtmosphereBuilder
         // La gota brilla un poco (pasa el umbral del bloom): asi se ve contra lo oscuro.
         Material drop = GetAguaMaterial("Gota", null, new Color(1.1f, 1.2f, 1.35f, 1f), 0.5f, 0f);
         Material ripple = GetAguaMaterial("Onda", LoadDripTexture("Onda"), new Color(0.75f, 0.82f, 0.9f, 1f), 0.3f, DecalOffset);
-        AudioClip[] floor = LoadClips("Goteo_", 4);
-        AudioClip[] metal = LoadClips("Goteo_Chapa_", 2);
+        // Paso 22: dos "tic" simples y un "tin" para la chapa (los de antes se borran).
+        foreach (string old in new[] { "Goteo_2", "Goteo_3", "Goteo_Chapa_1" })
+            if (AssetDatabase.LoadAssetAtPath<AudioClip>(AudioDir + "/" + old + ".wav") != null)
+                AssetDatabase.DeleteAsset(AudioDir + "/" + old + ".wav");
+        AudioClip[] floor = LoadClips("Goteo_", 2);
+        AudioClip[] metal = LoadClips("Goteo_Chapa_", 1);
         if (floor.Length == 0) Debug.LogWarning("[Callejones] Faltan los sonidos del goteo. Corre Herramientas/generar_goteo.py.");
         drips.Setup(FindInScene<FearMeter>(null), FindInScene<CorridorTreadmill>(null), cam, GetDripQuad(), drop, ripple, floor, metal);
+        // Mas bajo y mas cerca (los valores viejos quedaron guardados en la escena).
+        var so = new SerializedObject(drips);
+        so.FindProperty("volume").floatValue = 0.22f;
+        so.FindProperty("maxDistance").floatValue = 10f;
+        so.FindProperty("activeRadius").floatValue = 16f;
+        so.ApplyModifiedPropertiesWithoutUndo();
         EditorUtility.SetDirty(drips);
     }
 }
