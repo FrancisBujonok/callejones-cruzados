@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-Genera los sonidos y las texturas del goteo de Callejones Cruzados (Paso 21).
+Genera los sonidos y las texturas del goteo de Callejones Cruzados (Paso 21, sonidos nuevos en
+el Paso 22).
 
-Sonidos (Assets/_Project/Audio), mono, 44.1 kHz:
-    Goteo_0..3.wav        una gota que cae en un charco: un "plip" (burbuja cuyo tono sube
-                          rapido), un click al tocar el agua y el eco corto del callejon.
-    Goteo_Chapa_0..1.wav  una gota sobre la chapa del techado: un "tic" metalico con varios
-                          parciales que se apagan rapido.
+Sonidos (Assets/_Project/Audio), mono, 44.1 kHz. Simples a proposito: el callejon (la zona de
+reverberacion del jugador) ya les pone el espacio, asi que aca no hay eco.
+    Goteo_0..1.wav      una gota en el piso: un "tic" corto y suave (un tono que se apaga en
+                        unos 10 ms, con una subida minima) y un golpecito grave casi inaudible.
+    Goteo_Chapa_0.wav   una gota sobre la chapa del techado: un "tin" con dos parciales.
 
 Texturas (Assets/_Project/Textures/Goteo), con pixeles duros como en la PS1:
     Charco.png  64 x 64: la forma irregular de un charco (alfa 0 o 1) con el borde mas claro.
@@ -42,54 +43,37 @@ def guardar_wav(ruta, muestras):
         w.writeframes(b"".join(struct.pack("<h", int(max(-1.0, min(1.0, s * escala)) * 32767)) for s in muestras))
 
 
-def eco(seco, rng):
-    """Las paredes del callejon: tres reflejos cortos, cada uno mas apagado y mas opaco."""
-    salida = list(seco)
-    for retardo, ganancia in ((0.037, 0.26), (0.061, 0.17), (0.097, 0.10)):
-        d = int((retardo + rng.uniform(-0.004, 0.004)) * SR)
-        previo = 0.0
-        for i in range(len(seco)):
-            if i + d >= len(salida):
-                break
-            previo += 0.35 * (seco[i] - previo)  # pasa bajos de un polo: el eco suena mas sordo
-            salida[i + d] += previo * ganancia
-    return salida
-
-
-def plip(rng, f0):
-    n = int(0.36 * SR)
+def tic(rng, f0, largo=0.12):
+    """Gota en el piso: un tono corto que sube apenas y un golpecito grave."""
+    n = int(largo * SR)
     muestras = [0.0] * n
     fase = 0.0
-    subida = rng.uniform(1.0, 1.6)
+    previo = 0.0
     for i in range(n):
         t = i / SR
-        # La burbuja: el tono sube casi al doble en unos 40 ms (por eso suena "plip").
-        f = f0 * (1.0 + subida * min(t, 0.06) / 0.04)
+        f = f0 * (1.0 + 0.12 * min(t, 0.015) / 0.015)
         fase += 2.0 * math.pi * f / SR
-        amp = math.exp(-t / 0.022) * (1.0 - math.exp(-t / 0.0008))
-        s = math.sin(fase) * amp
-        # El golpe contra el agua: un click de ruido muy corto y un "tud" grave.
-        if t < 0.004:
-            s += rng.uniform(-1.0, 1.0) * 0.45 * math.exp(-t / 0.0008)
-        s += math.sin(2.0 * math.pi * 170.0 * t) * 0.14 * math.exp(-t / 0.012)
-        muestras[i] = s
-    return eco(muestras, rng)
+        ataque = 1.0 - math.exp(-t / 0.0006)
+        s = math.sin(fase) * math.exp(-t / 0.010) * ataque
+        s += math.sin(2.0 * math.pi * 300.0 * t) * 0.22 * math.exp(-t / 0.006) * ataque
+        previo += 0.5 * (s - previo)  # pasa bajos suave: sin brillo metalico
+        muestras[i] = previo
+    return muestras
 
 
-def tic(rng):
-    n = int(0.3 * SR)
+def tin(rng, largo=0.15):
+    """Gota en la chapa: dos parciales y un grave corto, sin ruido."""
+    n = int(largo * SR)
     muestras = [0.0] * n
-    parciales = [(2300, 1.0, 0.05), (3870, 0.6, 0.035), (5150, 0.4, 0.025), (7020, 0.25, 0.015), (430, 0.35, 0.03)]
-    variacion = rng.uniform(0.93, 1.07)
+    v = rng.uniform(0.96, 1.04)
     for i in range(n):
         t = i / SR
-        s = 0.0
-        for f, a, decae in parciales:
-            s += math.sin(2.0 * math.pi * f * variacion * t) * a * math.exp(-t / decae)
-        if t < 0.003:
-            s += rng.uniform(-1.0, 1.0) * 0.6 * math.exp(-t / 0.0006)
-        muestras[i] = s * (1.0 - math.exp(-t / 0.0004))
-    return eco(muestras, rng)
+        ataque = 1.0 - math.exp(-t / 0.0004)
+        s = (math.sin(2.0 * math.pi * 2100.0 * v * t) * math.exp(-t / 0.018)
+             + 0.35 * math.sin(2.0 * math.pi * 3400.0 * v * t) * math.exp(-t / 0.010)
+             + 0.2 * math.sin(2.0 * math.pi * 520.0 * t) * math.exp(-t / 0.012))
+        muestras[i] = s * ataque
+    return muestras
 
 
 def charco(rng):
@@ -148,12 +132,12 @@ def main():
     os.makedirs(AUDIO, exist_ok=True)
     os.makedirs(TEXTURAS, exist_ok=True)
     rng = random.Random(2121)
-    for i, f0 in enumerate((980, 1180, 1390, 1620)):
-        guardar_wav(os.path.join(AUDIO, "Goteo_%d.wav" % i), plip(rng, f0))
-    for i in range(2):
-        guardar_wav(os.path.join(AUDIO, "Goteo_Chapa_%d.wav" % i), tic(rng))
-    charco(rng).save(os.path.join(TEXTURAS, "Charco.png"))
-    onda(rng).save(os.path.join(TEXTURAS, "Onda.png"))
+    for i, f0 in enumerate((1250, 1500)):
+        guardar_wav(os.path.join(AUDIO, "Goteo_%d.wav" % i), tic(rng, f0))
+    guardar_wav(os.path.join(AUDIO, "Goteo_Chapa_0.wav"), tin(rng))
+    texturas = random.Random(2122)  # aparte: si cambian los sonidos, las texturas no cambian
+    charco(texturas).save(os.path.join(TEXTURAS, "Charco.png"))
+    onda(texturas).save(os.path.join(TEXTURAS, "Onda.png"))
     print("Sonidos en %s y texturas en %s" % (AUDIO, TEXTURAS))
 
 

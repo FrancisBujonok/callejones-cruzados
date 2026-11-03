@@ -16,7 +16,7 @@ using UnityEngine.SceneManagement;
 /// Sonidos:
 /// - Ambiente_Viento (loop): viento en el callejon, un silbido en las rafagas y un rumor grave de ciudad.
 /// - Farol_Zumbido (loop): zumbido electrico de 50 Hz con chisporroteo. Va en cada farol, en 3D.
-/// - Paso_0..3: cuatro pasos distintos sobre piedra mojada.
+/// - Paso_0..3: cuatro pasos distintos sobre piedra mojada (Paso 22: mas apagados, sin el clic agudo).
 /// - Miedo_Drone (loop): acorde grave y disonante con una respiracion. Sube con el miedo.
 /// - Miedo_Latido: un latido (dos golpes). Se repite mas rapido cuanto mas miedo.
 /// - Evento_Descubrimiento: barrido que crece y un golpe metalico al descubrir un cambio.
@@ -91,7 +91,10 @@ public static partial class AtmosphereBuilder
         else
         {
             // Sonidos cortos: el pico a 0.9 y un final suave para que no corten con un "clic".
+            // Paso 22: tambien un principio suave (2 ms). Al quitar el desplazamiento (DC), la
+            // primera muestra podia quedar lejos de cero, y eso tambien suena como un clic.
             NormalizeSound(buffer, 0f, 0.9f);
+            FadeIn(buffer, 0.002f);
             FadeOut(buffer, 0.02f);
         }
 
@@ -162,6 +165,12 @@ public static partial class AtmosphereBuilder
         float gain = maxPeak / peak;
         if (targetRms > 0f) gain = Mathf.Min(targetRms / rms, gain);
         for (int i = 0; i < b.Length; i++) b[i] *= gain;
+    }
+
+    private static void FadeIn(float[] b, float seconds)
+    {
+        int n = Mathf.Min(b.Length, Mathf.RoundToInt(seconds * SampleRate));
+        for (int i = 0; i < n; i++) b[i] *= i / (float)n;
     }
 
     private static void FadeOut(float[] b, float seconds)
@@ -301,19 +310,28 @@ public static partial class AtmosphereBuilder
         }
     }
 
-    // Paso sobre piedra mojada: golpe de taco (clic agudo), cuerpo grave que baja de tono,
-    // roce de suela, punta del pie un instante despues y un poco de agua.
+    // Paso sobre piedra mojada (Paso 22, mas apagado). Antes el taco era un clic de ruido a
+    // 2200 Hz que arrancaba de golpe, y la punta otro a 2800 Hz: con la reverberacion del
+    // callejon sonaban metalicos, como si retumbaran. Ahora todo pasa por filtros pasa bajos:
+    // - taco: un golpe de ruido opaco (pasa bajos a 1300 Hz) que sube en 1.5 ms;
+    // - cuerpo: un "tum" grave (95 a 125 Hz) que baja un poco de tono;
+    // - roce de la suela: ruido en una banda ancha y baja (450 Hz);
+    // - punta del pie: otro golpecito opaco, mas debil, un instante despues;
+    // - agua: un chapoteo muy bajito.
+    // Al final, un pasa bajos general a 2800 Hz (dos pasadas) saca el brillo que quede.
+    // Resultado (Paso 22): el centro del sonido baja de unos 820 Hz a unos 460 Hz, y lo que hay
+    // por encima de 2 kHz, del 13 % de la energia al 2 %.
     private static void SynthStep(float[] o, System.Random r)
     {
-        float v = 0.85f + 0.3f * Rand(r);
-        float heel = 0.55f + 0.2f * Rand(r);
-        float toeTime = 0.075f + 0.03f * Rand(r);
-        float thumpFreq = 150f + 40f * Rand(r);
+        float v = 0.9f + 0.2f * Rand(r);
+        float toeTime = 0.08f + 0.03f * Rand(r);
+        float toeAmp = 0.25f + 0.15f * Rand(r);
+        float thumpFreq = 95f + 30f * Rand(r);
 
-        var click = new Svf(); click.Set(2200f * v, 0.8f);
-        var grit = new Svf(); grit.Set(750f * v, 0.7f);
-        var toe = new Svf(); toe.Set(2800f * v, 0.9f);
-        float splashLow = 0f;
+        float heelA = OnePole(1300f * v);
+        float toeA = OnePole(1400f * v);
+        var scuff = new Svf(); scuff.Set(450f * v, 0.5f);
+        float heelLow = 0f, heelLow2 = 0f, toeLow = 0f, toeLow2 = 0f, splashLow = 0f;
         double thumpPhase = 0.0;
 
         for (int i = 0; i < o.Length; i++)
@@ -321,24 +339,34 @@ public static partial class AtmosphereBuilder
             float t = i / (float)SampleRate;
             float noise = Bipolar(r);
 
-            float c = click.BandN(noise) * Mathf.Exp(-t / 0.006f) * heel;
+            heelLow += heelA * (noise - heelLow);
+            heelLow2 += heelA * (heelLow - heelLow2);
+            float heel = heelLow2 * (1f - Mathf.Exp(-t / 0.0015f)) * Mathf.Exp(-t / 0.02f) * 3.2f;
 
-            float f = thumpFreq * (0.6f + 0.4f * Mathf.Exp(-t / 0.025f));
+            float f = thumpFreq * (0.75f + 0.25f * Mathf.Exp(-t / 0.03f));
             thumpPhase += 2.0 * System.Math.PI * f / SampleRate;
-            float thump = (float)System.Math.Sin(thumpPhase) * Mathf.Exp(-t / 0.03f) * (1f - Mathf.Exp(-t / 0.002f)) * 0.45f;
+            float thump = (float)System.Math.Sin(thumpPhase) * (1f - Mathf.Exp(-t / 0.003f)) * Mathf.Exp(-t / 0.04f) * 0.35f;
 
-            float gt = t - 0.015f;
-            float g = grit.BandN(noise) * (gt > 0f ? (1f - Mathf.Exp(-gt / 0.008f)) * Mathf.Exp(-gt / 0.07f) * 0.6f : 0f);
+            float gt = t - 0.02f;
+            float g = scuff.BandN(noise) * (gt > 0f ? (1f - Mathf.Exp(-gt / 0.01f)) * Mathf.Exp(-gt / 0.06f) * 0.4f : 0f);
 
+            toeLow += toeA * (noise - toeLow);
+            toeLow2 += toeA * (toeLow - toeLow2);
             float tt = t - toeTime;
-            float to = toe.BandN(noise) * (tt > 0f ? Mathf.Exp(-tt / 0.005f) * 0.35f : 0f);
+            float toe = tt > 0f ? toeLow2 * (1f - Mathf.Exp(-tt / 0.0015f)) * Mathf.Exp(-tt / 0.012f) * 3.2f * toeAmp : 0f;
 
-            splashLow += 0.35f * (noise - splashLow);
-            float st = t - 0.01f;
-            float splash = (noise - splashLow) * (st > 0f ? Mathf.Exp(-st / 0.035f) * 0.12f : 0f);
+            splashLow += 0.25f * (noise - splashLow);
+            float st = t - 0.012f;
+            float splash = (noise - splashLow) * (st > 0f ? Mathf.Exp(-st / 0.03f) * 0.04f : 0f);
 
-            o[i] = c + thump + g + to + splash;
+            o[i] = heel + thump + g + toe + splash;
         }
+
+        // Pasa bajos general, ida y vuelta (sin corrimiento de fase).
+        float a = OnePole(2800f), y = 0f;
+        for (int i = 0; i < o.Length; i++) { y += a * (o[i] - y); o[i] = y; }
+        y = 0f;
+        for (int i = o.Length - 1; i >= 0; i--) { y += a * (o[i] - y); o[i] = y; }
     }
 
     // Drone del miedo: notas graves que chocan (La y La#, Mi y Fa: intervalos de semitono),
@@ -650,13 +678,33 @@ public static partial class AtmosphereBuilder
             if (footsteps == null) footsteps = Undo.AddComponent<FootstepAudio>(player.gameObject);
             Undo.RecordObject(footsteps, "Pasos");
             footsteps.Setup(steps, fear, stepSource, echo, s.pasos);
+            // Paso 22: los pasos un poco mas bajos (el valor queda guardado en la escena).
+            var so = new SerializedObject(footsteps);
+            so.FindProperty("volume").floatValue = 0.28f;
+            so.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(footsteps);
 
             // La zona de reverberacion viaja con el jugador: siempre esta adentro de ella.
+            // Paso 22: antes era el preset "Alley" de Unity: una cola casi tan fuerte como el sonido
+            // (reverb -4 mB), de 1.5 s y brillante (los agudos duraban casi lo mismo que los graves:
+            // decayHFRatio 0.86). Con los clics agudos de los pasos, sonaba metalico, como un tubo.
+            // Ahora es un callejon "a medida": la cola es mas corta (1 s), mas baja (-14 dB) y mas
+            // opaca (los agudos se apagan el doble de rapido), y los primeros rebotes, mas bajos.
             var reverbGo = new GameObject("Reverb");
             reverbGo.transform.SetParent(player, false);
             var zone = reverbGo.AddComponent<AudioReverbZone>();
-            zone.reverbPreset = AudioReverbPreset.Alley;
+            zone.reverbPreset = AudioReverbPreset.User;
+            zone.room = -1400;            // cuanto efecto se mezcla en total (mB: -1000 = -10 dB)
+            zone.roomHF = -1100;          // el efecto con menos agudos
+            zone.roomLF = 0;
+            zone.decayTime = 1.0f;        // segundos que tarda en apagarse la cola
+            zone.decayHFRatio = 0.5f;     // los agudos se apagan en la mitad de ese tiempo
+            zone.reflections = -1800;     // los primeros rebotes (las paredes cercanas), bajos
+            zone.reflectionsDelay = 0.01f;
+            zone.reverb = -1400;          // la cola
+            zone.reverbDelay = 0.02f;
+            zone.diffusion = 100f;        // ecos fundidos (como en Alley)
+            zone.density = 100f;
             zone.minDistance = 40f;
             zone.maxDistance = 50f;
         }

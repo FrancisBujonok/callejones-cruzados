@@ -12,6 +12,8 @@ using UnityEngine;
 /// - Mas alla del torii no hay paredes: el pasillo se abre a la niebla.
 /// - Barreras invisibles a los costados para no caerse por los bordes.
 /// - "Puerta" pasa a ser un resplandor calido al fondo: la salida se ve como una luz.
+///   Paso 22: el resplandor se apaga (queda su collider) y detras del torii se ve una calle
+///   (AtmosphereBuilder.Street.cs).
 /// - Una luz roja baja ilumina el torii desde adelante, como en la foto de referencia.
 /// </summary>
 public static partial class AtmosphereBuilder
@@ -74,6 +76,9 @@ public static partial class AtmosphereBuilder
         light.range = 6f;
         light.intensity = 3f;
         light.shadows = LightShadows.None;
+
+        // 6. Paso 22: la calle detras del torii y los edificios sobre las paredes.
+        BuildExitStreet(exit, m);
     }
 
     private static void BuildTorii(Transform torii, Mats m)
