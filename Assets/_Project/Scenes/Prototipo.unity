@@ -4601,6 +4601,7 @@ GameObject:
   - component: {fileID: 330585548}
   - component: {fileID: 330585549}
   - component: {fileID: 330585550}
+  - component: {fileID: 330585551}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -4783,6 +4784,44 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SkyFog
   verticalWeight: 0.6
+--- !u!114 &330585551
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 330585543}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: be9d115d3d0fed243898da9ea3c893bc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DripSystem
+  fear: {fileID: 1720921709}
+  treadmill: {fileID: 2033901516}
+  view: {fileID: 330585545}
+  quad: {fileID: 4300000, guid: a126fd0759ca427459a6b95d8c9f5495, type: 2}
+  dropMaterial: {fileID: 2100000, guid: e3ae84fa7fdb0a44cac9e487ca679ace, type: 2}
+  rippleMaterial: {fileID: 2100000, guid: 55539ccae3843964abfeaaf6ed981d8c, type: 2}
+  dropWidth: 0.016
+  floorClips:
+  - {fileID: 8300000, guid: 63606a94390ccdd42ad7fbec69758a84, type: 3}
+  - {fileID: 8300000, guid: 675e183392a75fe448f6f83c882c582b, type: 3}
+  - {fileID: 8300000, guid: c51ce6f5132adf747a87c66ac93e4c0a, type: 3}
+  - {fileID: 8300000, guid: ff232471beb0da649861989d6ee59e6b, type: 3}
+  metalClips:
+  - {fileID: 8300000, guid: 822ee99a091d4a84c9556f74bc0cd7b3, type: 3}
+  - {fileID: 8300000, guid: 34ed26c0207676d479cec21646749d14, type: 3}
+  volume: 0.35
+  maxDistance: 14
+  silenceFromFear: 0.5
+  stillSeconds: 3
+  silenceRadius: 12
+  freezeFromFear: 0.6
+  freezeChance: 0.35
+  freezeCooldown: 25
+  freezeAngle: 7
+  freezeDistance: 7
+  freezeSeconds: {x: 0.5, y: 1}
 --- !u!1 &347921236
 GameObject:
   m_ObjectHideFlags: 0
