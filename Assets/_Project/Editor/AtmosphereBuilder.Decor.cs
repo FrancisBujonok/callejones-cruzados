@@ -140,8 +140,9 @@ public static partial class AtmosphereBuilder
         BoxChild(go.transform, "Soporte", m.metal, new Vector3(0.24f, 0.45f, 0f), new Vector3(0.48f, 0.03f, 0.03f), Vector3.zero);
         BoxChild(go.transform, "Tabla", m.cable, new Vector3(0.24f, 0f, 0f), new Vector3(SignV2Size.x + 0.04f, SignV2Size.y + 0.04f, 0.05f), Vector3.zero);
         Material first = FirstOr(m.signsV2, m.cartel);
-        MeshRenderer front = SignFace(go.transform, "CaraA", new Vector3(0.24f, 0f, -0.027f), SignV2Size, 0f, first);
-        MeshRenderer back = SignFace(go.transform, "CaraB", new Vector3(0.24f, 0f, 0.027f), SignV2Size, 180f, first);
+        // Paso 21: 1.5 cm por fuera de la tabla (antes 2 mm: la tabla tapaba la cara a ratos).
+        MeshRenderer front = SignFace(go.transform, "CaraA", new Vector3(0.24f, 0f, -0.04f), SignV2Size, 0f, first);
+        MeshRenderer back = SignFace(go.transform, "CaraB", new Vector3(0.24f, 0f, 0.04f), SignV2Size, 180f, first);
         AddSignPick(go, m.signsV2, front, back);
     }
 

@@ -55,6 +55,9 @@ public static partial class AtmosphereBuilder
 
         // Paso 20: la niebla toma el color del cielo (lo lejano y lo alto se funden con el).
         if (cam.GetComponent<SkyFog>() == null) Undo.AddComponent<SkyFog>(cam.gameObject);
+
+        // Paso 21: el goteo (gotas, ondas y sonido de todos los DripSource).
+        SetupDrips(cam);
     }
 
     /// <summary>

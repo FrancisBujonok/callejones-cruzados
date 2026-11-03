@@ -119,7 +119,9 @@ public static partial class AtmosphereBuilder
         // 3. Neon parado sobre la pared derecha, de cara al pasillo: letras sueltas contra el cielo.
         Transform neon = Group(variants, "Neon");
         // Paso 20: pegado a la fachada del primer piso (antes, parado sobre la pared).
-        CreateRoofNeon(neon, "Letras", new Vector3(WallInnerX - 0.02f, 3f, -1.4f), 90f, m);
+        // Paso 21: 8 cm delante de la fachada, con los rieles a 3 cm (antes las letras quedaban a
+        // 2 cm y los rieles adentro del edificio: las letras parpadeaban contra la fachada).
+        CreateRoofNeon(neon, "Letras", new Vector3(WallInnerX - 0.08f, 3f, -1.4f), 90f, m);
         CablesChild(neon, "Modulo_Neon", new List<Span>
         {
             new Span(new Vector3(-CableEdge, 3.74f, 2.4f), new Vector3(CableEdge, 3.7f, 1.6f), 0.3f),
@@ -209,7 +211,7 @@ public static partial class AtmosphereBuilder
         else if ((closed & Side.E) != 0)
             CreateProjectingSign(b, "CajaDeLuz", new Vector3(WallInnerX, 2.85f, -0.95f), true, SignSSize, m);
         else if ((closed & Side.N) != 0)
-            CreateRoofNeon(b, "Neon", new Vector3(0f, 3f, WallInnerX - 0.02f), 0f, m);
+            CreateRoofNeon(b, "Neon", new Vector3(0f, 3f, WallInnerX - 0.08f), 0f, m); // Paso 21: 8 cm de la fachada
 
         b.gameObject.SetActive(false);
         variants.gameObject.AddComponent<DecorRandomizer>().Setup(new[] { a.gameObject, b.gameObject });

@@ -97,7 +97,8 @@ public static partial class AtmosphereBuilder
         Transform options = Group(slot.transform, "Opciones");
         GameObject persiana = CreateShutterYaw(options, "Persiana", Vector3.zero, 0f, shutter, m);
         // Papelitos pegados en la persiana (Paso 18). Solo en esta: la del Cruce es de la anomalia.
-        CreateFlyers(persiana.transform, "Papelitos", new Vector3(0.045f, 1.3f, 0.55f), m);
+        // Paso 21: 2 cm por delante de las crestas de la persiana (antes 5 mm).
+        CreateFlyers(persiana.transform, "Papelitos", new Vector3(0.06f, 1.3f, 0.55f), m);
         var list = new List<GameObject>
         {
             persiana,
@@ -146,8 +147,9 @@ public static partial class AtmosphereBuilder
         BoxChild(t, "CanoB", m.metal, new Vector3(0.05f, 1.2f, 0.85f), new Vector3(0.06f, 2.4f, 0.06f), Vector3.zero);
         BoxChild(t, "CanoArriba", m.metal, new Vector3(0.05f, 2.3f, 0.3f), new Vector3(0.06f, 0.06f, 1.0f), Vector3.zero);
         BoxChild(t, "MedidorGas", m.metal, new Vector3(0.06f, 1.4f, 0.3f), new Vector3(0.12f, 0.35f, 0.25f), Vector3.zero);
-        CreatePoster(t, "Afiche", new Vector3(0.012f, 1.5f, -0.4f), m); // persona buscada (o el gato), en tres idiomas
-        CreateFlyers(t, "Papelitos", new Vector3(0.012f, 0.85f, 0.1f), m);
+        // Paso 21: a 2 cm de la pared (antes 1.2 cm).
+        CreatePoster(t, "Afiche", new Vector3(0.02f, 1.5f, -0.4f), m); // persona buscada (o el gato), en tres idiomas
+        CreateFlyers(t, "Papelitos", new Vector3(0.02f, 0.85f, 0.1f), m);
         BoxChild(t, "CajaElectrica", m.metal, new Vector3(0.05f, 1.95f, -0.75f), new Vector3(0.1f, 0.45f, 0.35f), Vector3.zero);
         BoxChild(t, "LuzRoja", m.luzRoja, new Vector3(0.105f, 2.05f, -0.65f), new Vector3(0.01f, 0.03f, 0.03f), Vector3.zero);
         return t.gameObject;

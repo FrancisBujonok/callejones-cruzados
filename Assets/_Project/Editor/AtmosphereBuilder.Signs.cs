@@ -208,7 +208,8 @@ public static partial class AtmosphereBuilder
         Transform t = Group(parent, name);
         t.localPosition = center;
         BoxChild(t, "Marco", m.cable, new Vector3(0.015f, 0f, 0f), new Vector3(0.03f, SignV5Size.y + 0.03f, SignV5Size.x + 0.03f), Vector3.zero);
-        MeshRenderer face = SignFace(t, "Cara", new Vector3(-0.002f, 0f, 0f), SignV5Size, 90f, FirstOr(m.signsV5, m.cartel));
+        // Paso 21: 1.5 cm por delante del marco (antes 2 mm: de lejos el marco la tapaba a ratos).
+        MeshRenderer face = SignFace(t, "Cara", new Vector3(-0.015f, 0f, 0f), SignV5Size, 90f, FirstOr(m.signsV5, m.cartel));
         AddSignPick(t.gameObject, m.signsV5, face);
     }
 
@@ -247,7 +248,8 @@ public static partial class AtmosphereBuilder
         DestroyChild(torii, "Placa");
         DestroyChild(torii, "PlacaLetras");
         BoxChild(torii, "Placa", m.cable, new Vector3(0f, 2.75f, -0.07f), new Vector3(SignTSize.x + 0.08f, SignTSize.y + 0.08f, 0.04f), Vector3.zero);
-        SignFace(torii, "PlacaLetras", new Vector3(0f, 2.75f, -0.091f), SignTSize, 0f, m.signTorii != null ? m.signTorii : m.cartel);
+        // Paso 21: 1.5 cm por delante de la placa (antes 1 mm).
+        SignFace(torii, "PlacaLetras", new Vector3(0f, 2.75f, -0.105f), SignTSize, 0f, m.signTorii != null ? m.signTorii : m.cartel);
     }
 
     /// <summary>Para el menu: cambia solo la placa del torii que ya esta en la escena (sin tocar su sonido).</summary>

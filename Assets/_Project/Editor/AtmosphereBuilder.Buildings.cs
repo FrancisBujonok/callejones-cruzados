@@ -32,6 +32,11 @@ using UnityEngine.Rendering;
 /// - Sin colliders: no frenan al jugador ni tapan la linea de vision de VisibilityChecker.
 /// - Cada lado es como mucho tres mallas (fachada, fondo y detalles) con tres materiales.
 ///
+/// Paso 21: las ventanas se prenden y se apagan (cada tramo de fachada lleva en el color de
+/// vertice el numero de su ventana; ver PS1LitForwardPass.hlsl y WindowSeedPick) y hay goteo:
+/// aires acondicionados de los pisos 5 a 7, el techado y la ropa del patio, con charcos abajo
+/// (AtmosphereBuilder.Drips.cs).
+///
 /// Espacio de lado: cada edificio se arma con la pared en x = 0 y el pasillo hacia +X, a lo largo
 /// de z (centrado) y con el piso en y = 0, como las fachadas. Despues se gira a su pared.
 /// </summary>
@@ -90,6 +95,15 @@ public static partial class AtmosphereBuilder
         // se lean contra la fachada oscura.
         m.detalles = Mat("Detalles", Color.white, 0.2f, 0f, null, Color.white * 0.12f, palette, palette);
         m.tuboLuz = Mat("TuboFluorescente", Hex("#E6F5E0"), 0.3f, 0f, null, Hex("#E6F5E0") * 1.8f);
+
+        // Paso 21: las ventanas de estos dos materiales se prenden y se apagan en el shader.
+        foreach (Material facade in new[] { m.fachada, m.fachadaFondo })
+        {
+            facade.EnableKeyword("_CALLEJONES_WINDOWS");
+            EditorUtility.SetDirty(facade);
+        }
+        // Paso 21: carteles, placas y vidrios se dibujan apenas por delante de su pared.
+        ApplyDecalOffsets(m);
     }
 
     private static Texture2D LoadBuildingTexture(string name)
@@ -107,13 +121,21 @@ public static partial class AtmosphereBuilder
     {
         DestroyChild(deco, "Edificios");
         Transform group = Group(deco, "Edificios");
-        BuildSideChoices(group, "Izq", new Vector3(-WallInnerX, 0f, 0f), 0f, "Recto_Izq", 6f, 1100, true, m);
-        BuildSideChoices(group, "Der", new Vector3(WallInnerX, 0f, 0f), 180f, "Recto_Der", 6f, 2200, true, m);
+        // El tramo techado (una de las variantes de arriba): si esta prendido, las gotas de los
+        // aires caen sobre la chapa. Del lado derecho, donde falta media chapa, siguen de largo.
+        Transform roof = deco.Find("Alto/Variantes/Techado");
+        GameObject roofObject = roof != null ? roof.gameObject : null;
+        BuildSideChoices(group, "Izq", new Vector3(-WallInnerX, 0f, 0f), 0f, "Recto_Izq", 6f, 1100, true, m, roofObject, false);
+        BuildSideChoices(group, "Der", new Vector3(WallInnerX, 0f, 0f), 180f, "Recto_Der", 6f, 2200, true, m, roofObject, true);
+        BuildRectoDrips(deco); // Paso 21: los bordes de los toldos
     }
 
-    /// <summary>Las tres alturas de un lado (4, 7 y 10 pisos) y su DecorRandomizer.</summary>
+    /// <summary>
+    /// Las tres alturas de un lado (4, 7 y 10 pisos), su DecorRandomizer y su WindowSeedPick.
+    /// roof y roofGap: ver BuildBuildingSide.
+    /// </summary>
     private static void BuildSideChoices(Transform parent, string name, Vector3 wallPoint, float yaw, string meshPrefix,
-        float length, int seed, bool overhangs, Mats m)
+        float length, int seed, bool overhangs, Mats m, GameObject roof = null, bool roofGap = false)
     {
         Transform side = Group(parent, name);
         side.localPosition = wallPoint;
@@ -122,11 +144,21 @@ public static partial class AtmosphereBuilder
         foreach (int floors in FloorChoices)
         {
             Transform option = Group(side, "Pisos" + floors);
-            BuildBuildingSide(option, meshPrefix + "_P" + floors, length, floors, seed + floors, overhangs, m);
+            BuildBuildingSide(option, meshPrefix + "_P" + floors, length, floors, seed + floors, overhangs, m, roof, roofGap);
             options.Add(option.gameObject);
         }
         for (int i = 1; i < options.Count; i++) options[i].SetActive(false); // en el editor, el bajo
         side.gameObject.AddComponent<DecorRandomizer>().Setup(options.ToArray());
+        AddWindowSeedPick(side);
+    }
+
+    /// <summary>Paso 21: el numero de edificio de las ventanas (va despues del DecorRandomizer).</summary>
+    private static void AddWindowSeedPick(Transform side)
+    {
+        var renderers = new List<Renderer>();
+        foreach (Renderer r in side.GetComponentsInChildren<Renderer>(true))
+            if (r.name == "Fachada" || r.name == "Fondo") renderers.Add(r);
+        side.gameObject.AddComponent<WindowSeedPick>().Setup(renderers.ToArray());
     }
 
     // ------------------------------------------------------------------ piezas de 3 x 3 y tapa
@@ -147,6 +179,7 @@ public static partial class AtmosphereBuilder
                 side.localPosition = wallPoint;
                 side.localRotation = Quaternion.Euler(0f, yaw, 0f);
                 BuildBuildingSide(side, "Patio_" + s, 3f, MaxFloors, 3300, false, m);
+                AddWindowSeedPick(side);
                 continue;
             }
             // Los lados de las piezas comparten mallas (dos versiones, A y B, segun el lado).
@@ -163,6 +196,7 @@ public static partial class AtmosphereBuilder
         side.localPosition = new Vector3(0f, 0f, -0.05f);
         side.localRotation = Quaternion.Euler(0f, 90f, 0f); // la fachada mira hacia -Z, como la persiana
         BuildBuildingSide(side, "Tapa", 3f, MaxFloors, 6600, false, m);
+        AddWindowSeedPick(side);
     }
 
     /// <summary>Columna de las esquinas abiertas, de 3 a 30 m.</summary>
@@ -201,6 +235,12 @@ public static partial class AtmosphereBuilder
                 float w = 0.3f + 0.25f * (float)rng.NextDouble(), h = 0.45f + 0.35f * (float)rng.NextDouble();
                 Vector3 along = new Vector3(b.x - a.x, 0f, b.z - a.z).normalized;
                 cloth.Panel(p + Vector3.down * (h * 0.5f), along, w, h, ClothColors[rng.Next(ClothColors.Length)]);
+                // Paso 21: la ropa recien colgada (la de la soga mas baja) todavia gotea.
+                if (i == 0 && k < 2)
+                {
+                    AddDrip(patio, "GoteoRopa" + k, new Vector3(p.x, p.y - h - 0.02f, p.z), new Vector2(2f, 5f), null, 0f);
+                    AddPuddle(patio, "CharcoRopa" + k, new Vector3(p.x, 0f, p.z), 0.45f + 0.1f * k, 40f + 75f * k);
+                }
             }
         }
         CablesChild(patio, "Patio_Sogas", lines, m);
@@ -308,6 +348,12 @@ public static partial class AtmosphereBuilder
         d.Box(new Vector3(0.9f, y - 0.25f, 0f), new Vector3(0.05f, 0.05f, 6f), PalCano);
         DraftChild(roof, "Techo", "Edif_Techado", d, m.detalles);
 
+        // Paso 21: dos goteras, en la junta entre dos chapas y en el borde de la media chapa.
+        AddDrip(roof, "GoteraJunta", new Vector3(-0.45f, y - 0.06f, 1.5f), new Vector2(1.6f, 4f), null, 0f);
+        AddPuddle(roof, "CharcoJunta", new Vector3(-0.45f, 0f, 1.5f), 0.75f, 20f);
+        AddDrip(roof, "GoteraBorde", new Vector3(-0.03f, y - 0.03f, -0.6f), new Vector2(2.2f, 5.5f), null, 0f);
+        AddPuddle(roof, "CharcoBorde", new Vector3(-0.03f, 0f, -0.6f), 0.6f, 130f);
+
         // Tubos fluorescentes (brillan) con sus alambres, y la luz fria que tiran.
         foreach (float z in new[] { -1.2f, 1.3f })
         {
@@ -324,9 +370,16 @@ public static partial class AtmosphereBuilder
     /// Arma un edificio en espacio de lado y lo cuelga de 'parent' como hasta tres mallas.
     /// floors cuenta la planta baja (que ya existe): se arman los pisos 1 a floors - 1.
     /// </summary>
-    private static void BuildBuildingSide(Transform parent, string meshName, float length, int floors, int seed, bool overhangs, Mats m)
+    /// Paso 21: roof es el techado de la pieza (o null); si esta prendido, las gotas de los aires
+    /// caen sobre la chapa. roofGap: este lado es el derecho del recto, donde falta media chapa
+    /// sobre z local de 0 a 1.5: ahi las gotas siguen de largo.
+    private static void BuildBuildingSide(Transform parent, string meshName, float length, int floors, int seed, bool overhangs, Mats m,
+        GameObject roof = null, bool roofGap = false)
     {
         var rng = new System.Random(seed);
+        // Aparte, para no cambiar el resto del sorteo (ventanas y detalles quedan como antes).
+        var seedRng = new System.Random(seed * 31 + 7);
+        var drips = new List<Vector3>();
         var front = new MeshDraft();
         var back = new MeshDraft();
         var detail = new MeshDraft();
@@ -342,8 +395,8 @@ public static partial class AtmosphereBuilder
             for (int j = 0; j < bays; j++)
             {
                 float z0 = -half + j * 3f;
-                front.FacadeQuad(u, z0, z0 + 3f, y0, y0 + FloorHeight, AtlasCell(style, PickWindow(rng, false)));
-                BayDetails(detail, rng, u, y0, z0 + 1.5f, k);
+                front.FacadeQuad(u, z0, z0 + 3f, y0, y0 + FloorHeight, AtlasCell(style, PickWindow(rng, false)), (float)seedRng.NextDouble());
+                BayDetails(detail, rng, u, y0, z0 + 1.5f, k, drips);
             }
             detail.Box(new Vector3(u + 0.05f, y0 + 0.06f, 0f), new Vector3(0.1f, 0.12f, length), PalConcreto);
         }
@@ -395,7 +448,7 @@ public static partial class AtmosphereBuilder
             for (int j = 0; j < bays; j++)
             {
                 float z0 = -half + j * 3f;
-                back.FacadeQuad(-0.08f, z0, z0 + 3f, y0, y0 + FloorHeight, AtlasCell((style + 1) % 4, PickWindow(rng, true)));
+                back.FacadeQuad(-0.08f, z0, z0 + 3f, y0, y0 + FloorHeight, AtlasCell((style + 1) % 4, PickWindow(rng, true)), (float)seedRng.NextDouble());
             }
         }
 
@@ -403,6 +456,19 @@ public static partial class AtmosphereBuilder
         DraftChild(parent, "Fachada", prefix + "_Fachada", front, m.fachada);
         DraftChild(parent, "Fondo", prefix + "_Fondo", back, m.fachadaFondo);
         DraftChild(parent, "Detalles", prefix + "_Detalles", detail, m.detalles);
+
+        // Paso 21: la mitad de los aires de los pisos 5 a 7 gotea (desde ahi la gota no toca los
+        // toldos ni las rejas de abajo), con su charco en el piso.
+        var dripRng = new System.Random(seed * 7 + 3);
+        if (!overhangs) drips.Clear(); // sin voladizos, la gota pasaria por los aires de abajo
+        for (int i = 0; i < drips.Count; i++)
+        {
+            if (dripRng.NextDouble() < 0.5) continue;
+            Vector3 p = drips[i];
+            GameObject below = roofGap && p.z >= 0f ? null : roof;
+            AddDrip(parent, "GoteoAire" + i, p, new Vector2(4f, 10f), below, 3.97f);
+            AddPuddle(parent, "CharcoAire" + i, new Vector3(p.x, 0f, p.z), 0.5f + 0.2f * (float)dripRng.NextDouble(), (float)dripRng.NextDouble() * 360f);
+        }
     }
 
     /// <summary>
@@ -410,7 +476,7 @@ public static partial class AtmosphereBuilder
     /// acondicionado o una cana con ropa colgada. En el primer piso solo ropa (mas abajo estan
     /// los carteles, los cables y el techado).
     /// </summary>
-    private static void BayDetails(MeshDraft d, System.Random rng, float u, float y0, float zc, int floor)
+    private static void BayDetails(MeshDraft d, System.Random rng, float u, float y0, float zc, int floor, List<Vector3> drips = null)
     {
         double r = rng.NextDouble();
         if (floor == 1) r = 0.5 + r * 0.5; // primer piso: ropa o nada
@@ -455,6 +521,9 @@ public static partial class AtmosphereBuilder
             d.Box(new Vector3(u + 0.45f, y0 + 0.62f, z), new Vector3(0.02f, 0.3f, 0.5f), PalCano); // rejilla
             d.Box(new Vector3(u + 0.2f, y0 + 0.37f, z - 0.25f), new Vector3(0.4f, 0.03f, 0.03f), PalReja);
             d.Box(new Vector3(u + 0.2f, y0 + 0.37f, z + 0.25f), new Vector3(0.4f, 0.03f, 0.03f), PalReja);
+            // El desague, en la punta del aire que queda lejos de la ventana.
+            if (drips != null && floor >= 5 && floor <= 7)
+                drips.Add(new Vector3(u + 0.22f, y0 + 0.37f, z + (z > zc ? 0.3f : -0.3f)));
         }
         else if (r < 0.75)
         {
@@ -505,6 +574,9 @@ public static partial class AtmosphereBuilder
         Mesh mesh = GetOrCreateMesh(meshName);
         mesh.indexFormat = draft.v.Count > 65000 ? IndexFormat.UInt32 : IndexFormat.UInt16;
         Apply(mesh, draft.v, draft.n, draft.t, draft.uv);
+        // Paso 21: r = numero de la ventana, g = 1 si el tramo es una ventana (el resto, 0).
+        if (draft.c.Count == draft.v.Count) mesh.SetColors(draft.c);
+        EditorUtility.SetDirty(mesh);
         GameObject go = MeshChild(parent, objectName, mesh, mat, Vector3.zero);
         go.GetComponent<MeshRenderer>().shadowCastingMode = ShadowCastingMode.Off;
     }
@@ -518,20 +590,24 @@ public static partial class AtmosphereBuilder
         public readonly List<Vector3> n = new List<Vector3>();
         public readonly List<Vector2> uv = new List<Vector2>();
         public readonly List<int> t = new List<int>();
+        public readonly List<Color> c = new List<Color>();
+        private static readonly Color NotWindow = new Color(0f, 0f, 0f, 1f);
 
         /// <summary>Cuadrado de un solo color (todas las esquinas con el mismo UV).</summary>
         public void Quad(Vector3 a, Vector3 b, Vector3 c, Vector3 d, Vector3 outward, Vector2 color)
         {
             AddQuad(v, n, t, a, b, c, d, outward);
-            for (int i = 0; i < 4; i++) uv.Add(color);
+            for (int i = 0; i < 4; i++) { uv.Add(color); this.c.Add(NotWindow); }
         }
 
         /// <summary>
         /// Tramo de fachada mirando hacia +X, en x = u. Visto desde el pasillo, z crece hacia la
         /// derecha, asi la textura no queda espejada.
         /// </summary>
-        public void FacadeQuad(float u, float z0, float z1, float y0, float y1, Rect cell)
+        public void FacadeQuad(float u, float z0, float z1, float y0, float y1, Rect cell, float windowSeed)
         {
+            var windowColor = new Color(windowSeed, 1f, 0f, 1f);
+            for (int i = 0; i < 4; i++) c.Add(windowColor);
             AddQuad(v, n, t, new Vector3(u, y0, z0), new Vector3(u, y0, z1), new Vector3(u, y1, z1), new Vector3(u, y1, z0), Vector3.right);
             uv.Add(new Vector2(cell.xMin, cell.yMin));
             uv.Add(new Vector2(cell.xMax, cell.yMin));
@@ -577,7 +653,7 @@ public static partial class AtmosphereBuilder
                 Quad(foot + d0, foot + d1, top + d1, top + d0, (d0 + d1).normalized, c);
                 int first = v.Count;
                 AddTriangle(v, n, t, top, top + d0, top + d1, Vector3.up);
-                for (int k = first; k < v.Count; k++) uv.Add(c);
+                for (int k = first; k < v.Count; k++) { uv.Add(c); this.c.Add(NotWindow); }
             }
         }
     }
