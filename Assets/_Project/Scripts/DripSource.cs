@@ -7,6 +7,9 @@ using UnityEngine;
 ///
 /// Va en un objeto vacio dentro de la pieza, en el lugar de donde cae la gota. Si la pieza o la
 /// altura del edificio que lo contiene se apagan, el punto deja de gotear (OnDisable).
+///
+/// Paso 22: solo los puntos con charco abajo dejan onda al caer en el piso (ripple); los demas
+/// (los aires de los pisos altos) solo suenan.
 /// </summary>
 public class DripSource : MonoBehaviour
 {
@@ -16,19 +19,23 @@ public class DripSource : MonoBehaviour
     [SerializeField] private GameObject roof;
     [Tooltip("Altura de ese techo, medida desde el piso de la pieza.")]
     [SerializeField] private float roofHeight = 3.97f;
+    [Tooltip("Si hay un charco abajo: al caer en el piso deja una onda. Sin charco, solo suena.")]
+    [SerializeField] private bool ripple = true;
 
     /// <summary>Cuando cae la proxima gota (Time.time). Lo maneja DripSystem.</summary>
     public float NextTime { get; set; }
     public Vector2 Interval => interval;
+    public bool Ripple => ripple;
 
     private Transform piece;
 
     /// <summary>Lo usa la herramienta de editor.</summary>
-    public void Setup(Vector2 newInterval, GameObject newRoof, float newRoofHeight)
+    public void Setup(Vector2 newInterval, GameObject newRoof, float newRoofHeight, bool newRipple = true)
     {
         interval = newInterval;
         roof = newRoof;
         roofHeight = newRoofHeight;
+        ripple = newRipple;
     }
 
     /// <summary>Altura del piso de la pieza (todas las piezas tienen el piso en y = 0).</summary>

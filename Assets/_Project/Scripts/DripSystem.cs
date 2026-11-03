@@ -4,12 +4,15 @@ using UnityEngine;
 /// <summary>
 /// Paso 21: el goteo. Va en la Main Camera.
 ///
-/// Recorre los DripSource activos (bordes de toldos, aires acondicionados, el techado, ropa
-/// mojada) y cada tanto suelta una gota: cae con gravedad, y al llegar abajo suena y, si cae
-/// en el piso, deja una onda que se abre y se deshace. Si cae sobre la chapa del techado suena
+/// Recorre los DripSource activos (aires acondicionados, el techado, ropa mojada) y cada tanto
+/// suelta una gota: cae con gravedad, y al llegar abajo suena y, si cae en un charco, deja una
+/// onda que se abre y se deshace. Si cae sobre la chapa del techado suena
 /// distinto, y si el jugador pasa justo debajo, le cae en la cabeza (suena al lado de la oreja).
 ///
 /// Gotas, ondas y sonidos salen de grupos fijos que se reusan (nada se crea durante el juego).
+///
+/// Paso 22: solo gotean los puntos a menos de activeRadius del jugador (los que estan lejos no
+/// se oyen igual, y asi no se juntan gotas de todo el laberinto), y el sonido es mas bajo.
 ///
 /// Dos cosas sutiles con el miedo:
 /// - Con miedo alto, si te quedas quieto unos segundos, el goteo cerca tuyo se calla. Vuelve
@@ -47,9 +50,11 @@ public class DripSystem : MonoBehaviour
     [Header("Sonido")]
     [SerializeField] private AudioClip[] floorClips;
     [SerializeField] private AudioClip[] metalClips;
-    [SerializeField, Range(0f, 1f)] private float volume = 0.35f;
+    [SerializeField, Range(0f, 1f)] private float volume = 0.22f;
     [Tooltip("Mas lejos que esto no se oye.")]
-    [SerializeField] private float maxDistance = 14f;
+    [SerializeField] private float maxDistance = 10f;
+    [Tooltip("Solo gotean los puntos a menos de esta distancia del jugador.")]
+    [SerializeField] private float activeRadius = 16f;
 
     [Header("Con miedo: silencio si te quedas quieto")]
     [SerializeField, Range(0f, 1f)] private float silenceFromFear = 0.5f;
@@ -79,7 +84,7 @@ public class DripSystem : MonoBehaviour
         public Vector3 pos;
         public float speed, landY, frozenUntil;
         public Hit hit;
-        public bool active, freezeChecked;
+        public bool active, freezeChecked, ripple;
     }
 
     private class Ripple
@@ -202,6 +207,11 @@ public class DripSystem : MonoBehaviour
             DripSource s = sources[i];
             if (s == null) { sources.RemoveAt(i); continue; }
             if (now < s.NextTime) continue;
+            if ((s.transform.position - player).sqrMagnitude > activeRadius * activeRadius)
+            {
+                s.NextTime = now + Random.Range(s.Interval.x, s.Interval.y);
+                continue;
+            }
             if (Silenced && (s.transform.position - player).sqrMagnitude < silenceRadius * silenceRadius)
             {
                 // Como si contuviera la respiracion: vuelve un rato despues de que te muevas.
@@ -247,6 +257,7 @@ public class DripSystem : MonoBehaviour
         }
 
         d.pos = start;
+        d.ripple = source.Ripple;
         d.speed = 0f;
         d.frozenUntil = 0f;
         d.freezeChecked = false;
@@ -324,7 +335,7 @@ public class DripSystem : MonoBehaviour
         switch (hit)
         {
             case Hit.Head:
-                Play(floorClips, view.transform.position + view.transform.right * 0.15f, volume * 1.5f, Random.Range(1.15f, 1.3f), 0.4f);
+                Play(floorClips, view.transform.position + view.transform.right * 0.15f, volume * 1.3f, Random.Range(1.15f, 1.3f), 0.4f);
                 break;
             case Hit.Metal:
                 Play(metalClips, d.pos, volume * 0.8f, Random.Range(0.9f, 1.15f), 1f);
@@ -333,8 +344,8 @@ public class DripSystem : MonoBehaviour
                 Play(floorClips, d.pos, volume * 0.7f, Random.Range(1.1f, 1.3f), 1f);
                 break;
             default:
-                Play(floorClips, d.pos, volume, Random.Range(0.88f, 1.12f), 1f);
-                SpawnRipple(d.pos);
+                Play(floorClips, d.pos, volume, Random.Range(0.9f, 1.1f), 1f);
+                if (d.ripple) SpawnRipple(d.pos); // sin charco abajo, solo suena
                 break;
         }
     }
