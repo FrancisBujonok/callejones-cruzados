@@ -1,5 +1,6 @@
 // Callejones: copia de SimpleLitForwardPass.hlsl (URP 17.3) con dos agregados estilo PS1,
-// marcados con "PS1:", y la niebla del color del cielo (Paso 20), marcada con "CIELO:".
+// marcados con "PS1:", la niebla del color del cielo (Paso 20), marcada con "CIELO:", y las
+// ventanas que se prenden y se apagan (Paso 21), marcadas con "VENTANAS:".
 // El resto es el codigo original de Unity.
 #ifndef CALLEJONES_PS1_LIT_PASS_INCLUDED
 #define CALLEJONES_PS1_LIT_PASS_INCLUDED
@@ -92,6 +93,53 @@ half3 CallejonesMixFog(half3 color, float3 positionWS, float fogCoord)
     return MixFog(color, fogCoord);
 }
 
+// VENTANAS (Paso 21): solo en los materiales con la palabra _CALLEJONES_WINDOWS (Fachada y
+// FachadaFondo). Cada tramo de fachada es una celda del atlas (columna = tipo de ventana:
+// 0 apagada, 1 luz calida, 2 tele, 3 altar). La malla guarda en el color de vertice un numero
+// por ventana (r) y si el tramo es una ventana (g = 1). Aca, en el vertice, se elige otra
+// columna corriendo la UV: la ventana se prende, se apaga o cambia, sin tocar la malla.
+// - Cada ventana tiene su propio periodo (40 a 120 s); en cada periodo, una de cada cinco
+//   cambia: si estaba prendida se apaga, si estaba apagada se prende.
+// - Con miedo se van apagando (siempre las mismas, de a una), como la ciudad del cielo.
+// - Con mucho miedo, alguna ventana apagada muestra la lucecita roja de un altar.
+// _CallejonesWindowTime lo escribe SkyDirector (se congela durante un bucle) y
+// _CallejonesWindowSeed lo pone WindowSeedPick en cada edificio (asi dos edificios iguales
+// no cambian a la vez; en un bucle, todas las copias usan el mismo).
+float _CallejonesWindowTime;
+float _CallejonesWindowSeed;
+float _CallejonesSkyFear;
+
+float CallejonesHash(float n)
+{
+    return frac(sin(n * 12.9898 + 4.1414) * 43758.5453);
+}
+
+float2 CallejonesWindowUV(float2 uv, float4 color)
+{
+    if (color.g < 0.5)
+        return uv;
+    float seed = CallejonesHash(color.r * 113.1 + _CallejonesWindowSeed * 71.7);
+    float column = floor(uv.x * 4.0);
+    float period = lerp(40.0, 120.0, CallejonesHash(seed * 7.13 + 1.0));
+    float epoch = floor((_CallejonesWindowTime + seed * period) / period);
+    float newColumn = column;
+    if (CallejonesHash(seed * 13.7 + epoch * 0.618) < 0.2)
+    {
+        if (column > 0.5)
+            newColumn = 0.0;
+        else
+        {
+            float k = CallejonesHash(seed * 3.1 + epoch * 1.37);
+            newColumn = k < 0.6 ? 1.0 : (k < 0.9 ? 2.0 : 3.0);
+        }
+    }
+    if (newColumn > 0.5 && CallejonesHash(seed * 31.1) < _CallejonesSkyFear * 0.6)
+        newColumn = 0.0;
+    if (newColumn < 0.5 && CallejonesHash(seed * 57.3) < saturate(_CallejonesSkyFear - 0.6) * 0.25)
+        newColumn = 3.0;
+    return float2(uv.x + (newColumn - column) * 0.25, uv.y);
+}
+
 struct Attributes
 {
     float4 positionOS    : POSITION;
@@ -100,6 +148,9 @@ struct Attributes
     float2 texcoord      : TEXCOORD0;
     float2 staticLightmapUV    : TEXCOORD1;
     float2 dynamicLightmapUV    : TEXCOORD2;
+#if defined(_CALLEJONES_WINDOWS)
+    float4 color         : COLOR; // VENTANAS: r = numero de la ventana, g = 1 si es una ventana
+#endif
     UNITY_VERTEX_INPUT_INSTANCE_ID
 };
 
@@ -242,6 +293,9 @@ Varyings LitPassVertexSimple(Attributes input)
 #endif
 
     output.uv = TRANSFORM_TEX(input.texcoord, _BaseMap);
+#if defined(_CALLEJONES_WINDOWS)
+    output.uv = CallejonesWindowUV(output.uv, input.color); // VENTANAS: se prenden y se apagan
+#endif
     output.positionWS.xyz = vertexInput.positionWS;
     output.positionCS = PS1SnapVertex(vertexInput.positionCS); // PS1: vertices en grilla
 

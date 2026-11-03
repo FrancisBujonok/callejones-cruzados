@@ -13,6 +13,9 @@ using UnityEngine;
 /// No toca el material del cielo (asi nada de esto queda guardado en el archivo): escribe
 /// variables globales que lee el shader Callejones/Cielo Nocturno.
 /// Durante un bucle el cielo se queda quieto: si cambiara entre dos pasadas, pareceria la anomalia.
+///
+/// Paso 21: tambien lleva el reloj de las ventanas de los edificios (_CallejonesWindowTime), que
+/// se congela en los bucles por lo mismo. Las ventanas usan el miedo del cielo para apagarse.
 /// </summary>
 [DisallowMultipleComponent]
 public class SkyDirector : MonoBehaviour
@@ -21,6 +24,7 @@ public class SkyDirector : MonoBehaviour
     private static readonly int WheelId = Shader.PropertyToID("_CallejonesWheelAngle");
     private static readonly int BulbId = Shader.PropertyToID("_CallejonesBulbStep");
     private static readonly int MoonId = Shader.PropertyToID("_CallejonesMoonOffset");
+    private static readonly int WindowTimeId = Shader.PropertyToID("_CallejonesWindowTime");
 
     [Header("Referencias")]
     [SerializeField] private FearMeter fear;
@@ -53,7 +57,7 @@ public class SkyDirector : MonoBehaviour
     public float MoonOffset { get; private set; }
     public int MoonJumps { get; private set; }
 
-    private float wheelAngle, bulbStep, unseen;
+    private float wheelAngle, bulbStep, unseen, windowTime;
     private bool seenSinceMove = true;
 
     /// <summary>Lo usa la herramienta de editor.</summary>
@@ -78,6 +82,7 @@ public class SkyDirector : MonoBehaviour
         Shader.SetGlobalFloat(WheelId, 0f);
         Shader.SetGlobalFloat(BulbId, 0f);
         Shader.SetGlobalFloat(MoonId, 0f);
+        Shader.SetGlobalFloat(WindowTimeId, 0f);
     }
 
     private void Update()
@@ -98,10 +103,14 @@ public class SkyDirector : MonoBehaviour
         // 3. La luna.
         UpdateMoon(dt, loop);
 
+        // 4. El reloj de las ventanas: quieto durante un bucle.
+        if (!loop) windowTime += dt;
+
         Shader.SetGlobalFloat(FearId, SkyFear);
         Shader.SetGlobalFloat(WheelId, wheelAngle);
         Shader.SetGlobalFloat(BulbId, bulbStep);
         Shader.SetGlobalFloat(MoonId, MoonOffset);
+        Shader.SetGlobalFloat(WindowTimeId, windowTime);
     }
 
     private void UpdateMoon(float dt, bool loop)

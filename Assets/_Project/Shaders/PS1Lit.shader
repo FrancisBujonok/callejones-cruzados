@@ -2,6 +2,8 @@
 // Cambios: los vertices saltan a una grilla de pantalla y el color final se reduce
 // a pocos niveles con dithering. Todo lo demas es el shader original de Unity.
 // Los valores se controlan con el componente RetroSettings (variables globales).
+// Paso 21: _PS1DepthOffset (carteles y charcos se dibujan apenas por delante de su pared) y
+// la palabra _CALLEJONES_WINDOWS (las ventanas de los edificios se prenden y se apagan).
 Shader "Callejones/PS1 Lit"
 {
     // Keep properties of StandardSpecular shader for upgrade reasons.
@@ -43,6 +45,10 @@ Shader "Callejones/PS1 Lit"
         // Editmode props
         _QueueOffset("Queue offset", Float) = 0.0
 
+        // Callejones (Paso 21): corrimiento de profundidad para lo que va pegado a otra cosa
+        // (carteles, charcos). Negativo = se dibuja por delante. Ver PS1LitForwardPass.hlsl.
+        _PS1DepthOffset("PS1 Depth Offset", Float) = 0.0
+
         // ObsoleteProperties
         [HideInInspector] _MainTex("BaseMap", 2D) = "white" {}
         [HideInInspector] _Color("Base Color", Color) = (1, 1, 1, 1)
@@ -81,6 +87,7 @@ Shader "Callejones/PS1 Lit"
             ZWrite[_ZWrite]
             Cull[_Cull]
             AlphaToMask[_AlphaToMask]
+            Offset[_PS1DepthOffset], [_PS1DepthOffset]
 
             HLSLPROGRAM
             // PS1: target 3.5 para poder usar enteros en el dithering.
@@ -101,6 +108,8 @@ Shader "Callejones/PS1 Lit"
             #pragma shader_feature_local_fragment _ _ALPHAPREMULTIPLY_ON _ALPHAMODULATE_ON
             #pragma shader_feature_local_fragment _ _SPECGLOSSMAP _SPECULAR_COLOR
             #pragma shader_feature_local_fragment _GLOSSINESS_FROM_BASE_ALPHA
+            // Callejones (Paso 21): ventanas que se prenden y se apagan (materiales Fachada).
+            #pragma shader_feature_local_vertex _CALLEJONES_WINDOWS
 
             // -------------------------------------
             // Universal Pipeline keywords
@@ -211,6 +220,7 @@ Shader "Callejones/PS1 Lit"
             ZWrite On
             ColorMask R
             Cull[_Cull]
+            Offset[_PS1DepthOffset], [_PS1DepthOffset]
 
             HLSLPROGRAM
             #pragma target 2.0
@@ -254,6 +264,7 @@ Shader "Callejones/PS1 Lit"
             // Render State Commands
             ZWrite On
             Cull[_Cull]
+            Offset[_PS1DepthOffset], [_PS1DepthOffset]
 
             HLSLPROGRAM
             #pragma target 2.0
