@@ -18,7 +18,8 @@ public enum SegmentKind
     Esquina,  // giro de 90 grados (3 x 3 m)
     Cruce,    // bifurcacion en T (3 x 3 m)
     Fondo,    // callejon sin salida (3 x 3 m)
-    Salida    // el modulo del torii
+    Salida,   // el modulo del torii
+    Plaza     // Paso 23: plazoleta de 9 x 9 m con cuatro bocas
 }
 
 /// <summary>
@@ -65,6 +66,30 @@ public class CorridorSegment : MonoBehaviour
 
     // Paso 20: telon de niebla de cada conexion (hijo "Telon"; null si la pieza no tiene).
     private GameObject[] curtains;
+
+    [Header("Bocas que se pueden cerrar (Paso 23)")]
+    [Tooltip("Por conexion: una persiana con su pared que la tapa (apagada). null = esa boca no se cierra. " +
+             "La plaza las usa para cerrar a escondidas el callejon por el que llego el jugador.")]
+    [SerializeField] private GameObject[] closures = new GameObject[0];
+    private bool[] closed;
+
+    /// <summary>true si esa conexion tiene con que cerrarse.</summary>
+    public bool CanClose(int socket) => closures != null && socket >= 0 && socket < closures.Length && closures[socket] != null;
+
+    /// <summary>true si esa conexion esta cerrada (por ella no se pasa, aunque tenga vecina).</summary>
+    public bool IsSocketClosed(int socket) => closed != null && socket >= 0 && socket < closed.Length && closed[socket];
+
+    /// <summary>Cierra o abre una boca (prende o apaga su persiana). Lo usa Plaza.</summary>
+    public void SetSocketClosed(int socket, bool value)
+    {
+        if (!CanClose(socket)) return;
+        if (closed == null || closed.Length != SocketCount) closed = new bool[SocketCount];
+        closed[socket] = value;
+        closures[socket].SetActive(value);
+    }
+
+    /// <summary>Lo usa la herramienta de editor.</summary>
+    public void SetClosures(GameObject[] newClosures) => closures = newClosures ?? new GameObject[0];
 
     /// <summary>
     /// Prende o apaga el telon de niebla de una conexion. Lo llama CorridorTreadmill: prendido
@@ -160,6 +185,7 @@ public class CorridorSegment : MonoBehaviour
         HasUnseenChange = false;
         Locked = false;
         State = SegmentVisibility.Unknown;
+        for (int i = 0; i < SocketCount; i++) if (IsSocketClosed(i)) SetSocketClosed(i, false); // todas las bocas abiertas
 
         // Nueva decoracion y carteles al azar: el tramo que aparece adelante no es igual al que quedo atras.
         foreach (RandomPick pick in GetComponentsInChildren<RandomPick>(true))

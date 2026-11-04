@@ -50,6 +50,15 @@ public class FearMeter : MonoBehaviour
         AddFear(fearPerParanoia);
     }
 
+    /// <summary>
+    /// Paso 23: baja el miedo sin cortar la calma (AddFear con un numero negativo la cortaria).
+    /// La usa la plaza: un lugar abierto deja respirar.
+    /// </summary>
+    public void Relieve(float amount)
+    {
+        if (amount > 0f) SetFear(Fear - amount);
+    }
+
     public void AddFear(float amount)
     {
         SetFear(Fear + amount);

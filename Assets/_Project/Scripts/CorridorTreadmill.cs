@@ -33,7 +33,8 @@ using UnityEngine.Events;
 /// y vuelve a aparecer mas adelante: la salida "lo sigue".
 ///
 /// Los bucles (un mismo tramo que se repite varias veces seguidas) estan en
-/// CorridorTreadmill.Loops.cs: es la misma clase, partida en dos archivos (partial).
+/// CorridorTreadmill.Loops.cs, y las plazas (Paso 23) en CorridorTreadmill.Plazas.cs: es la
+/// misma clase, partida en varios archivos (partial).
 ///
 /// Va en el objeto "Laberinto"; todas las piezas son hijas de Laberinto (el deposito).
 /// </summary>
@@ -188,6 +189,7 @@ public partial class CorridorTreadmill : MonoBehaviour
         forwardAxis.y = 0f;
         forwardAxis.Normalize();
         InitLoops();
+        InitPlazas();
 
         // 1. Todas las piezas hijas van al deposito, apagadas.
         foreach (CorridorSegment s in GetComponentsInChildren<CorridorSegment>(true))
@@ -383,6 +385,7 @@ public partial class CorridorTreadmill : MonoBehaviour
                 : Place(bestNode, bestSocket, Take(o.kind), o.via, pos, rot);
             if (placed != null)
             {
+                if (o.kind == SegmentKind.Plaza) OnPlazaPlaced(placed.seg);
                 if (o.kind != SegmentKind.Salida) PiecePlaced?.Invoke(placed.seg);
                 return true;
             }
@@ -430,6 +433,9 @@ public partial class CorridorTreadmill : MonoBehaviour
         AddIfValid(SegmentKind.Cruce, 0, crossWeight / 3f * t, s);
         AddIfValid(SegmentKind.Cruce, 1, crossWeight / 3f * t, s);
         AddIfValid(SegmentKind.Cruce, 2, crossWeight / 3f * t, s);
+        // Paso 23: una plaza, con poco peso y solo cada tantos metros (ver CorridorTreadmill.Plazas.cs).
+        float plaza = PlazaWeight();
+        if (plaza > 0f) AddIfValid(SegmentKind.Plaza, 0, plaza * (plaza >= plazaRepeatWeight ? 1f : t), s);
         // Ultimo recurso antes de tapar: un callejon sin salida.
         AddIfValid(SegmentKind.Fondo, 0, 0.0001f, s);
 
@@ -659,7 +665,9 @@ public partial class CorridorTreadmill : MonoBehaviour
     /// true si desde la pieza del jugador se puede llegar a "lo desconocido" (una conexion libre
     /// o la salida) sin atravesar pasillos cerrados. 'without' se trata como si estuviera cerrado.
     /// </summary>
-    private bool HasEscape(Node without)
+    /// Paso 23: las bocas cerradas (CorridorSegment.IsSocketClosed, las de la plaza) tampoco se
+    /// cruzan. 'closedNode' + 'closedSocket' = una boca que se trata como cerrada, para probar.
+    private bool HasEscape(Node without, Node closedNode = null, int closedSocket = -1)
     {
         if (current == null) return true;        // todavia no se sabe donde esta: no tocar nada
         if (current == without) return false;    // nunca se cierra la pieza donde esta parado
@@ -672,6 +680,7 @@ public partial class CorridorTreadmill : MonoBehaviour
             if (n == exitNode) return true;
             for (int i = 0; i < n.links.Length; i++)
             {
+                if (IsClosed(n, i, closedNode, closedSocket)) continue;
                 Node next = n.links[i];
                 if (next == null)
                 {
@@ -679,11 +688,30 @@ public partial class CorridorTreadmill : MonoBehaviour
                     continue;
                 }
                 if (next == without || seen.Contains(next) || next.seg.IsBlocking) continue;
+                if (ClosedToward(next, n, closedNode, closedSocket)) continue;
                 seen.Add(next);
                 stack.Push(next);
             }
         }
         return false;
+    }
+
+    private static bool IsClosed(Node n, int socket, Node closedNode, int closedSocket) =>
+        n.seg.IsSocketClosed(socket) || (n == closedNode && socket == closedSocket);
+
+    /// <summary>true si la boca de 'next' que da a 'from' esta cerrada.</summary>
+    private static bool ClosedToward(Node next, Node from, Node closedNode, int closedSocket)
+    {
+        for (int k = 0; k < next.links.Length; k++)
+            if (next.links[k] == from && IsClosed(next, k, closedNode, closedSocket)) return true;
+        return false;
+    }
+
+    /// <summary>Paso 23, para Plaza: si cerrar esa boca dejaria al jugador sin salida.</summary>
+    public bool CanCloseSocket(CorridorSegment segment, int socket)
+    {
+        if (!segment.CanClose(socket) || !nodes.TryGetValue(segment, out Node node)) return false;
+        return HasEscape(null, node, socket);
     }
 
     /// <summary>Para MazeDirector: si cerrar esa pieza dejaria al jugador sin salida.</summary>
@@ -707,6 +735,15 @@ public partial class CorridorTreadmill : MonoBehaviour
             Debug.Log($"[CorridorTreadmill] El jugador estaba encerrado: se abrio '{n.seg.name}'.");
             return;
         }
+        // Paso 23: ultimo recurso, una boca cerrada de una plaza.
+        foreach (Node n in nodes.Values)
+            for (int i = 0; i < n.links.Length; i++)
+            {
+                if (!n.seg.IsSocketClosed(i)) continue;
+                n.seg.SetSocketClosed(i, false);
+                Debug.Log($"[CorridorTreadmill] El jugador estaba encerrado: se abrio una boca de '{n.seg.name}'.");
+                return;
+            }
     }
 
     // ------------------------------------------------------------------ salida
@@ -798,5 +835,6 @@ public partial class CorridorTreadmill : MonoBehaviour
         GUI.Label(new Rect(12, 144, 500, 22),
             $"Camino: {nodes.Count} piezas activas, {stored} en deposito, actual: {(current != null ? current.seg.name : "-")}");
         GUI.Label(new Rect(12, 166, 700, 22), LoopDebugText());
+        GUI.Label(new Rect(12, 210, 700, 22), PlazaDebugText());
     }
 }

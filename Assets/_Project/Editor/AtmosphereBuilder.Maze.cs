@@ -18,6 +18,7 @@ using UnityEngine.SceneManagement;
 ///    El generador (CorridorTreadmill) las va prendiendo y apagando durante el juego.
 /// 6. Anomalias de los bucles: cada pieza de 3 x 3 trae, apagadas, una persiana a medio subir
 ///    y el hueco oscuro de abajo, y el componente SegmentAnomalies que las prende.
+/// 7. Paso 23: la Plaza (AtmosphereBuilder.Plaza.cs), con dos copias en el deposito.
 ///
 /// Convencion de las piezas de 3 x 3: el centro en (0, 0, 0) y cuatro lados:
 ///   S (z = -1.5, mira hacia -Z), N (z = +1.5), E (x = +1.5), O (x = -1.5).
@@ -68,8 +69,9 @@ public static partial class AtmosphereBuilder
         GameObject cruce = BuildCellPrefab(CrucePath, "Cruce", SegmentKind.Cruce, Side.S | Side.E | Side.O, m, farol, shutter, halfShutter);
         GameObject fondo = BuildCellPrefab(FondoPath, "Fondo", SegmentKind.Fondo, Side.S, m, farol, shutter, halfShutter);
         GameObject tapa = BuildCapPrefab(m, shutter);
+        GameObject plaza = BuildPlazaPrefab(m, farol, tapa);
         SetupExitConnection();
-        FillPool(esquina, cruce, fondo, tapa);
+        FillPool(esquina, cruce, fondo, tapa, plaza);
         EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
     }
 
@@ -332,7 +334,7 @@ public static partial class AtmosphereBuilder
 
     // ------------------------------------------------------------------ 5. el deposito
 
-    private static void FillPool(GameObject esquina, GameObject cruce, GameObject fondo, GameObject tapa)
+    private static void FillPool(GameObject esquina, GameObject cruce, GameObject fondo, GameObject tapa, GameObject plaza)
     {
         CorridorTreadmill treadmill = FindInScene<CorridorTreadmill>(null);
         if (treadmill == null)
@@ -355,6 +357,7 @@ public static partial class AtmosphereBuilder
         AddCopies(maze, esquina, "Esquina", PoolEsquina, count, SegmentKind.Esquina);
         AddCopies(maze, cruce, "Cruce", PoolCruce, count, SegmentKind.Cruce);
         AddCopies(maze, fondo, "Fondo", PoolFondo, count, SegmentKind.Fondo);
+        if (plaza != null) AddCopies(maze, plaza, "Plaza", PoolPlaza, count, SegmentKind.Plaza);
 
         // Nombres ordenados: Recto_00, Recto_01... (antes eran "Modulo (3)").
         var index = new Dictionary<SegmentKind, int>();
