@@ -460,11 +460,20 @@ public partial class CorridorTreadmill : MonoBehaviour
         if (kind != SegmentKind.Salida && (!pool.TryGetValue(kind, out var list) || list.Count == 0)) return;
 
         Pose(proto, via, target, out _, out Quaternion rot);
+        bool backAllowed = kind == SegmentKind.Plaza; // Paso 26: la plaza puede tener UNA boca hacia atras
         for (int i = 0; i < proto.SocketCount; i++)
         {
             if (i == via) continue;
             Vector3 dir = rot * (proto.GetSocket(i).localRotation * Vector3.forward);
-            if (Vector3.Dot(dir, forwardAxis) < -0.5f) return; // tendria una salida hacia atras
+            if (Vector3.Dot(dir, forwardAxis) < -0.5f)
+            {
+                // Paso 26: con una conexion de costado, una de las bocas de la plaza mira hacia
+                // atras. Antes eso la descartaba, y la plaza solo podia entrar cuando el camino iba
+                // derecho hacia adelante: casi nunca. Esa boca recibe lo mismo que cualquier
+                // conexion hacia atras: un callejon sin salida.
+                if (backAllowed) { backAllowed = false; continue; }
+                return; // tendria una salida hacia atras
+            }
         }
         options.Add(new Option { kind = kind, via = via, weight = weight });
     }

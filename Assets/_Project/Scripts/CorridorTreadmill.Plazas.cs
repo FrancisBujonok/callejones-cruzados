@@ -8,8 +8,21 @@ using UnityEngine;
 /// - Poco peso (plazaWeight) y solo cada tantos metros caminados (entre plazaGapMin y plazaGapMax).
 /// - Una a la vez: si hay una plaza puesta, no aparece otra.
 /// - Nunca durante la caminata del titulo, ni al armar el laberinto inicial, ni dentro de un bucle.
-/// - Como cualquier pieza, solo si sus 9 celdas estan libres y ninguna boca mira hacia atras
-///   (en la practica: solo cuando el camino va hacia adelante).
+/// - Como cualquier pieza, solo si sus 9 celdas estan libres. Paso 26: puede tener una boca
+///   hacia atras (antes ninguna, y por eso solo entraba cuando el camino iba hacia adelante).
+///
+/// Paso 26: en varias partidas no salia nunca. La plaza solo entra cuando la conexion mira hacia
+/// adelante (sus otras tres bocas no pueden mirar hacia atras) y, mientras el camino pide rectos
+/// obligados, su peso se multiplica por 0.01. Ahora:
+/// - Sale mas seguido (cada 55 a 110 m) y pesa mas (4).
+/// - Cuanto mas atrasada esta, mas pesa (cada 10 m de atraso suma su peso otra vez).
+/// - Con plazaForceAfter metros de atraso se fuerza: la proxima conexion hacia adelante donde
+///   entre, es una plaza.
+/// - Mientras toca una plaza, no empiezan bucles (PlazaPending): durante un bucle no puede haber
+///   plazas, y en la prueba un bucle tapo la plaza forzada durante mas de 50 m.
+/// - Puede entrar por una conexion de costado: la boca que queda mirando hacia atras recibe un
+///   callejon sin salida (CorridorTreadmill.AddIfValid). Antes solo entraba cuando el camino iba
+///   derecho hacia adelante, y aun forzada tardaba decenas de metros en encontrar lugar.
 ///
 /// La trampa de la plaza repetida: si el jugador sale de una plaza con mucho miedo, Plaza puede
 /// pedir (ArmPlazaRepeat) que la proxima sea IGUAL: misma disposicion, mismos carteles, mismas
@@ -22,11 +35,13 @@ public partial class CorridorTreadmill
     [Tooltip("Apagar para que nunca haya plazas.")]
     [SerializeField] private bool plazasEnabled = true;
     [Tooltip("Peso de la plaza entre las demas piezas (recto 5, giro 3, cruce 2).")]
-    [SerializeField] private float plazaWeight = 1.5f;
+    [SerializeField] private float plazaWeight = 4f;
     [Tooltip("Metros caminados minimos entre una plaza y la siguiente. La primera llega a la mitad.")]
-    [SerializeField] private float plazaGapMin = 70f;
+    [SerializeField] private float plazaGapMin = 55f;
     [Tooltip("Metros caminados maximos entre una plaza y la siguiente (se sortea entre los dos).")]
-    [SerializeField] private float plazaGapMax = 140f;
+    [SerializeField] private float plazaGapMax = 110f;
+    [Tooltip("Paso 26: metros de atraso desde los que la plaza se fuerza en la proxima conexion hacia adelante.")]
+    [SerializeField] private float plazaForceAfter = 30f;
     [Tooltip("Plaza repetida: metros despues de salir de la anterior.")]
     [SerializeField] private float plazaRepeatGap = 9f;
     [Tooltip("Plaza repetida: su peso (casi seguro que es la proxima pieza que entre).")]
@@ -80,7 +95,21 @@ public partial class CorridorTreadmill
         if (plazaRepeat != null) return walked >= plazaRepeatAt ? plazaRepeatWeight : 0f;
         if (walked < nextPlazaAt) return 0f;
         foreach (Node n in nodes.Values) if (n.seg.Kind == SegmentKind.Plaza) return 0f; // una a la vez
-        return plazaWeight;
+        // Paso 26: atrasada pesa mas, y muy atrasada se fuerza (1000 no se multiplica por los rectos obligados).
+        float overdue = walked - nextPlazaAt;
+        if (overdue >= plazaForceAfter) return 1000f;
+        return plazaWeight * (1f + overdue / 10f);
+    }
+
+    /// <summary>
+    /// Paso 26: ya toca una plaza y todavia no aparecio. Mientras tanto no empiezan bucles
+    /// (CorridorTreadmill.Loops), porque durante un bucle no puede haber plazas.
+    /// </summary>
+    private bool PlazaPending()
+    {
+        if (!plazasEnabled || !InPlay() || plazaRepeat != null || walked < nextPlazaAt) return false;
+        foreach (Node n in nodes.Values) if (n.seg.Kind == SegmentKind.Plaza) return false;
+        return true;
     }
 
     /// <summary>Durante el titulo (la caminata sola) no hay plazas.</summary>
@@ -117,7 +146,8 @@ public partial class CorridorTreadmill
     private string PlazaDebugText()
     {
         string next = plazaRepeat != null ? "la proxima es la repetida"
-            : walked >= nextPlazaAt ? "puede aparecer" : $"faltan {nextPlazaAt - walked:0} m";
+            : walked >= nextPlazaAt ? (walked - nextPlazaAt >= plazaForceAfter ? "forzada" : $"puede aparecer, atrasada {walked - nextPlazaAt:0} m")
+            : $"faltan {nextPlazaAt - walked:0} m";
         return $"Plazas: {PlazasPlaced} ({next})";
     }
 }

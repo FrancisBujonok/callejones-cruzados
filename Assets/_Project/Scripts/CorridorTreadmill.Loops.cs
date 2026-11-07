@@ -163,6 +163,9 @@ public partial class CorridorTreadmill
         {
             // Empezar un bucle: solo si toca, y en una conexion bien adelante del jugador.
             if (!loopArmed || activePlan != null || initial || ExitRequested) return false;
+            // Paso 26: si toca una plaza, el bucle espera (mientras dura un bucle no puede haber
+            // plazas, y los bucles ocupan buena parte del camino: por eso casi no salian).
+            if (PlazaPending()) return false;
             if (Vector3.Dot(target.forward, forwardAxis) < -0.5f || !IsAhead(parent, socket)) return false;
             plan = CreatePlan(target, out footprint);
             if (plan == null) return false;

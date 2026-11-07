@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
@@ -12,6 +13,8 @@ using UnityEngine;
 /// - Pared izquierda (x = -1.4): z de 0.3 a 2.9, por debajo del toldo (2.7 m).
 /// - Pared derecha (x = +1.4): z de -2.9 a -0.3.
 /// Paso 18: cada juego trae ademas una placa chica (direccion azul o flecha verde de salida).
+/// Paso 26: SetD, jaulas vacias apiladas, plumas en el piso y cajas con agujeros para respirar.
+/// Nadie lo explica: es la parte humana (y criminal) de la novela, a la vista del que mira.
 /// </summary>
 public static partial class AtmosphereBuilder
 {
@@ -80,10 +83,122 @@ public static partial class AtmosphereBuilder
             BoxChild(ivy, "Hojas" + i, m.planta, new Vector3(x, 2.85f - ivyLen[i], ivyZ[i]), new Vector3(0.1f, 0.12f, 0.1f), new Vector3(0f, 30f * i, 20f));
         }
 
+        // D (Paso 26): jaulas vacias apiladas a la izquierda, plumas en el piso, cajas de madera
+        // con agujeros para respirar a la derecha.
+        Transform d = Group(sets, "SetD");
+        Mesh cage = GetOrCreateMesh("Jaula"); BuildCageMesh(cage);
+        CreateCage(d, "Jaula1", new Vector3(-1.16f, 0f, 1.0f), 2f, cage, m);
+        CreateCage(d, "Jaula2", new Vector3(-1.16f, 0f, 1.6f), -3f, cage, m);
+        CreateCage(d, "Jaula3", new Vector3(-1.14f, 0.405f, 1.28f), 7f, cage, m);
+        var feathers = new System.Random(2604);
+        Transform plumas = Group(d, "Plumas");
+        for (int i = 0; i < 10; i++)
+        {
+            float x = -1.0f + 0.65f * (float)feathers.NextDouble();
+            float z = 0.5f + 2.1f * (float)feathers.NextDouble();
+            float yaw = 360f * (float)feathers.NextDouble();
+            BoxChild(plumas, "Pluma" + i, m.papel, new Vector3(x, 0.006f, z), new Vector3(0.022f, 0.004f, 0.075f), new Vector3(0f, yaw, 0f));
+        }
+        CreateBreathingCrate(d, "Caja", new Vector3(1.13f, 0f, -1.6f), new Vector3(0.48f, 0.42f, 0.7f), 0f, 4, m);
+        CreateBreathingCrate(d, "CajaChica", new Vector3(1.14f, 0.42f, -1.5f), new Vector3(0.4f, 0.34f, 0.5f), 8f, 3, m);
+        BoxChild(plumas, "PlumaCaja", m.papel, new Vector3(1.05f, 0.765f, -1.42f), new Vector3(0.022f, 0.004f, 0.075f), new Vector3(0f, 40f, 0f));
+        CreatePlate(d, "Placa", new Vector3(-WallInnerX, 2.05f, 2.6f), false, m);
+
         // En el editor solo se ve el primero; en Play, DecorRandomizer sortea.
         b.gameObject.SetActive(false);
         c.gameObject.SetActive(false);
-        sets.gameObject.AddComponent<DecorRandomizer>().Setup(new[] { a.gameObject, b.gameObject, c.gameObject });
+        d.gameObject.SetActive(false);
+        sets.gameObject.AddComponent<DecorRandomizer>().Setup(new[] { a.gameObject, b.gameObject, c.gameObject, d.gameObject });
+    }
+
+    // ------------------------------------------------------------------ Paso 26: jaulas y cajas
+
+    private const float CageW = 0.42f, CageH = 0.4f, CageD = 0.55f;
+
+    /// <summary>
+    /// Una jaula vacia en una sola malla: base, techo, cuatro postes y barrotes cada 6 cm. Del lado
+    /// del pasillo (+X) faltan tres barrotes: la puertita quedo abierta.
+    /// Una sola malla y no un cubo por barrote: con tres jaulas por pieza serian 120 objetos.
+    /// </summary>
+    private static void BuildCageMesh(Mesh mesh)
+    {
+        var v = new List<Vector3>();
+        var n = new List<Vector3>();
+        var uv = new List<Vector2>();
+        var t = new List<int>();
+        const float bar = 0.01f, step = 0.06f;
+        AddBox(v, n, uv, t, new Vector3(0f, 0.01f, 0f), new Vector3(CageW, 0.02f, CageD));               // base
+        AddBox(v, n, uv, t, new Vector3(0f, CageH - 0.008f, 0f), new Vector3(CageW, 0.016f, CageD));     // techo
+        foreach (float sx in new[] { -1f, 1f })
+        foreach (float sz in new[] { -1f, 1f })
+            AddBox(v, n, uv, t, new Vector3(sx * (CageW / 2 - 0.01f), CageH / 2, sz * (CageD / 2 - 0.01f)), new Vector3(0.018f, CageH, 0.018f));
+        // Barrotes en los lados largos (+X y -X), a lo largo de Z.
+        for (float z = -CageD / 2 + step; z < CageD / 2 - 0.02f; z += step)
+        {
+            AddBox(v, n, uv, t, new Vector3(-CageW / 2 + 0.01f, CageH / 2, z), new Vector3(bar, CageH, bar));
+            if (Mathf.Abs(z) > 0.1f) // la puertita abierta, en el medio del lado del pasillo
+                AddBox(v, n, uv, t, new Vector3(CageW / 2 - 0.01f, CageH / 2, z), new Vector3(bar, CageH, bar));
+        }
+        // Barrotes en los lados cortos (+Z y -Z), a lo largo de X.
+        for (float x = -CageW / 2 + step; x < CageW / 2 - 0.02f; x += step)
+            foreach (float sz in new[] { -1f, 1f })
+                AddBox(v, n, uv, t, new Vector3(x, CageH / 2, sz * (CageD / 2 - 0.01f)), new Vector3(bar, CageH, bar));
+
+        mesh.Clear();
+        mesh.SetVertices(v);
+        mesh.SetNormals(n);
+        mesh.SetUVs(0, uv);
+        mesh.SetTriangles(t, 0);
+        mesh.RecalculateBounds();
+        EditorUtility.SetDirty(mesh);
+    }
+
+    /// <summary>Un prisma con sus 6 caras (vertices propios por cara: sombreado plano).</summary>
+    private static void AddBox(List<Vector3> v, List<Vector3> n, List<Vector2> uv, List<int> t, Vector3 c, Vector3 size)
+    {
+        Vector3 h = size * 0.5f;
+        Vector3[] dirs = { Vector3.right, Vector3.left, Vector3.up, Vector3.down, Vector3.forward, Vector3.back };
+        foreach (Vector3 dir in dirs)
+        {
+            Vector3 a = dir.y != 0f ? Vector3.right : Vector3.up;   // un eje de la cara
+            Vector3 b = Vector3.Cross(dir, a);                       // el otro
+            int start = v.Count;
+            Vector3 center = c + Vector3.Scale(dir, h);
+            Vector3 ea = Vector3.Scale(a, h), eb = Vector3.Scale(b, h);
+            v.Add(center - ea - eb); v.Add(center + ea - eb); v.Add(center + ea + eb); v.Add(center - ea + eb);
+            for (int k = 0; k < 4; k++) n.Add(dir);
+            uv.Add(new Vector2(0f, 0f)); uv.Add(new Vector2(1f, 0f)); uv.Add(new Vector2(1f, 1f)); uv.Add(new Vector2(0f, 1f));
+            // Unity dibuja la cara de adelante cuando los vertices van en el sentido del reloj.
+            t.Add(start); t.Add(start + 1); t.Add(start + 2);
+            t.Add(start); t.Add(start + 2); t.Add(start + 3);
+        }
+    }
+
+    private static void CreateCage(Transform parent, string name, Vector3 pos, float yaw, Mesh cage, Mats m)
+    {
+        GameObject go = MeshChild(parent, name, cage, m.metal, pos);
+        go.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
+        var box = go.AddComponent<BoxCollider>();
+        box.size = new Vector3(CageW, CageH, CageD);
+        box.center = new Vector3(0f, CageH * 0.5f, 0f);
+    }
+
+    /// <summary>Caja de madera con una fila de agujeritos negros del lado del pasillo (-X).</summary>
+    private static void CreateBreathingCrate(Transform parent, string name, Vector3 floorPos, Vector3 size, float yaw, int holes, Mats m)
+    {
+        Transform t = Group(parent, name);
+        t.localPosition = floorPos;
+        t.localRotation = Quaternion.Euler(0f, yaw, 0f);
+        SolidBoxChild(t, "Madera", m.madera, new Vector3(0f, size.y * 0.5f, 0f), size, Vector3.zero);
+        float faceX = -size.x * 0.5f - 0.003f;
+        for (int row = 0; row < 2; row++)
+            for (int i = 0; i < holes; i++)
+            {
+                float z = (i - (holes - 1) * 0.5f) * (size.z / (holes + 0.5f));
+                float y = size.y * (row == 0 ? 0.68f : 0.45f);
+                if (row == 1 && i % 2 == 1) continue; // la segunda fila, salteada
+                BoxChild(t, "Agujero" + row + i, m.hueco, new Vector3(faceX, y, z), new Vector3(0.006f, 0.035f, 0.035f), Vector3.zero);
+            }
     }
 
     private static Transform Group(Transform parent, string name)
