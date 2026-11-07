@@ -19,8 +19,9 @@ como en la PS1. El nombre del archivo le dice a Unity como usarlo:
              A  = papelitos pegados en la pared (fondo transparente)
              XN, XS = mensajes escondidos (Paso 19): se dibujan como N y S pero no entran en
                   ningun sorteo; el juego los muestra un instante cuando un neon falla
-    idioma   tw = chino tradicional (Taiwan), jp = japones, kr = coreano
-    estilo   papel, rojo o negro; caja-rojo, caja-azul, caja-verde; neon-rosa, neon-cian,
+    idioma   tw = chino tradicional (Taiwan), jp = japones, kr = coreano,
+             es = castellano (Paso 25: el afiche de Manchas, una fotocopia hecha por Hugo)
+    estilo   papel, rojo o negro; fotocopia (Paso 25); caja-rojo, caja-azul, caja-verde; neon-rosa, neon-cian,
              neon-verde, neon-ambar, neon-rojo; placa-azul; flecha-der, flecha-izq, flecha-arr; pegado
     En D y A el texto lleva "|" para separar renglones o papelitos.
 
@@ -131,6 +132,15 @@ CARTELES = [
     ("XN", "tw", "neon-rojo", "別回頭",   "No mires atras"),
     ("XS", "tw", "caja-rojo", "你在哪裡", "Donde estas?"),
     ("XS", "tw", "neon-rojo", "你在哪裡", "Donde estas?"),
+    # --- Paso 25: mas carteles de "no mires atras". El juego los hace salir mas seguido cuanto
+    #     mas tiempo pasa el jugador sin darse vuelta (SignCatalog.IsWarning, SignRandomizer).
+    ("H5", "tw", "papel", "不要回頭",   "No te des vuelta"),
+    ("V5", "tw", "rojo",  "別回頭",     "No mires atras"),
+    ("V5", "kr", "papel", "돌아보지마", "No mires atras"),
+    ("H5", "jp", "rojo",  "振り向くな", "No te des vuelta"),
+    # --- Paso 25: el afiche de Hugo, en castellano. Una fotocopia del doble de resolucion que
+    #     los otros afiches (mismo tamano en el mundo): de cerca tiene que poder leerse.
+    ("P",  "es", "fotocopia", "SE BUSCA|MANCHAS", "Se busca gato: Manchas (el afiche de Hugo)"),
 ]
 
 ESTILOS = {  # (fondo, tinta)
@@ -146,6 +156,8 @@ FUENTES = {
            ("/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc", 0)],
     "kr": [(r"C:\Windows\Fonts\malgunbd.ttf", 0), (r"C:\Windows\Fonts\malgun.ttf", 0),
            ("/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc", 1)],
+    "es": [(r"C:\Windows\Fonts\arialbd.ttf", 0),
+           ("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 0)],
 }
 
 
@@ -401,6 +413,103 @@ def afiche(texto, f, estilo):
     return img
 
 
+def texto_latino(img, texto, ruta, alto, y, color, umbral=120):
+    """
+    Un renglon en letras latinas, centrado, con pixeles duros: se dibuja 4 veces mas grande, se
+    achica promediando y cada pixel queda con tinta si supera el umbral (como letra()).
+    """
+    ruta_fuente, indice = ruta
+    f = ImageFont.truetype(ruta_fuente, alto * GRANDE, index=indice)
+    x0, y0, x1, y1 = ImageDraw.Draw(img).textbbox((0, 0), texto, font=f)
+    w, h = (x1 - x0) // GRANDE + 2, (y1 - y0) // GRANDE + 2
+    big = Image.new("L", (w * GRANDE, h * GRANDE), 0)
+    ImageDraw.Draw(big).text((GRANDE - x0, GRANDE - y0), texto, font=f, fill=255)
+    mascara = big.resize((w, h), Image.BOX).point(lambda v: 255 if v >= umbral else 0)
+    img.paste(color, ((img.width - w) // 2, y), mascara)
+    return h
+
+
+def afiche_fotocopia(texto, idioma):
+    """
+    Paso 25: el afiche que pego Hugo buscando a Manchas. Una fotocopia en blanco y negro:
+    SE BUSCA, la foto del gato (blanco con manchas negras, muy contrastada, como sale en una
+    fotocopia), MANCHAS, dos renglones y las tiritas con el telefono, dos ya arrancadas.
+    108 x 144: el doble que los otros afiches, para que de cerca se lea.
+    """
+    import random
+    rnd = random.Random(2511)
+    ruta = next((r for r in FUENTES[idioma] if os.path.exists(r[0])), None)
+    if ruta is None:
+        raise SystemExit("No encuentro una fuente para '%s'. Revisa FUENTES." % idioma)
+    arriba, abajo = texto.split("|")
+    ancho, alto = 108, 144
+    papel, toner, gris = (226, 224, 216), (22, 22, 22), (120, 118, 112)
+    img = Image.new("RGB", (ancho, alto), papel)
+    d = ImageDraw.Draw(img)
+
+    y = 5 + texto_latino(img, arriba, ruta, 15, 5, toner) + 3
+    # La foto: el gato sentado, dibujado grande y pasado a blanco y negro puro.
+    fx0, fx1, fy0, fy1 = 14, ancho - 14, y, y + 56
+    foto = Image.new("L", ((fx1 - fx0) * 4, (fy1 - fy0) * 4), 70)
+    g = ImageDraw.Draw(foto)
+    W, H = foto.size
+    g.rectangle([0, int(H * 0.78), W, H], fill=110)                       # el piso
+    g.ellipse([W * 0.28, H * 0.38, W * 0.72, H * 1.02], fill=235)          # cuerpo
+    g.ellipse([W * 0.36, H * 0.12, W * 0.64, H * 0.46], fill=235)          # cabeza
+    g.polygon([(W * 0.37, H * 0.22), (W * 0.40, H * 0.04), (W * 0.47, H * 0.16)], fill=235)  # orejas
+    g.polygon([(W * 0.63, H * 0.22), (W * 0.60, H * 0.04), (W * 0.53, H * 0.16)], fill=235)
+    g.line([(W * 0.70, H * 0.95), (W * 0.86, H * 0.70), (W * 0.80, H * 0.50)], fill=235, width=10)  # cola
+    for (cx, cy, rx, ry) in ((0.55, 0.22, 0.07, 0.06), (0.40, 0.60, 0.08, 0.10), (0.60, 0.75, 0.09, 0.07),
+                             (0.48, 0.88, 0.05, 0.05), (0.80, 0.62, 0.04, 0.05)):
+        g.ellipse([W * (cx - rx), H * (cy - ry), W * (cx + rx), H * (cy + ry)], fill=25)   # las manchas
+    g.ellipse([W * 0.42, H * 0.25, W * 0.46, H * 0.29], fill=25)            # ojos
+    g.ellipse([W * 0.54, H * 0.25, W * 0.58, H * 0.29], fill=25)
+    foto = foto.resize((fx1 - fx0, fy1 - fy0), Image.BOX)
+    # Fotocopia: casi todo blanco o negro, con un poco de grano en los grises.
+    foto = foto.point(lambda v: 245 if v > 150 else (40 if v < 95 else 40 + (v - 95) * 3))
+    px = foto.load()
+    for _ in range(140):
+        px[rnd.randrange(foto.width), rnd.randrange(foto.height)] = rnd.choice((30, 240))
+    img.paste(Image.merge("RGB", (foto, foto, foto)), (fx0, fy0))
+    d.rectangle([fx0 - 1, fy0 - 1, fx1, fy1], outline=toner)
+
+    y = fy1 + 4
+    y += texto_latino(img, abajo, ruta, 13, y, toner) + 3
+    y += texto_latino(img, "GATO BLANCO Y NEGRO", ruta, 6, y, toner, 105) + 2
+    y += texto_latino(img, "SE PERDIO CERCA DEL PUERTO", ruta, 6, y, toner, 105) + 3
+
+    # Tiritas con el telefono: siete, separadas por un punteado. Faltan dos.
+    tira_y = alto - 20
+    d.line([2, tira_y, ancho - 3, tira_y], fill=gris)
+    paso = (ancho - 4) / 7.0
+    for k in range(7):
+        x0 = int(2 + k * paso)
+        x1 = int(2 + (k + 1) * paso) - 1
+        if k in (2, 5):  # arrancadas: queda un borde roto y la sombra de la pared
+            d.rectangle([x0, tira_y + 3, x1, alto - 1], fill=(58, 52, 46))
+            for x in range(x0, x1 + 1):
+                d.point((x, tira_y + 1 + rnd.randint(0, 2)), fill=papel)
+            continue
+        if k > 0:
+            for yy in range(tira_y + 1, alto, 2):
+                d.point((x0, yy), fill=gris)
+        for yy in range(tira_y + 4, alto - 3, 3):  # el numero, en vertical: rayitas
+            d.line([x0 + 4, yy, x1 - 3, yy], fill=toner)
+
+    # Toner: puntitos sueltos y una raya vertical clara, como las de una fotocopiadora sucia.
+    for _ in range(90):
+        d.point((rnd.randrange(ancho), rnd.randrange(alto)), fill=(70, 70, 68))
+    raya = rnd.randrange(20, ancho - 20)
+    for yy in range(alto):
+        r, gg, b = img.getpixel((raya, yy))
+        img.putpixel((raya, yy), (min(255, r + 18), min(255, gg + 18), min(255, b + 18)))
+    # Cinta en las dos esquinas de arriba.
+    for cx in (6, ancho - 7):
+        d.rectangle([cx - 6, 0, cx + 6, 5], fill=(240, 238, 228))
+    d.rectangle([0, 0, ancho - 1, alto - 1], outline=(150, 148, 140))
+    return img
+
+
 def main():
     os.makedirs(SALIDA, exist_ok=True)
     for viejo in os.listdir(SALIDA):
@@ -410,7 +519,7 @@ def main():
     contador = {}
     filas = []
     for formato, idioma, estilo, texto, significado in CARTELES:
-        f = fuente(idioma)
+        f = fuente(idioma) if idioma != "es" else None
         if formato == "V5":
             img = cartel_lineal(texto, f, estilo, 5, True)
         elif formato in ("V2", "T"):
@@ -427,6 +536,8 @@ def main():
             img = flecha(texto, f, estilo)
         elif formato == "A":
             img = papelitos(texto, f, len(filas) * 7919)
+        elif estilo == "fotocopia":
+            img = afiche_fotocopia(texto, idioma)
         else:
             img = afiche(texto, f, estilo)
         clave = (formato, idioma)
