@@ -1,0 +1,14 @@
+Sonidos grabados (Paso 26). Todos de BigSoundBank (https://bigsoundbank.com), de Joseph Sardin,
+con licencia CC0 (dominio publico): se pueden usar libremente, sin pedir permiso ni citar.
+https://bigsoundbank.com/licenses.html
+
+Recortados, filtrados (pasa altos 120 Hz), normalizados y pasados a mono 22050 Hz.
+
+Gato_1, Gato_2   <- #1901 Miaulement chat #13   https://bigsoundbank.com/sound-1901-miaulement-chat-13.html
+Gato_3           <- #1902 (serie de maullidos)  https://bigsoundbank.com/UPLOAD/mp3/1902.mp3
+Gato_4           <- #1891 (serie de maullidos)  https://bigsoundbank.com/UPLOAD/mp3/1891.mp3
+Tos_1            <- #2183 Man cough #5          https://bigsoundbank.com/man-cough-5-s2183.html
+Tos_2, Tos_3     <- #0488 Man cough #1          https://bigsoundbank.com/man-cough-s0488.html
+Platos_1, _2     <- #0391 Handmade dishes       https://bigsoundbank.com/handmade-dishes-s0391.html
+Platos_3         <- #1193 Cutlery, manipulations on plate  https://bigsoundbank.com/cutlery-manipulations-on-plate-s1193.html
+Moto_1           <- #0533 Scooter passage       https://bigsoundbank.com/sound-0533-scooter-qui-passe.html
