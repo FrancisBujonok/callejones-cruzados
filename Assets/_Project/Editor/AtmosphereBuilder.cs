@@ -100,8 +100,10 @@ public static partial class AtmosphereBuilder
         SetupNightLighting();
         SetupPostProcessing();
         SetupRetro(UsePS1);
-        SetupSound(BuildSounds()); // despues del torii: le agrega su sonido
+        Sounds sounds = BuildSounds();
+        SetupSound(sounds);        // despues del torii: le agrega su sonido
         BuildLandmarks(mats);      // despues del sonido: la maquina y el altar usan sus clips
+        SetupLures(BuildLureSounds(), sounds.zumbido); // Paso 25: pistas y mirar de cerca
 
         AssetDatabase.SaveAssets();
         EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
