@@ -6072,7 +6072,7 @@ Transform:
   - {fileID: 5980602762096037078}
   - {fileID: 3996640286320362218}
   - {fileID: 646981464654282365}
-  - {fileID: 3972778455475266039}
+  - {fileID: 7060315683360770034}
   - {fileID: 6048191370895307154}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -6110,7 +6110,7 @@ MonoBehaviour:
   closures:
   - {fileID: 4122945120185656982}
   - {fileID: 485198687078078977}
-  - {fileID: 3972778455475266038}
+  - {fileID: 8050756220378293134}
   - {fileID: 6750387410043966958}
 --- !u!114 &4310793362554598389
 MonoBehaviour:
@@ -6134,7 +6134,7 @@ MonoBehaviour:
   glancesToTrigger: 5
   fearPerGlance: 2.5
   glanceCooldown: 1.2
-  trapFromFear: 0.6
+  trapFromFear: 0.5
   trapDelay: 5
   hiddenAngle: 75
   seenAngle: 28
@@ -16023,14 +16023,14 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 6b3a6453ffe52424b8d0e79411240001, type: 3}
---- !u!1 &3972778455475266038 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 6383901762201813627, guid: 6b3a6453ffe52424b8d0e79411240001, type: 3}
-  m_PrefabInstance: {fileID: 3972778455475266037}
-  m_PrefabAsset: {fileID: 0}
---- !u!4 &3972778455475266039 stripped
+--- !u!4 &7060315683360770034 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 6258142284093269511, guid: 6b3a6453ffe52424b8d0e79411240001, type: 3}
+  m_PrefabInstance: {fileID: 3972778455475266037}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &8050756220378293134 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 6383901762201813627, guid: 6b3a6453ffe52424b8d0e79411240001, type: 3}
   m_PrefabInstance: {fileID: 3972778455475266037}
   m_PrefabAsset: {fileID: 0}
 --- !u!1001 &4740672952900342659

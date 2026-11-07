@@ -7,6 +7,14 @@ using UnityEngine.Events;
 /// elige un modulo en punto ciego (por defecto, el mas cercano a su espalda),
 /// le cambia la variante y lo marca como "cambio sin ver".
 /// Si en ese momento no hay ningun punto ciego, espera hasta que aparezca uno.
+///
+/// Paso 24: girar sin parar ya no tiene premio asegurado.
+/// - Despues de una mirada atras (ParanoiaSensor.onLookBack), el cambio espera waitAfterLookBack
+///   segundos: el laberinto cambia cuando dejas de mirar, no mientras miras. Si la racha se
+///   completa en ese rato, el pedido queda pendiente (la misma espera de maxWaitTime).
+/// - Con "Nearest", una parte de las veces (randomChance) elige un punto ciego al azar: el
+///   cambio no esta siempre en la pieza justo detras.
+///
 /// Va en el objeto "Laberinto", junto a VisibilityChecker.
 /// </summary>
 public class MazeDirector : MonoBehaviour
@@ -22,12 +30,18 @@ public class MazeDirector : MonoBehaviour
     [SerializeField] private StepCounter stepCounter;
     [Tooltip("Si se deja vacio, usa el VisibilityChecker de este mismo objeto.")]
     [SerializeField] private VisibilityChecker visibility;
+    [Tooltip("Si se deja vacio, usa el ParanoiaSensor del mismo objeto que el StepCounter (el Player).")]
+    [SerializeField] private ParanoiaSensor paranoia;
 
     [Header("Reglas")]
     [Tooltip("Como elegir el modulo a cambiar entre todos los puntos ciegos.")]
     [SerializeField] private TargetSelection selection = TargetSelection.Nearest;
+    [Tooltip("Paso 24: con Nearest, probabilidad de elegir al azar en vez del mas cercano.")]
+    [SerializeField, Range(0f, 1f)] private float randomChance = 0.3f;
     [Tooltip("Solo cambiar modulos que esten detras del jugador.")]
     [SerializeField] private bool onlyBehind = true;
+    [Tooltip("Paso 24: segundos despues de una mirada atras en los que no se cambia nada.")]
+    [SerializeField] private float waitAfterLookBack = 1.5f;
     [Tooltip("Si no hay punto ciego al completar la racha, esperar a que aparezca uno.")]
     [SerializeField] private bool waitForBlindSpot = true;
     [Tooltip("Segundos maximos esperando un punto ciego antes de cancelar el cambio.")]
@@ -40,9 +54,13 @@ public class MazeDirector : MonoBehaviour
     public int MutationCount { get; private set; }
     /// <summary>El ultimo modulo que cambio. Lo usa el sonido para ubicar el ruido lejano.</summary>
     public CorridorSegment LastMutated { get; private set; }
+    /// <summary>Paso 24: true mientras dura la espera despues de una mirada atras.</summary>
+    public bool JustLookedBack => Time.time - lastLookBack < waitAfterLookBack;
 
     private bool pending;
     private float pendingTimer;
+    private bool pickRandom;          // se sortea una vez por pedido, no en cada intento
+    private float lastLookBack = -999f;
     // El generador de caminos sabe como estan conectadas las piezas: lo usamos para no
     // cerrar un pasillo que deje al jugador encerrado.
     private CorridorTreadmill paths;
@@ -50,6 +68,7 @@ public class MazeDirector : MonoBehaviour
     private void Awake()
     {
         if (visibility == null) visibility = GetComponent<VisibilityChecker>();
+        if (paranoia == null && stepCounter != null) paranoia = stepCounter.GetComponent<ParanoiaSensor>();
         paths = GetComponent<CorridorTreadmill>();
 
         if (stepCounter == null || visibility == null)
@@ -64,23 +83,30 @@ public class MazeDirector : MonoBehaviour
     private void OnEnable()
     {
         if (stepCounter != null) stepCounter.onStreakReached.AddListener(RequestMutation);
+        if (paranoia != null) paranoia.onLookBack.AddListener(OnLookBack);
     }
 
     private void OnDisable()
     {
         if (stepCounter != null) stepCounter.onStreakReached.RemoveListener(RequestMutation);
+        if (paranoia != null) paranoia.onLookBack.RemoveListener(OnLookBack);
     }
+
+    private void OnLookBack() => lastLookBack = Time.time;
 
     /// <summary>Pide un cambio. Lo llama StepCounter al completar la racha.</summary>
     public void RequestMutation()
     {
+        pickRandom = selection == TargetSelection.Random || Random.value < randomChance;
         if (TryMutate()) return;
 
         if (waitForBlindSpot)
         {
             pending = true;
             pendingTimer = 0f;
-            Debug.Log("[MazeDirector] No hay punto ciego ahora. Esperando a que el jugador aparte la mirada...");
+            Debug.Log(JustLookedBack
+                ? "[MazeDirector] Acaba de mirar atras: el cambio espera a que deje de mirar..."
+                : "[MazeDirector] No hay punto ciego ahora. Esperando a que el jugador aparte la mirada...");
         }
     }
 
@@ -103,6 +129,9 @@ public class MazeDirector : MonoBehaviour
 
     private bool TryMutate()
     {
+        // Paso 24: mientras dura la mirada atras, nada cambia.
+        if (JustLookedBack) return false;
+
         List<CorridorSegment> candidates = visibility.GetBlindSpotSegments(onlyBehind);
 
         // Sin alternativas no hay nada que cambiar. Y si ya tiene un cambio sin ver,
@@ -115,9 +144,9 @@ public class MazeDirector : MonoBehaviour
         int newVariant = 0;
         while (candidates.Count > 0)
         {
-            CorridorSegment option = selection == TargetSelection.Nearest
-                ? FindNearest(candidates)
-                : candidates[Random.Range(0, candidates.Count)];
+            CorridorSegment option = pickRandom
+                ? candidates[Random.Range(0, candidates.Count)]
+                : FindNearest(candidates);
             int variant = PickDifferentVariant(option);
 
             bool traps = option.WouldBlock(variant) && paths != null && !paths.IsSafeToBlock(option);
@@ -137,7 +166,7 @@ public class MazeDirector : MonoBehaviour
 
         MutationCount++;
         LastMutated = target;
-        Debug.Log($"[MazeDirector] Cambio #{MutationCount}: '{target.name}' pasa a la variante {newVariant}.");
+        Debug.Log($"[MazeDirector] Cambio #{MutationCount} ({(pickRandom ? "al azar" : "el mas cercano")}): '{target.name}' pasa a la variante {newVariant}.");
         onMutation?.Invoke();
         return true;
     }

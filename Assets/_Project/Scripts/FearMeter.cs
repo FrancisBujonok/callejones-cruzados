@@ -18,8 +18,8 @@ public class FearMeter : MonoBehaviour
     [SerializeField] private float fearPerDiscovery = 15f;
     [Tooltip("Miedo que suma cada mirada atras de mas (paranoia).")]
     [SerializeField] private float fearPerParanoia = 4f;
-    [Tooltip("Miedo que baja por segundo cuando no pasa nada.")]
-    [SerializeField] private float decayPerSecond = 2f;
+    [Tooltip("Miedo que baja por segundo cuando no pasa nada. Paso 24: de 2 a 1, para que el miedo llegue vivo a la proxima plaza.")]
+    [SerializeField] private float decayPerSecond = 1f;
     [Tooltip("Segundos de calma antes de que el miedo empiece a bajar.")]
     [SerializeField] private float decayDelay = 5f;
 

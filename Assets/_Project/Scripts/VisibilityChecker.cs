@@ -13,6 +13,9 @@ using UnityEngine.Events;
 ///
 /// Regla para DESCUBRIR un cambio (estricta):
 /// - La caja real del modulo toca el frustum Y hay linea de vision directa a su centro.
+///
+/// Paso 24: todo descubrimiento pasa por RegisterDiscovery, tambien los de la plaza.
+/// Asi DiscoveredCount (el boleto) y onChangeDiscovered (miedo, sonido, salida) nunca se separan.
 /// </summary>
 public class VisibilityChecker : MonoBehaviour
 {
@@ -74,11 +77,20 @@ public class VisibilityChecker : MonoBehaviour
             if (s.HasUnseenChange && inView && HasLineOfSight(s))
             {
                 s.MarkDiscovered();
-                DiscoveredCount++;
-                Debug.Log($"[VisibilityChecker] Cambio descubierto en '{s.name}'.");
-                onChangeDiscovered?.Invoke();
+                RegisterDiscovery($"'{s.name}'");
             }
         }
+    }
+
+    /// <summary>
+    /// Paso 24: registra un cambio descubierto venga de donde venga (un modulo, la trampa de la
+    /// plaza). Suma al contador y dispara el evento: miedo, sonido y la condicion de salida.
+    /// </summary>
+    public void RegisterDiscovery(string source)
+    {
+        DiscoveredCount++;
+        Debug.Log($"[VisibilityChecker] Cambio descubierto: {source}.");
+        onChangeDiscovered?.Invoke();
     }
 
     private void RefreshFrustum()

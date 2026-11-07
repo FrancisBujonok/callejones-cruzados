@@ -12,6 +12,14 @@ using UnityEngine;
 /// - TotalSteps: el jugador camino 'target' pasos en total.
 /// - CalmSteps: el jugador camino 'target' pasos seguidos SIN mirar atras.
 ///
+/// Paso 24 (ritmo de la partida):
+/// - Ademas del modo, hace falta un minimo de pasos totales (minTotalSteps). Un jugador que gira
+///   sin parar ya no sale en 15-20 s: la ciudad lo retiene al menos unos 300 m.
+/// - Descubrimientos espaciados: para la salida, un descubrimiento cuenta solo si se caminaron
+///   minMetersBetween metros desde el ultimo que conto. Una mirada atras que descubre tres piezas
+///   juntas cuenta una vez. El miedo y el sonido no cambian: siguen sumando por cada uno.
+/// - Escucha VisibilityChecker.onChangeDiscovered, asi que la trampa de la plaza tambien cuenta.
+///
 /// Va en el objeto "Laberinto".
 /// </summary>
 public class ExitCondition : MonoBehaviour
@@ -26,8 +34,12 @@ public class ExitCondition : MonoBehaviour
 
     [Header("Como termina el loop")]
     [SerializeField] private Mode mode = Mode.Discoveries;
-    [Tooltip("Cantidad a alcanzar segun el modo: cambios descubiertos, pasos totales o pasos sin mirar atras.")]
-    [SerializeField] private int target = 3;
+    [Tooltip("Cantidad a alcanzar segun el modo: cambios descubiertos (que cuentan), pasos totales o pasos sin mirar atras.")]
+    [SerializeField] private int target = 4;
+    [Tooltip("Paso 24: pasos totales minimos para que se abra la salida, aunque ya se cumpla lo del modo (375 pasos = 300 m).")]
+    [SerializeField] private int minTotalSteps = 375;
+    [Tooltip("Paso 24: metros a caminar despues de un descubrimiento que conto para que el siguiente tambien cuente.")]
+    [SerializeField] private float minMetersBetween = 25f;
 
     [Header("Referencias")]
     [Tooltip("El objeto Player. De ahi se toman StepCounter y ParanoiaSensor.")]
@@ -41,10 +53,19 @@ public class ExitCondition : MonoBehaviour
     [SerializeField] private bool showDebugOverlay = true;
 
     public bool Done { get; private set; }
+    /// <summary>Descubrimientos que contaron para la salida (los espaciados).</summary>
+    public int CountedDiscoveries { get; private set; }
+    /// <summary>Descubrimientos que no contaron por estar demasiado cerca del anterior.</summary>
+    public int SkippedDiscoveries { get; private set; }
+    /// <summary>Metros que faltan para que el proximo descubrimiento cuente (0 = ya cuenta).</summary>
+    public float MetersUntilNextCounts =>
+        CountedDiscoveries == 0 ? 0f : Mathf.Max(0f, lastCountedAt + minMetersBetween - Walked());
+    public bool StepsReached => steps == null || steps.TotalSteps >= minTotalSteps;
 
     private StepCounter steps;
     private ParanoiaSensor paranoia;
     private int calmSteps;
+    private float lastCountedAt;
 
     private void Awake()
     {
@@ -64,29 +85,52 @@ public class ExitCondition : MonoBehaviour
         }
     }
 
+    // GameFlow apaga este componente durante la caminata del titulo: apagado no escucha nada,
+    // asi que lo que pase en el titulo no cuenta.
     private void OnEnable()
     {
         if (steps != null) steps.onStep.AddListener(OnStep);
         if (paranoia != null) paranoia.onLookBack.AddListener(OnLookBack);
+        if (visibility != null) visibility.onChangeDiscovered.AddListener(OnDiscovery);
     }
 
     private void OnDisable()
     {
         if (steps != null) steps.onStep.RemoveListener(OnStep);
         if (paranoia != null) paranoia.onLookBack.RemoveListener(OnLookBack);
+        if (visibility != null) visibility.onChangeDiscovered.RemoveListener(OnDiscovery);
     }
 
     private void OnStep(int streak) => calmSteps++;
     private void OnLookBack() => calmSteps = 0;
 
+    /// <summary>Metros caminados en total, segun los pasos.</summary>
+    private float Walked() => steps != null ? steps.TotalSteps * steps.StepLength : 0f;
+
+    /// <summary>Cada cambio descubierto (modulo o plaza). Solo cuenta si esta lejos del anterior.</summary>
+    private void OnDiscovery()
+    {
+        if (Done) return;
+        float walked = Walked();
+        if (CountedDiscoveries > 0 && walked - lastCountedAt < minMetersBetween)
+        {
+            SkippedDiscoveries++;
+            Debug.Log($"[ExitCondition] Descubrimiento que no cuenta para la salida: faltaban {lastCountedAt + minMetersBetween - walked:0} m.");
+            return;
+        }
+        CountedDiscoveries++;
+        lastCountedAt = walked;
+        Debug.Log($"[ExitCondition] Descubrimiento {CountedDiscoveries}/{target} para la salida (a los {walked:0} m).");
+    }
+
     private void Update()
     {
-        if (!Done && Progress() >= target && mode != Mode.Manual) Trigger();
+        if (!Done && mode != Mode.Manual && Progress() >= target && StepsReached) Trigger();
     }
 
     private int Progress() => mode switch
     {
-        Mode.Discoveries => visibility != null ? visibility.DiscoveredCount : 0,
+        Mode.Discoveries => CountedDiscoveries,
         Mode.TotalSteps => steps != null ? steps.TotalSteps : 0,
         Mode.CalmSteps => calmSteps,
         _ => 0
@@ -105,11 +149,22 @@ public class ExitCondition : MonoBehaviour
     private void OnGUI()
     {
         if (!showDebugOverlay || !DebugOverlay.Visible) return;
-        string text = Done
-            ? "Salida: abierta"
-            : mode == Mode.Manual
-                ? "Salida: modo manual"
-                : $"Salida ({mode}): {Mathf.Min(Progress(), target)} / {target}";
-        GUI.Label(new Rect(12, 122, 400, 22), text);
+        GUI.Label(new Rect(12, 122, 800, 22), DebugText());
+    }
+
+    private string DebugText()
+    {
+        if (Done) return "Salida: abierta";
+        if (mode == Mode.Manual) return "Salida: modo manual";
+
+        int totalSteps = steps != null ? steps.TotalSteps : 0;
+        string stepsText = $"pasos {Mathf.Min(totalSteps, minTotalSteps)}/{minTotalSteps}";
+        if (mode != Mode.Discoveries)
+            return $"Salida ({mode}): {Mathf.Min(Progress(), target)}/{target} · {stepsText}";
+
+        float wait = MetersUntilNextCounts;
+        string next = CountedDiscoveries >= target ? "listo"
+            : wait > 0f ? $"el proximo cuenta en {wait:0} m" : "el proximo cuenta";
+        return $"Salida: descubrimientos {Mathf.Min(CountedDiscoveries, target)}/{target} ({next}) · {stepsText}";
     }
 }

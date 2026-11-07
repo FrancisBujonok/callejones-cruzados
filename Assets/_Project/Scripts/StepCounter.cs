@@ -38,6 +38,8 @@ public class StepCounter : MonoBehaviour
     public int CurrentStreak { get; private set; }
     public int TotalSteps { get; private set; }
     public int StepsToTrigger => stepsToTrigger;
+    /// <summary>Metros por paso. ExitCondition lo usa para pasar pasos a metros (Paso 24).</summary>
+    public float StepLength => stepLength;
     /// <summary>Velocidad horizontal de este frame, en m/s. La usa CameraFeel.</summary>
     public float Speed { get; private set; }
     /// <summary>

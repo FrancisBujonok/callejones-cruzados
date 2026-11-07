@@ -20564,6 +20564,7 @@ GameObject:
   - component: {fileID: 1720921710}
   - component: {fileID: 1720921711}
   - component: {fileID: 1720921712}
+  - component: {fileID: 1720921713}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -20674,7 +20675,7 @@ MonoBehaviour:
   maxFear: 100
   fearPerDiscovery: 15
   fearPerParanoia: 4
-  decayPerSecond: 2
+  decayPerSecond: 1
   decayDelay: 5
   onFearChanged:
     m_PersistentCalls:
@@ -20771,6 +20772,22 @@ MonoBehaviour:
   cutOut: 0.45
   cutIn: 0.8
   catHeight: 0.95
+--- !u!114 &1720921713
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1720921704}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba752f7907c752f468451e8bc53768f4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FearHUD
+  fear: {fileID: 0}
+  visible: 1
+  markAt: 0.5
+  peakFallPerSecond: 0.04
 --- !u!1 &1722571689
 GameObject:
   m_ObjectHideFlags: 0
@@ -25153,8 +25170,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MazeDirector
   stepCounter: {fileID: 1720921705}
   visibility: {fileID: 0}
+  paranoia: {fileID: 1720921710}
   selection: 0
+  randomChance: 0.3
   onlyBehind: 1
+  waitAfterLookBack: 1.5
   waitForBlindSpot: 1
   maxWaitTime: 10
   onMutation:
@@ -25173,7 +25193,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ExitCondition
   mode: 1
-  target: 3
+  target: 4
+  minTotalSteps: 375
+  minMetersBetween: 25
   player: {fileID: 1720921704}
   treadmill: {fileID: 0}
   visibility: {fileID: 0}

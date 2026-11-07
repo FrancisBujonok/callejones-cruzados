@@ -11,12 +11,14 @@ using UnityEngine;
 /// cuenta una "ojeada". Muchas ojeadas en poco tiempo suman miedo (como mirar atras, ver
 /// ParanoiaSensor) y cortan el respiro un rato. Lo mismo si salta ParanoiaSensor.
 ///
-/// Trampa (solo con miedo alto, una vez por visita, y siempre fuera de la vista):
+/// Trampa (solo con miedo alto, una vez por visita, y siempre fuera de la vista).
+/// Paso 24: "miedo alto" se mide con el MAXIMO de la visita, no con el miedo de este momento.
+/// Si no, el respiro lo bajaba antes de que la trampa pudiera saltar y casi nunca pasaba.
 /// - Se cierra el callejon por el que llego: baja una persiana en esa boca. Solo si queda otro
 ///   camino (CorridorTreadmill.CanCloseSocket).
 /// - El altar del centro aparece del otro lado del arbol, de espaldas al jugador.
-/// Cuando el jugador mira lo que cambio, cuenta como un cambio descubierto (sube el miedo y
-/// suena, igual que con VisibilityChecker).
+/// Cuando el jugador mira lo que cambio, cuenta como un cambio descubierto (sube el miedo,
+/// suena y cuenta para la salida: VisibilityChecker.RegisterDiscovery).
 /// - Al salir con miedo alto, a veces pide que la proxima plaza sea igual a esta
 ///   (CorridorTreadmill.ArmPlazaRepeat): la plaza repetida.
 /// </summary>
@@ -52,7 +54,8 @@ public class Plaza : MonoBehaviour
     [SerializeField] private float glanceCooldown = 1.2f;
 
     [Header("Trampa")]
-    [SerializeField, Range(0f, 1f)] private float trapFromFear = 0.6f;
+    [Tooltip("Miedo (0 a 1) que hay que haber tenido en esta visita para que salte la trampa o se pida la plaza repetida. Paso 24: de 0,6 a 0,5 y medido con el maximo de la visita.")]
+    [SerializeField, Range(0f, 1f)] private float trapFromFear = 0.5f;
     [Tooltip("Segundos en la plaza antes de que pueda pasar.")]
     [SerializeField] private float trapDelay = 5f;
     [Tooltip("Mas de estos grados entre la vista y lo que cambia = no lo esta viendo.")]
@@ -67,6 +70,8 @@ public class Plaza : MonoBehaviour
     public bool PlayerInside => inside;
     public bool Relieving { get; private set; }
     public string LastTrap { get; private set; } = "-";
+    /// <summary>Paso 24: el miedo mas alto (0 a 1) desde que el jugador entro a la plaza.</summary>
+    public float VisitPeakFear => visitPeak;
 
     private CorridorSegment segment;
     private CorridorTreadmill paths;
@@ -77,7 +82,7 @@ public class Plaza : MonoBehaviour
     private Camera view;
 
     private bool inside, trapDone;
-    private float insideTime, lastParanoia = -999f, lastGlanceFear = -999f;
+    private float insideTime, lastParanoia = -999f, lastGlanceFear = -999f, visitPeak;
     private int arrival = -1, lastFaced = -1;
     private readonly Queue<float> glances = new Queue<float>();
     private bool pendingSeen;
@@ -106,6 +111,7 @@ public class Plaza : MonoBehaviour
         // La pieza se reusa: todo como nuevo (el generador ya sorteo la decoracion).
         inside = trapDone = pendingSeen = false;
         insideTime = 0f;
+        visitPeak = 0f;
         arrival = lastFaced = -1;
         glances.Clear();
         LastTrap = "-";
@@ -160,18 +166,20 @@ public class Plaza : MonoBehaviour
         }
 
         insideTime += Time.deltaTime;
+        visitPeak = Mathf.Max(visitPeak, fear.Normalized);
         CountGlances(now);
 
         // Respiro: lugar abierto, siempre que no estes mirando para todos lados.
         Relieving = insideTime >= reliefDelay && now - lastParanoia >= quietSeconds;
         if (Relieving) fear.Relieve(reliefPerSecond * Time.deltaTime);
 
-        if (!trapDone && insideTime >= trapDelay && fear.Normalized >= trapFromFear) TryTrap();
+        if (!trapDone && insideTime >= trapDelay && visitPeak >= trapFromFear) TryTrap();
     }
 
     private void Enter(Vector3 local)
     {
         insideTime = 0f;
+        visitPeak = fear.Normalized; // el miedo con el que llego cuenta
         // La boca por la que llego: la mas cercana al jugador.
         float best = float.MaxValue;
         for (int i = 0; i < segment.SocketCount; i++)
@@ -184,7 +192,7 @@ public class Plaza : MonoBehaviour
     private void Leave()
     {
         Relieving = false;
-        if (!IsRepeat && paths != null && fear.Normalized >= trapFromFear && Random.value < repeatChance)
+        if (!IsRepeat && paths != null && visitPeak >= trapFromFear && Random.value < repeatChance)
             paths.ArmPlazaRepeat(this);
     }
 
@@ -282,7 +290,8 @@ public class Plaza : MonoBehaviour
 
         pendingSeen = false;
         Debug.Log($"[Plaza] El jugador vio el cambio: {LastTrap}.");
-        if (visibility != null) visibility.onChangeDiscovered?.Invoke(); // miedo + sonido, como cualquier cambio
+        // Paso 24: como cualquier cambio (miedo, sonido) y ademas cuenta para la salida.
+        if (visibility != null) visibility.RegisterDiscovery($"plaza '{name}', {LastTrap}");
         else fear.OnChangeDiscovered();
     }
 
@@ -299,6 +308,6 @@ public class Plaza : MonoBehaviour
     {
         if (!inside || !DebugOverlay.Visible) return;
         GUI.Label(new Rect(12, 232, 700, 22),
-            $"Plaza{(IsRepeat ? " (repetida)" : "")}: {(Relieving ? "respiro" : "sin respiro")}, ojeadas {glances.Count}, trampa: {LastTrap}");
+            $"Plaza{(IsRepeat ? " (repetida)" : "")}: {(Relieving ? "respiro" : "sin respiro")}, ojeadas {glances.Count}, miedo maximo {visitPeak * 100f:0}/{trapFromFear * 100f:0}, trampa: {LastTrap}");
     }
 }
