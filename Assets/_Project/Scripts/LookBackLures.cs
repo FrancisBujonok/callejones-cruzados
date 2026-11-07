@@ -5,7 +5,8 @@ using UnityEngine;
 /// (y por eso nunca descubre los cambios ni llega a la salida). Ninguna dice "mira atras":
 /// pasan algo a tu espalda y dan ganas de mirar.
 ///
-/// - Gato: un maullido atras, a ras del piso. A veces dos.
+/// - Gato: un maullido atras, a ras del piso. A veces dos. Paso 26: maullidos grabados de un gato
+///   de verdad (BigSoundBank, CC0); se elige uno al azar cada vez.
 /// - Campanillas: alguien que camina con cascabeles, cada vez mas cerca. Se callan de golpe
 ///   cuando te das vuelta.
 /// - Luz: un tubo se prende atras tuyo y tu sombra se estira por el piso, adelante. Se apaga
@@ -51,7 +52,8 @@ public class LookBackLures : MonoBehaviour
     [SerializeField] private float lightIntensity = 40f;
 
     [Header("Clips")]
-    [SerializeField] private AudioClip meow;
+    [Tooltip("Paso 26: maullidos grabados. Se elige uno al azar cada vez.")]
+    [SerializeField] private AudioClip[] meows;
     [SerializeField] private AudioClip phoneRing;
 
     [Header("Cuando")]
@@ -108,7 +110,7 @@ public class LookBackLures : MonoBehaviour
     /// <summary>Lo usa la herramienta de editor.</summary>
     public void Setup(Transform playerTransform, Camera playerCamera, ParanoiaSensor paranoiaSensor, FearMeter fearMeter,
         AudioSource cat, AudioSource bells, AudioSource phone, AudioLowPassFilter phoneLowPass,
-        Light light, AudioSource hum, Renderer[] body, AudioClip meowClip, AudioClip ringClip)
+        Light light, AudioSource hum, Renderer[] body, AudioClip[] meowClips, AudioClip ringClip)
     {
         player = playerTransform;
         view = playerCamera;
@@ -121,7 +123,7 @@ public class LookBackLures : MonoBehaviour
         backLight = light;
         lightHum = hum;
         shadowBody = body;
-        meow = meowClip;
+        meows = meowClips;
         phoneRing = ringClip;
     }
 
@@ -229,7 +231,7 @@ public class LookBackLures : MonoBehaviour
         float wLight = previous == Cue.Light || backLight == null ? 0f : lightWeight;
         float wPhone = previous == Cue.Phone || phoneSource == null || phoneRing == null ? 0f
             : (phoneBehind ? phoneNearbyWeight : phoneWeight);
-        if (meow == null || catSource == null) wCat = 0f;
+        if (RandomMeow() == null || catSource == null) wCat = 0f;
 
         float total = wCat + wBells + wLight + wPhone;
         if (total <= 0f) return Cue.None;
@@ -263,7 +265,7 @@ public class LookBackLures : MonoBehaviour
                 cueSpot = feet + back * (8f - closer) + side * Random.Range(-1f, 1f) + Vector3.up * 0.35f;
                 catSource.transform.position = cueSpot;
                 catSource.pitch = Random.Range(0.92f, 1.08f);
-                catSource.PlayOneShot(meow, 0.8f);
+                catSource.PlayOneShot(RandomMeow(), 0.8f);
                 secondMeow = Random.value < 0.45f;
                 break;
 
@@ -323,7 +325,7 @@ public class LookBackLures : MonoBehaviour
                 {
                     secondMeow = false;
                     catSource.pitch = Random.Range(0.85f, 1f);
-                    catSource.PlayOneShot(meow, 0.65f);
+                    catSource.PlayOneShot(RandomMeow(), 0.65f);
                 }
                 if (cueTime >= 4f) Finish();
                 break;
@@ -407,6 +409,12 @@ public class LookBackLures : MonoBehaviour
     }
 
     // ------------------------------------------------------------------ ayudas
+
+    private AudioClip RandomMeow()
+    {
+        if (meows == null || meows.Length == 0) return null;
+        return meows[Random.Range(0, meows.Length)];
+    }
 
     /// <summary>El telefono publico esta puesto, quedo atras y no muy lejos.</summary>
     private bool PhoneBehind(out Vector3 position)

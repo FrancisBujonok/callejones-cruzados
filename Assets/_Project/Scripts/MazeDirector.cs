@@ -15,6 +15,10 @@ using UnityEngine.Events;
 /// - Con "Nearest", una parte de las veces (randomChance) elige un punto ciego al azar: el
 ///   cambio no esta siempre en la pieza justo detras.
 ///
+/// Paso 26: cambios chicos. Una parte de las veces (subtleChance, 25 %), en vez de cambiar la variante,
+/// cambia un detalle de la pieza: un cartel que dice otra cosa o una fachada que es otra
+/// (SubtleChanges). Las piezas sin variantes ahora tambien pueden cambiar asi.
+///
 /// Va en el objeto "Laberinto", junto a VisibilityChecker.
 /// </summary>
 public class MazeDirector : MonoBehaviour
@@ -40,6 +44,10 @@ public class MazeDirector : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float randomChance = 0.3f;
     [Tooltip("Solo cambiar modulos que esten detras del jugador.")]
     [SerializeField] private bool onlyBehind = true;
+    [Tooltip("Paso 26: probabilidad de cambiar un detalle (cartel o fachada) en vez de la variante.")]
+    [SerializeField, Range(0f, 1f)] private float subtleChance = 0.25f;
+    [Tooltip("Paso 26: en las piezas sin variantes (solo pueden tener cambios chicos), probabilidad de usarlas.")]
+    [SerializeField, Range(0f, 1f)] private float subtleOnlyChance = 0.5f;
     [Tooltip("Paso 24: segundos despues de una mirada atras en los que no se cambia nada.")]
     [SerializeField] private float waitAfterLookBack = 1.5f;
     [Tooltip("Si no hay punto ciego al completar la racha, esperar a que aparezca uno.")]
@@ -54,6 +62,9 @@ public class MazeDirector : MonoBehaviour
     public int MutationCount { get; private set; }
     /// <summary>El ultimo modulo que cambio. Lo usa el sonido para ubicar el ruido lejano.</summary>
     public CorridorSegment LastMutated { get; private set; }
+    /// <summary>Paso 26: que cambio la ultima vez (para el debug y la consola).</summary>
+    public string LastChange { get; private set; } = "-";
+    public int SubtleCount { get; private set; }
     /// <summary>Paso 24: true mientras dura la espera despues de una mirada atras.</summary>
     public bool JustLookedBack => Time.time - lastLookBack < waitAfterLookBack;
 
@@ -134,39 +145,54 @@ public class MazeDirector : MonoBehaviour
 
         List<CorridorSegment> candidates = visibility.GetBlindSpotSegments(onlyBehind);
 
-        // Sin alternativas no hay nada que cambiar. Y si ya tiene un cambio sin ver,
-        // cambiarlo de nuevo lo podria devolver a como estaba y el susto se perderia.
-        // Las piezas de un bucle tampoco: sus copias tienen que verse identicas.
-        candidates.RemoveAll(s => s.VariantCount < 2 || s.HasUnseenChange || s.Locked);
+        // Si ya tiene un cambio sin ver, cambiarlo de nuevo lo podria devolver a como estaba y el
+        // susto se perderia. Las piezas de un bucle tampoco: sus copias tienen que verse identicas.
+        // Las plazas tienen sus propias trampas. Paso 26: las piezas sin variantes ya no se
+        // descartan, porque pueden tener un cambio chico.
+        candidates.RemoveAll(s => s.HasUnseenChange || s.Locked || s.Kind == SegmentKind.Plaza);
 
-        // Se prueban candidatos hasta encontrar uno cuyo cambio no encierre al jugador.
+        // Se prueban candidatos hasta encontrar un cambio posible que no encierre al jugador.
         CorridorSegment target = null;
-        int newVariant = 0;
+        string change = null;
         while (candidates.Count > 0)
         {
             CorridorSegment option = pickRandom
                 ? candidates[Random.Range(0, candidates.Count)]
                 : FindNearest(candidates);
-            int variant = PickDifferentVariant(option);
 
-            bool traps = option.WouldBlock(variant) && paths != null && !paths.IsSafeToBlock(option);
-            if (!traps)
+            // En la prueba, con todas las piezas sin variantes, 7 de cada 10 cambios eran chicos:
+            // demasiados. Las sin variantes ahora entran la mitad de las veces.
+            bool subtle = option.VariantCount < 2 ? Random.value < subtleOnlyChance : Random.value < subtleChance;
+            if (subtle && SubtleChanges.TryApply(option, out string what))
             {
                 target = option;
-                newVariant = variant;
+                change = what;
+                SubtleCount++;
                 break;
+            }
+
+            if (option.VariantCount >= 2)
+            {
+                int variant = PickDifferentVariant(option);
+                bool traps = option.WouldBlock(variant) && paths != null && !paths.IsSafeToBlock(option);
+                if (!traps)
+                {
+                    option.SetVariant(variant);
+                    target = option;
+                    change = "variante " + variant;
+                    break;
+                }
             }
             candidates.Remove(option);
         }
 
         if (target == null) return false;
 
-        target.SetVariant(newVariant);
         target.MarkChanged();
-
         MutationCount++;
         LastMutated = target;
-        Debug.Log($"[MazeDirector] Cambio #{MutationCount} ({(pickRandom ? "al azar" : "el mas cercano")}): '{target.name}' pasa a la variante {newVariant}.");
+        LastChange = change;
+        Debug.Log($"[MazeDirector] Cambio #{MutationCount} ({(pickRandom ? "al azar" : "el mas cercano")}): '{target.name}', {change}.");
         onMutation?.Invoke();
         return true;
     }

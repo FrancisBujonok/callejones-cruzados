@@ -104,6 +104,7 @@ public static partial class AtmosphereBuilder
         SetupSound(sounds);        // despues del torii: le agrega su sonido
         BuildLandmarks(mats);      // despues del sonido: la maquina y el altar usan sus clips
         SetupLures(BuildLureSounds(), sounds.zumbido); // Paso 25: pistas y mirar de cerca
+        SetupMundane(BuildMundaneSounds());            // Paso 26: lo cotidiano (despues de las pistas)
 
         AssetDatabase.SaveAssets();
         EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());

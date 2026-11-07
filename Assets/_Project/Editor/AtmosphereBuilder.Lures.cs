@@ -9,7 +9,8 @@ using UnityEngine.SceneManagement;
 /// Menu: Callejones > Pistas y mirar de cerca (tambien corre dentro de "Construir atmosfera (todo)").
 ///
 /// Sonidos nuevos (sintetizados, como todos; ver AtmosphereBuilder.Audio):
-/// - Pista_Gato: un maullido. El tono sube y baja, y la boca pasa de "i" a "a" a "u" (formantes).
+/// - Pista_Gato: un maullido sintetizado. Paso 26: no sonaba a gato; ahora se usan los maullidos
+///   grabados de Audio/Reales (Gato_1..4, CC0). El sintetizado queda solo si esos faltan.
 /// - Pista_Campanillas (loop): alguien que camina con cascabeles, un paso cada 0.6 s.
 /// - Pista_Telefono: un timbre de telefono viejo, dos repiques ("rrring, rrring").
 /// La luz de atras usa el zumbido de los faroles (Farol_Zumbido).
@@ -213,7 +214,7 @@ public static partial class AtmosphereBuilder
 
         LookBackLures lures = root.AddComponent<LookBackLures>();
         lures.Setup(player, cam, paranoia, fear, cat, bells, phone, lowPass, light, lightHum,
-            new[] { torso, head, arms }, s.gato, s.telefono);
+            new[] { torso, head, arms }, MeowClips(s.gato), s.telefono);
 
         // 3. Mirar de cerca.
         SignInspector inspector = player.GetComponent<SignInspector>();
@@ -222,6 +223,13 @@ public static partial class AtmosphereBuilder
         EditorUtility.SetDirty(inspector);
 
         EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
+    }
+
+    /// <summary>Paso 26: los maullidos grabados (Audio/Reales/Gato_*.wav); si no estan, el sintetizado.</summary>
+    private static AudioClip[] MeowClips(AudioClip synth)
+    {
+        AudioClip[] real = LoadRealSounds("Gato");
+        return real.Length > 0 ? real : new[] { synth };
     }
 
     /// <summary>Una parte del cuerpo de sombra: sin collider, invisible, solo proyecta sombra. Apagada.</summary>
