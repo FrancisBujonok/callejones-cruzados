@@ -22,6 +22,7 @@ using UnityEngine.InputSystem;
 /// tiene que saltear el inicio.
 ///
 /// Teclas de prueba: F1 muestra u oculta los textos de prueba; con ellos visibles, F2 abre la salida.
+/// (F3 es la barra de miedo, FearHUD; E es mirar de cerca, SignInspector.)
 ///
 /// Va en el objeto "Juego". La parte visible (paneles, botones) esta en GameUI.
 /// </summary>
@@ -172,7 +173,9 @@ public class GameFlow : MonoBehaviour
 
             case State.Playing:
                 playTime += Time.deltaTime;
-                if (EscapePressed()) Pause();
+                // Paso 25: mientras se mira un cartel de cerca, Esc lo cierra (y ese Esc no pausa).
+                bool inspecting = SignInspector.IsOpen || SignInspector.ClosedFrame == Time.frameCount;
+                if (EscapePressed() && !inspecting) Pause();
                 // En el editor, al hacer clic afuera del juego se libera el cursor: un clic lo vuelve a tomar.
                 else if (Cursor.lockState != CursorLockMode.Locked && ClickPressed()) SetCursor(true);
                 break;
