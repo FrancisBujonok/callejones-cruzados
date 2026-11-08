@@ -61,7 +61,7 @@ public static partial class AtmosphereBuilder
     /// <summary>Todos los carteles (tambien los mensajes escondidos), y los vidrios de las ventanas de abajo.</summary>
     private static void ApplyDecalOffsets(Mats m)
     {
-        foreach (SignSet set in new[] { m.signsV5, m.signsV2, m.signsH5, m.signsP, m.signsS, m.signsN, m.signsPlaca, m.signsA, m.signsXS, m.signsXN })
+        foreach (SignSet set in new[] { m.signsV5, m.signsV2, m.signsH5, m.signsP, m.signsS, m.signsN, m.signsPlaca, m.signsA, m.signsK, m.signsXS, m.signsXN })
         {
             if (set == null) continue;
             foreach (Material mat in set.mats) SetDecalOffset(mat);
@@ -206,6 +206,11 @@ public static partial class AtmosphereBuilder
                 AssetDatabase.DeleteAsset(AudioDir + "/" + old + ".wav");
         AudioClip[] floor = LoadClips("Goteo_", 2);
         AudioClip[] metal = LoadClips("Goteo_Chapa_", 1);
+        // Paso 28: si estan las gotas grabadas (Audio/Reales, CC0), se usan esas.
+        AudioClip[] realFloor = LoadRealSounds("Gota");
+        AudioClip[] realMetal = LoadRealSounds("GotaChapa");
+        if (realFloor.Length > 0) floor = realFloor;
+        if (realMetal.Length > 0) metal = realMetal;
         if (floor.Length == 0) Debug.LogWarning("[Callejones] Faltan los sonidos del goteo. Corre Herramientas/generar_goteo.py.");
         drips.Setup(FindInScene<FearMeter>(null), FindInScene<CorridorTreadmill>(null), cam, GetDripQuad(), drop, ripple, floor, metal);
         // Mas bajo y mas cerca (los valores viejos quedaron guardados en la escena).

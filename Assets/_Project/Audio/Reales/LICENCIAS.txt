@@ -12,3 +12,12 @@ Tos_2, Tos_3     <- #0488 Man cough #1          https://bigsoundbank.com/man-cou
 Platos_1, _2     <- #0391 Handmade dishes       https://bigsoundbank.com/handmade-dishes-s0391.html
 Platos_3         <- #1193 Cutlery, manipulations on plate  https://bigsoundbank.com/cutlery-manipulations-on-plate-s1193.html
 Moto_1           <- #0533 Scooter passage       https://bigsoundbank.com/sound-0533-scooter-qui-passe.html
+
+Paso 28 (mismo origen y licencia; las gotas con pasa altos en 250 Hz):
+Persiana_1, _2   <- #0601 Trade grid: Closed     https://bigsoundbank.com/trade-grid-closed-s0601.html
+Perro_1.._3      <- #0916 Barking dog            https://bigsoundbank.com/barking-dog-s0916.html
+Perro_4          <- #2954 Barking dog #2         https://bigsoundbank.com/barking-dog-2-s2954.html
+Campanillas_1.._3 <- #2687 Cluster chimes #1     https://bigsoundbank.com/cluster-chimes-1-s2687.html
+Gota_1.._4       <- #1384 Drops of water #1      https://bigsoundbank.com/drops-of-water-1-s1384.html
+Gota_5, _6       <- #1387 Drops of water #4      https://bigsoundbank.com/drops-of-water-4-s1387.html
+GotaChapa_1, _2  <- #1382 Drops, metal pan       https://bigsoundbank.com/drops-metal-pan-s1382.html
