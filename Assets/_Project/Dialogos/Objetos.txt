@@ -1,0 +1,155 @@
+# Lo que piensa el personaje al mirar un objeto con E (Paso 28).
+#
+# Formato: clave | cuando | linea
+#   clave:    el tipo de objeto (tiene que ser igual a la del componente Inspectable).
+#   cuando:   calma    = lo normal.
+#             miedo    = con el miedo en 50 o mas.
+#             otra_vez = si ya miraste ese tipo de objeto antes (sale 6 de cada 10 veces).
+#   linea:    lo que dice. Corta: entra en dos renglones de pantalla.
+#
+# Se elige una al azar entre las que corresponden, sin repetir la ultima.
+# Para agregar una linea, copia un renglon y cambia el texto. Para sacar una, borrala
+# o ponele # adelante. Los cambios se ven la proxima vez que le des a Play.
+
+# ---------------------------------------------------------------- piso
+
+lata | calma | Una lata de algo que no conozco. El dibujo es un pescado sonriendo.
+lata | calma | Todavía está fría. Alguien la tiró hace un rato.
+lata | calma | Abollada. La pisaron más de una vez.
+lata | calma | La etiqueta no la puedo leer. El precio sí, y es barato.
+lata | miedo | Si la pateo va a sonar en todo el callejón. Mejor no.
+lata | miedo | Está tibia. Como si alguien la hubiera tenido en la mano hasta recién.
+lata | otra_vez | La misma marca. El mismo pescado sonriendo.
+lata | otra_vez | Juraría que esta lata ya la vi. En otro callejón.
+
+bolsa | calma | Una bolsa de basura bien atada. Huele a pescado y a fruta pasada.
+bolsa | calma | Alguien la sacó y nunca pasó el camión.
+bolsa | calma | Tiene un nudo doble. Prolijo.
+bolsa | miedo | Se movió. Fue el aire. Tiene que haber sido el aire.
+bolsa | miedo | No la abro. No quiero saber qué hace ese bulto.
+bolsa | otra_vez | Otra bolsa. Acá nadie saca la basura a la vereda: la dejan en los callejones.
+
+comida | calma | Arroz con algo rojo. Lo dejaron por la mitad.
+comida | calma | Los palitos están partidos, uno más corto que el otro.
+comida | calma | Todavía sale un poco de vapor. O me parece.
+comida | miedo | Está tibia. ¿Quién se va corriendo en mitad de la cena?
+comida | miedo | Hay arroz desparramado alrededor, como si se le hubiera caído a alguien que corría.
+comida | otra_vez | Otra cajita a medio comer. Acá alguien come apurado.
+
+botella | calma | Una botella verde, vacía. Licor de algo.
+botella | calma | Tiene un papelito adentro, tan mojado que no se lee.
+botella | calma | No tiene tapa. La boca huele dulce.
+botella | miedo | Vacía. Me dan ganas de agarrarla, por si acaso. ¿Por si acaso qué?
+botella | otra_vez | El mismo verde, la misma etiqueta.
+
+plumas | calma | Plumas. No son de paloma.
+plumas | calma | Chiquitas, de colores apagados. Pájaros de jaula.
+plumas | miedo | Hay más plumas que antes. O eso creo.
+plumas | miedo | Una tiene la punta manchada de algo oscuro.
+plumas | otra_vez | Siguen ahí. Nadie barre.
+
+# ---------------------------------------------------------------- contra la pared
+
+maceta | calma | La tierra está húmeda. Alguien la riega.
+maceta | calma | Una planta que no reconozco. Las hojas son demasiado oscuras.
+maceta | calma | Hay una moneda enterrada a medias en la tierra.
+maceta | miedo | La tierra está removida, como si hubieran enterrado algo chico.
+maceta | otra_vez | La misma planta. La misma moneda.
+
+balde | calma | Agua con olor a lavandina. Alguien estuvo baldeando.
+balde | calma | Un balde azul, medio lleno. En el agua flotan pétalos.
+balde | miedo | Me veo la cara en el agua. Tardo un poco en moverme.
+balde | miedo | El agua todavía se mueve, y nadie lo tocó.
+balde | otra_vez | Otro balde. O el mismo, más adelante.
+
+jaula | calma | Jaulas vacías. Huelen a animal.
+jaula | calma | Hay pelos enganchados en los barrotes.
+jaula | calma | Cada jaula tiene un número escrito con fibra. Faltan algunos.
+jaula | miedo | La puertita está abierta. Lo que había adentro no se fue solo.
+jaula | miedo | Algo arañó el piso de la jaula hasta sacarle la pintura.
+jaula | otra_vez | Las mismas jaulas. Los números no siguen el orden de antes.
+
+caja_agujeros | calma | Cajas con agujeros. Para que respire lo que haya adentro.
+caja_agujeros | calma | Tienen una etiqueta de envío. No dice qué hay, solo FRÁGIL.
+caja_agujeros | miedo | Me pareció oír algo adentro. Un rasguño.
+caja_agujeros | miedo | Alguien tapó un agujero desde adentro, con papel.
+caja_agujeros | otra_vez | Las cajas siguen acá. ¿Esperan a alguien?
+
+cajon | calma | Cajones de verdura vacíos. Hojas secas en el fondo.
+cajon | calma | Uno tiene algo escrito en rojo. Supongo que es la marca.
+cajon | miedo | En el de abajo hay algo envuelto en diario. No lo toco.
+cajon | otra_vez | Los mismos cajones, apilados igual.
+
+# Paso 29: medidor, aire y equipos ya no se miran (tapaban los carteles). Las lineas quedan por
+# si se vuelven a agregar con Inspect(...) en el editor.
+medidor | calma | El disco del medidor gira rápido. Adentro alguien gasta mucha luz.
+medidor | calma | Un medidor viejo, con el vidrio rajado.
+medidor | miedo | El disco no gira, y sin embargo hay luz adentro.
+medidor | otra_vez | El número del medidor bajó. Eso no puede pasar.
+
+aire | calma | Un aire acondicionado viejo. Gotea sobre el piso.
+aire | calma | Hace ruido de algo que se está por romper desde hace años.
+aire | miedo | Está apagado, y gotea igual.
+aire | otra_vez | El mismo goteo, al mismo ritmo.
+
+ventana_luz | calma | Adentro hay una mesa puesta para uno. No hay nadie sentado.
+ventana_luz | calma | Una tele prendida sin sonido. Pasan noticias de un lugar que no conozco.
+ventana_luz | calma | Cortinas floreadas y un almanaque de otro año.
+ventana_luz | miedo | Hay una silla corrida hacia la ventana. Como para mirar afuera.
+ventana_luz | miedo | La mesa está puesta para dos. Hay un plato de más.
+ventana_luz | otra_vez | La mesa sigue puesta. La comida no se enfría.
+
+ventana_oscura | calma | No se ve nada adentro. Solo mi reflejo.
+ventana_oscura | calma | El vidrio está sucio de adentro, no de afuera.
+ventana_oscura | miedo | En el reflejo, detrás mío, no hay nadie. Lo miré dos veces.
+ventana_oscura | miedo | Algo claro se movió del otro lado. Un trapo, supongo.
+ventana_oscura | otra_vez | Sigue oscuro.
+
+# ---------------------------------------------------------------- fachadas
+
+persiana | calma | Una persiana baja, con candado. El candado es nuevo.
+persiana | calma | Está tibia, como si adentro hiciera calor.
+persiana | calma | Del otro lado se oye una radio, muy bajito.
+persiana | miedo | Tiene marcas de golpes. Desde adentro.
+persiana | miedo | Del otro lado alguien respira contra la chapa. Creo.
+persiana | otra_vez | Esta persiana estaba un poco más arriba. Creo.
+
+noren | calma | Huele a incienso y a caldo.
+noren | calma | Adentro está oscuro. Se oye un reloj.
+noren | calma | La tela tiene algo escrito. Supongo que es el nombre del lugar.
+noren | miedo | La cortina se mueve y no hay viento.
+noren | miedo | Adentro alguien dejó de hablar cuando me acerqué.
+noren | otra_vez | La misma cortina. El incienso ya se terminó de quemar.
+
+sal | calma | Un montoncito de sal en la puerta. Para que no entre algo.
+sal | calma | Sal gruesa, en forma de cono. Bien prolija.
+sal | miedo | El cono está deshecho de un lado, como si alguien lo hubiera pisado al salir.
+sal | otra_vez | La sal sigue ahí. Lo que tenía que quedarse afuera, se quedó afuera.
+
+equipos | calma | Caños, un medidor de gas y un aire que vibra. La parte de atrás de algo.
+equipos | calma | Huele a gas. Poquito.
+equipos | miedo | Sale aire caliente, y la máquina está apagada.
+equipos | otra_vez | Los mismos caños.
+
+# ---------------------------------------------------------------- lugares
+
+maquina | calma | Las latas tienen dibujos que no entiendo. Una tiene un gato.
+maquina | calma | Acepta mis monedas, pero no habla mi idioma.
+maquina | calma | Alguien pegó un papelito: NO DEVUELVE. Eso sí lo entiendo.
+maquina | miedo | La luz de adentro parpadea al ritmo de algo.
+maquina | miedo | Una lata está puesta al revés, mirando para adentro.
+maquina | otra_vez | Hay una lata menos que antes.
+
+telefono | calma | Un teléfono público. Acepta tarjetas que ya no existen.
+telefono | calma | El tubo está tibio. Alguien habló hace poco.
+telefono | calma | Al costado hay números anotados con birome. Todos empiezan igual.
+telefono | miedo | Si suena, no atiendo.
+telefono | miedo | Si levanto el tubo, ¿quién va a estar del otro lado?
+telefono | otra_vez | El mismo teléfono. ¿Es el mismo?
+
+altar | calma | Un altar chico. Las velas están recién prendidas.
+altar | calma | Hay una fruta y un vaso de té. Ofrendas.
+altar | calma | La estatuita no se parece a ningún dios que conozca.
+altar | miedo | La estatuita mira hacia el lado por donde vine.
+altar | miedo | Alguien cambió las ofrendas. Ahora hay un juguete de gato.
+altar | otra_vez | Las velas no bajaron nada desde la última vez.

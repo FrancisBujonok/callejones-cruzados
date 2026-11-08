@@ -10,6 +10,7 @@ using System.Collections.Generic;
 ///   cuanto mas tiempo pasa el jugador sin darse vuelta.
 /// - Cuanto pesa en el sorteo ademas de lo que puso la herramienta de editor (WeightScale):
 ///   el afiche de Manchas sale poco.
+/// - Paso 29: los afiches de locales y de la feria (K) tienen lineas propias por dibujo (ShopPosters).
 ///
 /// Es una clase "static": una sola tabla para todo el juego, sin objeto en la escena.
 /// </summary>
@@ -38,6 +39,54 @@ public static class SignCatalog
         "La foto está tan gastada que la cara podría ser de cualquiera.",
         "No entiendo qué dice. Lo pegaron derecho, con cuidado; los de alrededor están todos torcidos.",
         "Una foto y un sello rojo. No sé si lo buscan o si ya lo encontraron.",
+    };
+
+    // Paso 29: los afiches de locales, tiendas y la feria (K). Cada uno tiene un dibujo distinto,
+    // asi que cada uno tiene sus propias lineas (la clave es el estilo, la ultima parte del nombre).
+    private static readonly Dictionary<string, string[]> ShopPosters = new Dictionary<string, string[]>
+    {
+        { "feria", new[] {
+            "Farolitos y puestos con toldo. Una feria de noche, eso lo entiendo sin leer.",
+            "La feria es todas las noches, creo. ¿Será la del carnaval?" } },
+        { "fuegos", new[] {
+            "Fuegos artificiales sobre los techos. La fecha está en números: 8.15.",
+            "Fuegos artificiales. No escuché ninguno en toda la noche." } },
+        { "fideos", new[] {
+            "Un bol de fideos con huevo. Noventa. No sé noventa de qué.",
+            "Me hizo acordar que no comí nada desde que llegué." } },
+        { "te", new[] {
+            "Un vaso con bolitas negras en el fondo. Té con perlas, me parece.",
+            "Cuarenta y cinco. El dibujo está más contento que yo." } },
+        { "alquiler", new[] {
+            "Una casita dibujada y tiritas con un teléfono. Se alquila algo. Faltan dos tiritas.",
+            "Alguien busca dónde vivir acá. O alguien quiere irse." } },
+        { "banda", new[] {
+            "Alguien con una guitarra, en rojo y negro. Un recital el 11.20.",
+            "La foto está tan oscura que el músico podría estar de espaldas." } },
+        { "adivina", new[] {
+            "Un ojo con rayos alrededor. Una adivina, seguro.",
+            "Me mira desde el papel. Prefiero no saber qué me diría." } },
+        { "linternas", new[] {
+            "Un farol grande y redondo, como los de arriba. Un festival de faroles.",
+            "El farol dibujado brilla más que los de verdad." } },
+        { "perro", new[] {
+            "Un perro de orejas caídas. Lo buscan. Faltan casi todas las tiritas.",
+            "¿Será el perro que a veces se oye ladrar, lejos?" } },
+        { "carnaval", new[] {
+            "Una carpa a rayas, con banderitas. Un carnaval. Abajo, algo que parece una fecha.",
+            "Es para esta noche. O era para esta noche, hace mucho." } },
+        { "mahjong", new[] {
+            "Fichas de mahjong. Un club, supongo, en algún piso de arriba.",
+            "Cuatro fichas en fila. Nunca aprendí a jugar." } },
+        { "matsuri", new[] {
+            "Farolitos rojos y blancos y un abanico. Una fiesta de verano.",
+            "Un abanico azul, un farol rojo, un farol blanco. Es lindo. Acá nada más lo es." } },
+        { "karaoke", new[] {
+            "Un micrófono y notas musicales, en rosa. Un karaoke abierto toda la noche.",
+            "Veinticuatro horas. ¿Quién canta a esta hora, en estos callejones?" } },
+        { "oferta", new[] {
+            "Cincuenta por ciento. Eso es igual en todos los idiomas.",
+            "Una liquidación. El papel está tan amarillo que la oferta debe ser vieja." } },
     };
 
     private static readonly string[] Flyers =
@@ -142,6 +191,7 @@ public static class SignCatalog
         switch (format)
         {
             case "P": pool = PersonPoster; break;
+            case "K": pool = ShopPosters.TryGetValue(style, out string[] shop) ? shop : PaperSign; break;
             case "A": pool = Flyers; break;
             case "D": pool = Address; break;
             case "F": pool = Arrow; break;

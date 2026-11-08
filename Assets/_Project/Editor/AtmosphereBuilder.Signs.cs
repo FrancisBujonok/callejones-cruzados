@@ -62,6 +62,7 @@ public static partial class AtmosphereBuilder
         m.signsN = new SignSet();
         m.signsPlaca = new SignSet();
         m.signsA = new SignSet();
+        m.signsK = new SignSet();
         m.signsXS = new SignSet();
         m.signsXN = new SignSet();
         m.signTorii = null;
@@ -101,12 +102,14 @@ public static partial class AtmosphereBuilder
                 "D" => m.signsPlaca,
                 "F" => m.signsPlaca, // las flechas de salida comparten lugar con las placas
                 "A" => m.signsA,
+                "K" => m.signsK, // Paso 29
                 // Paso 19: mensajes escondidos. No se sortean: los usa NeonFlicker.
                 "XS" => m.signsXS,
                 "XN" => m.signsXN,
                 _ => null,
             };
             if (parts[0] == "T") m.signTorii = mat;
+            if (parts[0] == "K") SetDecalOffset(mat); // Paso 29: pegado a la pared, como los demas
             if (set == null) continue;
             set.mats.Add(mat);
             set.weights.Add(weight);
@@ -218,6 +221,20 @@ public static partial class AtmosphereBuilder
     {
         MeshRenderer face = SignFace(parent, name, wallPoint, SignPSize, -90f, FirstOr(m.signsP, m.cartel));
         AddSignPick(face.gameObject, m.signsP, face);
+    }
+
+    /// <summary>
+    /// Paso 29: afiche de un local, una tienda o la feria, pegado a una pared lateral, apenas
+    /// torcido. rightWall: pared derecha o E (mira hacia -X); si no, izquierda u O (mira hacia +X).
+    /// y y z: el centro del afiche en la pared.
+    /// </summary>
+    private static void CreateShopPoster(Transform parent, string name, float y, float z, bool rightWall, float roll, Mats m)
+    {
+        if (m.signsK == null || m.signsK.mats.Count == 0) return;
+        Vector3 wallPoint = new Vector3(rightWall ? WallInnerX - 0.02f : -WallInnerX + 0.02f, y, z);
+        MeshRenderer face = SignFace(parent, name, wallPoint, SignPSize, rightWall ? 90f : -90f, m.signsK.mats[0]);
+        face.transform.localRotation *= Quaternion.Euler(0f, 0f, roll);
+        AddSignPick(face.gameObject, m.signsK, face);
     }
 
     /// <summary>

@@ -20,6 +20,12 @@ using UnityEngine.InputSystem;
 /// La interfaz se arma sola al empezar, dentro del Canvas de GameUI (misma fuente y escala que
 /// los menus) y detras de todos sus paneles, asi el fundido a negro la tapa.
 /// Va en el Player. La pone la herramienta Callejones > Pistas y mirar de cerca.
+///
+/// Paso 28: tambien se pueden mirar objetos (Inspectable): latas, jaulas, ventanas, la
+/// persiana, el telefono... Con un objeto no se muestra una imagen: el fondo se oscurece apenas,
+/// el mundo sigue a la vista y abajo aparece la linea. Las lineas de los objetos estan en
+/// Dialogos/Objetos.txt (ObjectLines); las de los carteles, en SignCatalog.cs.
+/// Si un cartel y un objeto estan cerca, gana el que este mas cerca del centro de la vista.
 /// </summary>
 public class SignInspector : MonoBehaviour
 {
@@ -33,6 +39,10 @@ public class SignInspector : MonoBehaviour
     [SerializeField] private Camera view;
     [Tooltip("Si se deja vacio, usa el de este mismo objeto.")]
     [SerializeField] private FirstPersonController controller;
+    [Tooltip("Paso 28: las lineas de los objetos (Dialogos/Objetos.txt).")]
+    [SerializeField] private TextAsset objectLinesFile;
+    [Tooltip("Paso 28: con miedo alto, los objetos dicen otras cosas. Si se deja vacio, usa el de este objeto.")]
+    [SerializeField] private FearMeter fear;
 
     [Header("Que se puede mirar")]
     [Tooltip("Metros maximos desde los ojos hasta el centro del cartel.")]
@@ -47,12 +57,19 @@ public class SignInspector : MonoBehaviour
     [SerializeField] private float charsPerSecond = 40f;
     [Tooltip("Segundos del fundido al abrir y al cerrar.")]
     [SerializeField] private float fadeTime = 0.15f;
+    [Tooltip("Paso 28: que tan oscuro queda el fondo al mirar un objeto (con un cartel es 0.93).")]
+    [SerializeField, Range(0f, 1f)] private float objectDim = 0.25f;
 
     public string LastLine { get; private set; } = "";
     public SignRandomizer Target { get; private set; }
+    /// <summary>Paso 28: el objeto que se miraria con E ahora (si gana contra los carteles).</summary>
+    public Inspectable TargetObject { get; private set; }
 
     private CanvasGroup panel, prompt;
     private RawImage picture;
+    private Image background, shadow;
+    private ObjectLines objectLines;
+    private readonly Dictionary<string, int> objectsSeen = new Dictionary<string, int>();
     private RectTransform pictureRect, shadowRect;
     private TMPro.TMP_Text line;
     private float openTime, panelAlpha, promptAlpha;
@@ -66,10 +83,19 @@ public class SignInspector : MonoBehaviour
         controller = firstPerson;
     }
 
+    /// <summary>Paso 28: lo usa la herramienta de editor.</summary>
+    public void SetupObjects(TextAsset linesFile, FearMeter fearMeter)
+    {
+        objectLinesFile = linesFile;
+        fear = fearMeter;
+    }
+
     private void Awake()
     {
         if (view == null) view = Camera.main;
         if (controller == null) controller = GetComponent<FirstPersonController>();
+        if (fear == null) fear = GetComponent<FearMeter>();
+        objectLines = new ObjectLines(objectLinesFile);
         IsOpen = false;
         BuildInterface();
     }
@@ -90,6 +116,7 @@ public class SignInspector : MonoBehaviour
         {
             if (IsOpen) Close();
             Target = null;
+            TargetObject = null;
         }
         else if (IsOpen)
         {
@@ -97,8 +124,23 @@ public class SignInspector : MonoBehaviour
         }
         else
         {
-            Target = FindTarget();
-            if (Target != null && InspectPressed()) Open(Target);
+            // Paso 28: el cartel y el objeto mas centrados; gana el mas cerca del centro.
+            SignRandomizer sign = FindTarget(out float signAngle);
+            Inspectable thing = FindObjectTarget(out float thingAngle);
+            if (sign != null && thing != null)
+            {
+                // Paso 29: los carteles tienen 3 grados de ventaja. Lo que se quiere leer casi
+                // siempre es el cartel, no lo que esta al lado.
+                if (signAngle <= thingAngle + 3f) thing = null;
+                else sign = null;
+            }
+            Target = sign;
+            TargetObject = thing;
+            if (InspectPressed())
+            {
+                if (Target != null) Open(Target);
+                else if (TargetObject != null) Open(TargetObject);
+            }
         }
 
         // Fundidos con tiempo sin escala: la pausa pone el tiempo en 0.
@@ -106,7 +148,8 @@ public class SignInspector : MonoBehaviour
         float step = fadeTime > 0f ? dt / fadeTime : 1f;
         panelAlpha = Mathf.MoveTowards(panelAlpha, IsOpen ? 1f : 0f, step);
         panel.alpha = panelAlpha;
-        promptAlpha = Mathf.MoveTowards(promptAlpha, !IsOpen && Target != null ? 0.75f : 0f, step);
+        bool hasTarget = Target != null || TargetObject != null;
+        promptAlpha = Mathf.MoveTowards(promptAlpha, !IsOpen && hasTarget ? 0.75f : 0f, step);
         prompt.alpha = promptAlpha;
         if (IsOpen)
         {
@@ -131,6 +174,7 @@ public class SignInspector : MonoBehaviour
         if (tex == null) return;
 
         picture.texture = tex;
+        ShowPicture(true);
         // Lo mas grande que entre. Con 2 o mas, escala entera (pixeles parejos, como en la PS1).
         float fit = Mathf.Min(maxImageSize.x / tex.width, maxImageSize.y / tex.height);
         float scale = fit >= 2f ? Mathf.Floor(fit) : fit;
@@ -152,6 +196,32 @@ public class SignInspector : MonoBehaviour
         Debug.Log($"[SignInspector] Mirando '{key}': {LastLine}");
     }
 
+    /// <summary>Paso 28: mirar un objeto. Sin imagen: el mundo sigue a la vista, un poco mas oscuro.</summary>
+    private void Open(Inspectable thing)
+    {
+        ShowPicture(false);
+        objectsSeen.TryGetValue(thing.Key, out int seen);
+        LastLine = objectLines.Line(thing.Key, seen, fear != null ? fear.Normalized : 0f);
+        objectsSeen[thing.Key] = seen + 1;
+
+        line.text = LastLine;
+        line.maxVisibleCharacters = 0;
+        openTime = Time.unscaledTime;
+        IsOpen = true;
+        if (controller != null) controller.enabled = false;
+        Debug.Log($"[SignInspector] Mirando objeto '{thing.Key}': {LastLine}");
+    }
+
+    /// <summary>Con un cartel: imagen grande y fondo casi negro. Con un objeto: sin imagen y fondo apenas oscuro.</summary>
+    private void ShowPicture(bool value)
+    {
+        picture.enabled = value;
+        shadow.enabled = value;
+        Color c = background.color;
+        c.a = value ? 0.93f : objectDim;
+        background.color = c;
+    }
+
     private void UpdateOpen()
     {
         float t = Time.unscaledTime - openTime;
@@ -170,7 +240,7 @@ public class SignInspector : MonoBehaviour
 
     // ------------------------------------------------------------------ que se esta mirando
 
-    private SignRandomizer FindTarget()
+    private SignRandomizer FindTarget(out float bestAngle)
     {
         Transform cam = view.transform;
         Vector3 eye = cam.position;
@@ -207,6 +277,49 @@ public class SignInspector : MonoBehaviour
                 found = sign;
             }
         }
+        bestAngle = best;
+        return found;
+    }
+
+    /// <summary>
+    /// Paso 28: el objeto mas centrado en la vista, a menos de su distancia maxima, sin una pared
+    /// en el medio. Lo que la linea choca del propio objeto (una maceta tiene collider) no cuenta.
+    /// </summary>
+    private Inspectable FindObjectTarget(out float bestAngle)
+    {
+        Transform cam = view.transform;
+        Vector3 eye = cam.position;
+        float best = float.MaxValue; // aca se compara el puntaje (angulo + tamano), no solo el angulo
+        Inspectable found = null;
+
+        foreach (Inspectable thing in Inspectable.Active)
+        {
+            if (thing == null || !thing.TryGetVisibleBounds(out Bounds box)) continue;
+            Vector3 center = box.center;
+            Vector3 to = center - eye;
+            float dist = to.magnitude;
+            if (dist > thing.MaxDistance || dist < 0.05f) continue;
+
+            // El angulo hasta el punto de la caja mas cercano a la linea de la mirada: una
+            // persiana grande se puede mirar por cualquier parte, una lata solo de cerca del centro.
+            Vector3 aim = eye + cam.forward * dist;
+            Vector3 nearest = box.ClosestPoint(aim);
+            float angle = Vector3.Angle(cam.forward, nearest - eye);
+            if (angle >= maxAngle) continue;
+            // Los objetos grandes suman 1.5 grados por metro (hasta 5): asi, mirando un papelito
+            // pegado en la persiana, gana el papelito; mirando la sal de la puerta, gana la sal y
+            // no la entrada. Mirando la persiana lejos del papelito, gana la persiana.
+            float score = angle + Mathf.Min(5f, 1.5f * box.size.magnitude);
+            if (score >= best) continue;
+
+            if (Physics.Linecast(eye, center, out RaycastHit hit, ~0, QueryTriggerInteraction.Ignore) &&
+                !hit.transform.IsChildOf(thing.transform) && hit.distance < dist - box.extents.magnitude - 0.05f)
+                continue;
+
+            best = score;
+            found = thing;
+        }
+        bestAngle = best;
         return found;
     }
 
@@ -237,11 +350,13 @@ public class SignInspector : MonoBehaviour
 
         RectTransform bg = NewRect("Fondo", root);
         Stretch(bg);
-        bg.gameObject.AddComponent<Image>().color = new Color(0.02f, 0.01f, 0.01f, 0.93f);
+        background = bg.gameObject.AddComponent<Image>();
+        background.color = new Color(0.02f, 0.01f, 0.01f, 0.93f);
 
         shadowRect = NewRect("Sombra", root);
         shadowRect.anchoredPosition = new Vector2(5f, 21f);
-        shadowRect.gameObject.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0.55f);
+        shadow = shadowRect.gameObject.AddComponent<Image>();
+        shadow.color = new Color(0f, 0f, 0f, 0.55f);
 
         pictureRect = NewRect("Cartel", root);
         pictureRect.anchoredPosition = new Vector2(0f, 26f);
