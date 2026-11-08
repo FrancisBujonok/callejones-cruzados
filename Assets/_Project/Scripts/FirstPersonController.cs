@@ -9,6 +9,7 @@ using UnityEngine.InputSystem;
 /// - La camara (hija) gira arriba/abajo.
 /// - Se mueve con CharacterController: sin fisica, preciso, se frena contra paredes.
 /// Funciona con el Input System nuevo, con el viejo o con ambos activos.
+/// Paso 27: con Shift se trota (Stamina, en el mismo objeto): un poco mas rapido, solo hacia adelante.
 /// </summary>
 [RequireComponent(typeof(CharacterController))]
 public class FirstPersonController : MonoBehaviour
@@ -22,6 +23,8 @@ public class FirstPersonController : MonoBehaviour
     [SerializeField] private float walkSpeed = 2.5f;
     [Tooltip("Aceleracion hacia abajo en m/s^2. La real es -9.81; un poco mas se siente menos 'flotante'.")]
     [SerializeField] private float gravity = -15f;
+    [Tooltip("Paso 27: el trote con Shift. Si se deja vacio, usa el Stamina de este mismo objeto (si hay).")]
+    [SerializeField] private Stamina stamina;
 
     [Header("Mirada")]
     [Tooltip("Grados por pixel de movimiento del mouse.")]
@@ -36,6 +39,7 @@ public class FirstPersonController : MonoBehaviour
     private void Awake()
     {
         controller = GetComponent<CharacterController>();
+        if (stamina == null) stamina = GetComponent<Stamina>();
 
         if (cameraPivot == null)
         {
@@ -88,7 +92,11 @@ public class FirstPersonController : MonoBehaviour
         if (controller.isGrounded && verticalVelocity < 0f) verticalVelocity = -2f;
         verticalVelocity += gravity * Time.deltaTime;
 
-        Vector3 velocity = direction * walkSpeed + Vector3.up * verticalVelocity;
+        // Paso 27: el trote multiplica la velocidad (1 = caminar). Se llama siempre, aunque no se
+        // mueva, para que la stamina se recupere.
+        float speed = walkSpeed * (stamina != null ? stamina.Tick(input.y > 0.1f, Time.deltaTime) : 1f);
+
+        Vector3 velocity = direction * speed + Vector3.up * verticalVelocity;
         controller.Move(velocity * Time.deltaTime);
     }
 
