@@ -52,6 +52,7 @@ public static partial class AtmosphereBuilder
         Transform a = Group(sets, "SetA");
         CreateWallSign(a, "Cartel", new Vector3(WallInnerX - 0.035f, 2.0f, -2.0f), m);
         BoxChild(a, "AireAcondicionado", m.metal, new Vector3(1.2f, 2.7f, -0.9f), new Vector3(0.38f, 0.32f, 0.62f), Vector3.zero);
+        CreateShopPoster(a, "AficheLocal", 1.45f, -1.3f, true, 2f, m); // Paso 29
         CreateWindow(a, "Ventana", new Vector3(-WallInnerX, 1.75f, 1.8f), false, true, m);
         CreatePlant(a, "MacetaIzq", new Vector3(-1.12f, 0f, 0.7f), pot, bush, m); // Paso 27: la de la derecha se saco
         CreatePlate(a, "Placa", new Vector3(-WallInnerX, 2.05f, 0.6f), false, m); // direccion o flecha (Paso 18)
@@ -61,19 +62,21 @@ public static partial class AtmosphereBuilder
         CreateHangingSign(b, "CartelColgante", new Vector3(WallInnerX, 2.3f, -1.7f), true, m);
         CreatePipe(b, "Cano", new Vector3(1.34f, 0f, -0.45f), pipe, m);
         BoxChild(b, "Medidor", m.metal, new Vector3(-1.33f, 1.5f, 1.0f), new Vector3(0.12f, 0.4f, 0.3f), Vector3.zero);
+        CreateShopPoster(b, "AficheLocal", 1.45f, -1.0f, true, -3f, m); // Paso 29: entre el cano y el colgante
         BoxChild(b, "MedidorLuz", m.luzRoja, new Vector3(-1.265f, 1.62f, 1.08f), new Vector3(0.02f, 0.04f, 0.04f), Vector3.zero);
         BoxChild(b, "Conducto", m.metal, new Vector3(-1.36f, 0.65f, 1.1f), new Vector3(0.04f, 1.3f, 0.04f), Vector3.zero);
-        SolidBoxChild(b, "Cajon", m.madera, new Vector3(-1.12f, 0.25f, 2.3f), new Vector3(0.5f, 0.5f, 0.5f), new Vector3(0f, 4f, 0f));
-        SolidBoxChild(b, "CajonChico", m.madera, new Vector3(-1.1f, 0.69f, 2.32f), new Vector3(0.38f, 0.38f, 0.38f), new Vector3(0f, 17f, 0f));
+        Inspect(SolidBoxChild(b, "Cajon", m.madera, new Vector3(-1.12f, 0.25f, 2.3f), new Vector3(0.5f, 0.5f, 0.5f), new Vector3(0f, 4f, 0f)), "cajon");
+        Inspect(SolidBoxChild(b, "CajonChico", m.madera, new Vector3(-1.1f, 0.69f, 2.32f), new Vector3(0.38f, 0.38f, 0.38f), new Vector3(0f, 17f, 0f)), "cajon");
         CreatePlate(b, "Placa", new Vector3(WallInnerX, 1.95f, -2.55f), true, m);
 
         // C: ventana apagada y balde a la derecha, cartel de papel colgante y planta a la izquierda,
         // enredadera cayendo del tejadillo.
         Transform c = Group(sets, "SetC");
         CreateWindow(c, "Ventana", new Vector3(WallInnerX, 1.8f, -1.8f), true, false, m);
-        CreateSolidLathe(c, "Balde", new Vector3(1.12f, 0f, -0.7f), bucket, m.balde, new Vector3(0.34f, 0.34f, 0.34f));
+        Inspect(CreateSolidLathe(c, "Balde", new Vector3(1.12f, 0f, -0.7f), bucket, m.balde, new Vector3(0.34f, 0.34f, 0.34f)), "balde");
         CreateHangingSign(c, "CartelColgante", new Vector3(-WallInnerX, 2.15f, 1.7f), false, m);
         // Paso 27: sin maceta (habia demasiadas).
+        CreateShopPoster(c, "AficheLocal", 1.45f, 0.75f, false, 3f, m); // Paso 29: donde estaba la maceta, en la pared
         CreatePlate(c, "Placa", new Vector3(-WallInnerX, 2.1f, 2.55f), false, m);
         Transform ivy = Group(c, "Enredadera");
         float[] ivyZ = { -2.6f, -2.3f, -1.95f, -1.5f, -1.2f };
@@ -93,7 +96,9 @@ public static partial class AtmosphereBuilder
         CreateCage(d, "Jaula2", new Vector3(-1.16f, 0f, 1.6f), -3f, cage, m);
         CreateCage(d, "Jaula3", new Vector3(-1.14f, 0.405f, 1.28f), 7f, cage, m);
         var feathers = new System.Random(2604);
+        CreateShopPoster(d, "AficheLocal", 1.6f, 1.3f, false, -2f, m); // Paso 29: arriba de las jaulas
         Transform plumas = Group(d, "Plumas");
+        Inspect(plumas.gameObject, "plumas", 2.6f);
         for (int i = 0; i < 4; i++) // Paso 27: cuatro (eran diez) y con un material sin brillo
         {
             float x = -1.0f + 0.65f * (float)feathers.NextDouble();
@@ -202,6 +207,7 @@ public static partial class AtmosphereBuilder
         GameObject can = MeshChild(pivot, "Cuerpo", meshes.can, mat, new Vector3(0.061f, 0f, 0f)); // centrada en su largo
         can.transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
         can.transform.localScale = crushed ? new Vector3(0.45f, 0.85f, 1.25f) : Vector3.one;
+        Inspect(pivot.gameObject, "lata", 2.6f); // Paso 28
     }
 
     private static void CreateTrashBag(Transform parent, string name, Vector3 floorPos, float yaw, Mats m, TrashMeshSet meshes)
@@ -212,6 +218,7 @@ public static partial class AtmosphereBuilder
         var box = go.AddComponent<BoxCollider>();
         box.size = new Vector3(0.5f, 0.5f, 0.5f);
         box.center = new Vector3(0f, 0.25f, 0f);
+        Inspect(go, "bolsa"); // Paso 28
     }
 
     /// <summary>Cajita de comida para llevar, con la tapa abierta, y un par de palitos al lado.</summary>
@@ -225,6 +232,7 @@ public static partial class AtmosphereBuilder
         BoxChild(t, "Tapa", m.telgopor, new Vector3(0f, 0.09f, 0.085f), new Vector3(0.15f, 0.008f, 0.11f), new Vector3(-62f, 0f, 0f));
         BoxChild(t, "Palito1", m.madera, new Vector3(0.14f, 0.004f, -0.05f), new Vector3(0.006f, 0.006f, 0.2f), new Vector3(0f, 12f, 0f));
         BoxChild(t, "Palito2", m.madera, new Vector3(0.165f, 0.004f, -0.03f), new Vector3(0.006f, 0.006f, 0.2f), new Vector3(0f, 28f, 0f));
+        Inspect(t.gameObject, "comida", 2.6f); // Paso 28
     }
 
     private static void CreateBottle(Transform parent, string name, Vector3 floorPos, float yaw, Mats m, TrashMeshSet meshes)
@@ -234,6 +242,7 @@ public static partial class AtmosphereBuilder
         pivot.localRotation = Quaternion.Euler(0f, yaw, 0f);
         GameObject go = MeshChild(pivot, "Cuerpo", meshes.bottle, m.botella, new Vector3(0.12f, 0f, 0f));
         go.transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
+        Inspect(pivot.gameObject, "botella", 2.6f); // Paso 28
     }
 
     // ------------------------------------------------------------------ Paso 26: jaulas y cajas
@@ -306,6 +315,7 @@ public static partial class AtmosphereBuilder
         var box = go.AddComponent<BoxCollider>();
         box.size = new Vector3(CageW, CageH, CageD);
         box.center = new Vector3(0f, CageH * 0.5f, 0f);
+        Inspect(go, "jaula"); // Paso 28
     }
 
     /// <summary>Caja de madera con una fila de agujeritos negros del lado del pasillo (-X).</summary>
@@ -324,6 +334,7 @@ public static partial class AtmosphereBuilder
                 if (row == 1 && i % 2 == 1) continue; // la segunda fila, salteada
                 BoxChild(t, "Agujero" + row + i, m.hueco, new Vector3(faceX, y, z), new Vector3(0.006f, 0.035f, 0.035f), Vector3.zero);
             }
+        Inspect(t.gameObject, "caja_agujeros"); // Paso 28
     }
 
     private static Transform Group(Transform parent, string name)
@@ -341,12 +352,13 @@ public static partial class AtmosphereBuilder
         return go;
     }
 
-    private static void CreateSolidLathe(Transform parent, string name, Vector3 pos, Mesh mesh, Material mat, Vector3 colliderSize)
+    private static GameObject CreateSolidLathe(Transform parent, string name, Vector3 pos, Mesh mesh, Material mat, Vector3 colliderSize)
     {
         GameObject go = MeshChild(parent, name, mesh, mat, pos);
         var box = go.AddComponent<BoxCollider>();
         box.size = colliderSize;
         box.center = new Vector3(0f, colliderSize.y * 0.5f, 0f);
+        return go;
     }
 
     // Ventana con marco, vidrio (encendido o apagado), rejas y alfeizar.
@@ -366,6 +378,7 @@ public static partial class AtmosphereBuilder
         BoxChild(t, "RejaArriba", m.metal, new Vector3(0.11f, 0.2f, 0f), new Vector3(0.02f, 0.02f, 0.75f), Vector3.zero);
         BoxChild(t, "RejaAbajo", m.metal, new Vector3(0.11f, -0.2f, 0f), new Vector3(0.02f, 0.02f, 0.75f), Vector3.zero);
         BoxChild(t, "Alfeizar", m.metal, new Vector3(0.07f, -0.5f, 0f), new Vector3(0.14f, 0.04f, 0.85f), Vector3.zero);
+        Inspect(go, lit ? "ventana_luz" : "ventana_oscura", 3f); // Paso 28
     }
 
     // Cartel colgante perpendicular a la pared, con su soporte. Tiene dos caras (se ve desde los
@@ -398,6 +411,7 @@ public static partial class AtmosphereBuilder
     {
         GameObject go = MeshChild(parent, name, pot, m.maceta, floorPoint);
         MeshChild(go.transform, "Arbusto", bush, m.planta, new Vector3(0f, 0.27f, 0f));
+        Inspect(go, "maceta"); // Paso 28
         var box = go.AddComponent<BoxCollider>();
         box.size = new Vector3(0.4f, 0.8f, 0.4f);
         box.center = new Vector3(0f, 0.4f, 0f);

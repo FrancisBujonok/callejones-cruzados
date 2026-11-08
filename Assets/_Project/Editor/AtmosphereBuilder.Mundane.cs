@@ -13,6 +13,9 @@ using UnityEngine.SceneManagement;
 ///   (Gato_1..4, los usa LookBackLures), platos (Platos_1..3), tos (Tos_1..3) y una moto que
 ///   pasa (Moto_1). No se sintetizan: el maullido sintetizado no sonaba a gato.
 /// - Sintetizado: Evento_Lata, una lata que cae en la maquina expendedora.
+/// - Paso 28: mas grabados de BigSoundBank: Persiana_1..2 (rejilla de comercio), Perro_1..4 y
+///   Campanillas_1..3 para MundaneSounds, y Gota_1..6 y GotaChapa_1..2 para el goteo
+///   (UseRecordedDrips: reemplazan a los sintetizados de DripSystem).
 ///
 /// En la escena: "Cotidiano" (raiz) con MundaneSounds, una fuente "del otro lado de la pared"
 /// (3D, con pasa bajos) y otra para la maquina.
@@ -26,6 +29,7 @@ public static partial class AtmosphereBuilder
     private class MundaneClips
     {
         public AudioClip[] platos, tos, motos;
+        public AudioClip[] persianas, perros, campanillas; // Paso 28
         public AudioClip lata;
     }
 
@@ -47,6 +51,9 @@ public static partial class AtmosphereBuilder
             platos = LoadRealSounds("Platos"),
             tos = LoadRealSounds("Tos"),
             motos = LoadRealSounds("Moto"),
+            persianas = LoadRealSounds("Persiana"),
+            perros = LoadRealSounds("Perro"),
+            campanillas = LoadRealSounds("Campanillas"),
             lata = GetOrCreateSound("Evento_Lata", 1.1f, 2601, false, SynthCanDrop),
         };
     }
@@ -159,6 +166,33 @@ public static partial class AtmosphereBuilder
 
         MundaneSounds mundane = root.AddComponent<MundaneSounds>();
         mundane.Setup(controller.transform, fear, lures, wall, filter, machine, c.platos, c.tos, c.motos, c.lata);
+        mundane.SetupMore(c.persianas, c.perros, c.campanillas);
+        UseRecordedDrips();
         EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
+    }
+
+    // ------------------------------------------------------------------ 3. goteo grabado (Paso 28)
+
+    /// <summary>
+    /// Si estan las gotas grabadas (Audio/Reales/Gota_*, GotaChapa_*), DripSystem las usa en vez
+    /// de las sintetizadas. Sin ellas, queda como estaba.
+    /// </summary>
+    private static void UseRecordedDrips()
+    {
+        DripSystem drips = FindInScene<DripSystem>(null);
+        if (drips == null) return;
+        AudioClip[] floor = LoadRealSounds("Gota");
+        AudioClip[] metal = LoadRealSounds("GotaChapa");
+        if (floor.Length == 0) return;
+        var so = new SerializedObject(drips);
+        SetClips(so.FindProperty("floorClips"), floor);
+        if (metal.Length > 0) SetClips(so.FindProperty("metalClips"), metal);
+        so.ApplyModifiedProperties();
+    }
+
+    private static void SetClips(SerializedProperty array, AudioClip[] clips)
+    {
+        array.arraySize = clips.Length;
+        for (int i = 0; i < clips.Length; i++) array.GetArrayElementAtIndex(i).objectReferenceValue = clips[i];
     }
 }

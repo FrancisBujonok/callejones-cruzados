@@ -13,11 +13,16 @@ using UnityEngine;
 /// Platos, tos y moto son grabaciones de BigSoundBank (CC0, Audio/Reales/LICENCIAS.txt); la lata
 /// se sintetiza como el resto.
 ///
+/// Paso 28: tres sonidos grabados mas, tambien de BigSoundBank (CC0):
+/// - Persiana: la rejilla de un comercio que baja, a 12-20 m, detras de las casas.
+/// - Perro: un perro que ladra lejos, a 18-28 m, en otra cuadra.
+/// - Campanillas: campanillas de viento colgadas de una ventana, cerca (3-5 m, arriba).
+///
 /// Va en el objeto "Cotidiano" (raiz de la escena). Lo arma Callejones > Detalles cotidianos.
 /// </summary>
 public class MundaneSounds : MonoBehaviour
 {
-    private enum Kind { None, Dishes, Cough, Scooter }
+    private enum Kind { None, Dishes, Cough, Scooter, Shutter, Dog, Chimes }
 
     [Header("Referencias")]
     [SerializeField] private Transform player;
@@ -36,6 +41,10 @@ public class MundaneSounds : MonoBehaviour
     [SerializeField] private AudioClip[] coughs;
     [SerializeField] private AudioClip[] scooters;
     [SerializeField] private AudioClip canDrop;
+    [Tooltip("Paso 28.")]
+    [SerializeField] private AudioClip[] shutters;
+    [SerializeField] private AudioClip[] dogs;
+    [SerializeField] private AudioClip[] chimes;
 
     [Header("Cuando")]
     [SerializeField] private float firstAfter = 12f;
@@ -48,6 +57,9 @@ public class MundaneSounds : MonoBehaviour
     [SerializeField] private float dishesWeight = 3f;
     [SerializeField] private float coughWeight = 2f;
     [SerializeField] private float scooterWeight = 2f;
+    [SerializeField] private float shutterWeight = 1.5f;
+    [SerializeField] private float dogWeight = 1.5f;
+    [SerializeField] private float chimesWeight = 1.5f;
 
     [Header("Maquina expendedora")]
     [Tooltip("A menos de estos metros de la maquina, puede caer una lata.")]
@@ -84,6 +96,14 @@ public class MundaneSounds : MonoBehaviour
         coughs = coughClips;
         scooters = scooterClips;
         canDrop = can;
+    }
+
+    /// <summary>Paso 28: los sonidos nuevos. Lo usa la herramienta de editor.</summary>
+    public void SetupMore(AudioClip[] shutterClips, AudioClip[] dogClips, AudioClip[] chimeClips)
+    {
+        shutters = shutterClips;
+        dogs = dogClips;
+        chimes = chimeClips;
     }
 
     private void Awake()
@@ -142,12 +162,18 @@ public class MundaneSounds : MonoBehaviour
         float wd = Has(dishes) && previous != Kind.Dishes ? dishesWeight : 0f;
         float wc = Has(coughs) && previous != Kind.Cough ? coughWeight : 0f;
         float ws = Has(scooters) && previous != Kind.Scooter ? scooterWeight : 0f;
-        float total = wd + wc + ws;
+        float wsh = Has(shutters) && previous != Kind.Shutter ? shutterWeight : 0f;
+        float wdg = Has(dogs) && previous != Kind.Dog ? dogWeight : 0f;
+        float wch = Has(chimes) && previous != Kind.Chimes ? chimesWeight : 0f;
+        float total = wd + wc + ws + wsh + wdg + wch;
         if (total <= 0f) return Kind.None;
         float r = Random.value * total;
         if ((r -= wd) < 0f) return Kind.Dishes;
         if ((r -= wc) < 0f) return Kind.Cough;
-        return Kind.Scooter;
+        if ((r -= ws) < 0f) return Kind.Scooter;
+        if ((r -= wsh) < 0f) return Kind.Shutter;
+        if ((r -= wdg) < 0f) return Kind.Dog;
+        return Kind.Chimes;
     }
 
     private void PlayOne(Kind kind)
@@ -171,6 +197,26 @@ public class MundaneSounds : MonoBehaviour
                 wallSource.transform.position = player.position + right * side * Random.Range(2f, 3.5f) + forward * Random.Range(-2f, 4f);
                 SetWall(2200f, 0.75f, 12f);
                 Last = "tos";
+                break;
+            case Kind.Shutter:
+                // Una rejilla que baja lejos, detras de las casas: se oye apagada.
+                clip = shutters[Random.Range(0, shutters.Length)];
+                wallSource.transform.position = player.position + Quaternion.Euler(0f, Random.Range(0f, 360f), 0f) * Vector3.forward * Random.Range(12f, 20f);
+                SetWall(1500f, 0.8f, 30f);
+                Last = "persiana";
+                break;
+            case Kind.Dog:
+                clip = dogs[Random.Range(0, dogs.Length)];
+                wallSource.transform.position = player.position + Quaternion.Euler(0f, Random.Range(0f, 360f), 0f) * Vector3.forward * Random.Range(18f, 28f);
+                SetWall(1300f, 0.85f, 40f);
+                Last = "perro";
+                break;
+            case Kind.Chimes:
+                // Colgadas de una ventana, arriba y cerca: casi sin pasa bajos.
+                clip = chimes[Random.Range(0, chimes.Length)];
+                wallSource.transform.position = player.position + right * side * Random.Range(1.2f, 1.4f) + forward * Random.Range(-3f, 5f) + Vector3.up * 1.4f;
+                SetWall(6000f, 0.4f, 14f);
+                Last = "campanillas";
                 break;
             default:
                 clip = scooters[Random.Range(0, scooters.Length)];
@@ -244,8 +290,12 @@ public class MundaneSounds : MonoBehaviour
     [ContextMenu("Probar: tos")] private void TestCough() => PlayOne(Kind.Cough);
     [ContextMenu("Probar: moto")] private void TestScooter() => PlayOne(Kind.Scooter);
 
-    /// <summary>Para las pruebas: 0 platos, 1 tos, 2 moto.</summary>
-    public void Force(int kind) => PlayOne(kind == 0 ? Kind.Dishes : kind == 1 ? Kind.Cough : Kind.Scooter);
+    [ContextMenu("Probar: persiana")] private void TestShutter() => PlayOne(Kind.Shutter);
+    [ContextMenu("Probar: perro")] private void TestDog() => PlayOne(Kind.Dog);
+    [ContextMenu("Probar: campanillas")] private void TestChimes() => PlayOne(Kind.Chimes);
+
+    /// <summary>Para las pruebas: 0 platos, 1 tos, 2 moto, 3 persiana, 4 perro, 5 campanillas.</summary>
+    public void Force(int kind) => PlayOne(kind <= 0 ? Kind.Dishes : (Kind)(kind + 1));
 
     private void OnGUI()
     {
