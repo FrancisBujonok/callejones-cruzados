@@ -228,8 +228,7 @@ public static partial class AtmosphereBuilder
 
         Transform sets = Group(deco, "Sets");
         Transform a = Group(sets, "SetA");
-        CreatePlant(a, "Maceta", Spot(0), pot, bush, m);
-        if (spots.Count > 2) CreatePlant(a, "Maceta2", Spot(2), pot, bush, m);
+        CreatePlant(a, "Maceta", Spot(0), pot, bush, m); // Paso 27: una sola (habia hasta dos)
 
         Transform b = Group(sets, "SetB");
         Vector3 crate = Spot(1);
@@ -238,7 +237,7 @@ public static partial class AtmosphereBuilder
 
         Transform c = Group(sets, "SetC");
         CreateSolidLathe(c, "Balde", Spot(0), bucket, m.balde, new Vector3(0.34f, 0.34f, 0.34f));
-        if (spots.Count > 1) CreatePlant(c, "Maceta", Spot(1), pot, bush, m);
+        // Paso 27: sin maceta.
 
         // Carteles y ventanas en las paredes de los costados, si estan cerradas.
         if ((open & Side.O) == 0)
@@ -266,6 +265,30 @@ public static partial class AtmosphereBuilder
         b.gameObject.SetActive(false);
         c.gameObject.SetActive(false);
         sets.gameObject.AddComponent<DecorRandomizer>().Setup(new[] { a.gameObject, b.gameObject, c.gameObject });
+
+        BuildCellTrash(deco, m);
+    }
+
+    /// <summary>
+    /// Paso 27: basura de las esquinas, cruces y fondos. Solo cosas chicas en el centro de la
+    /// celda (a menos de 0.6 m: los objetos de los juegos estan a 0.95 m o mas), sin bolsa.
+    /// </summary>
+    private static void BuildCellTrash(Transform deco, Mats m)
+    {
+        TrashMeshSet meshes = TrashMeshes();
+        Transform trash = Group(deco, "Basura");
+        Transform none = Group(trash, "Nada");
+        Transform cans = Group(trash, "Latas");
+        CreateCan(cans, "Lata1", new Vector3(0.35f, 0f, 0.2f), 35f, m.lataRoja, true, meshes);
+        CreateCan(cans, "Lata2", new Vector3(-0.3f, 0f, -0.45f), 140f, m.lataPlata, false, meshes);
+        Transform one = Group(trash, "Lata");
+        CreateCan(one, "Lata", new Vector3(-0.4f, 0f, 0.35f), 250f, m.lataVerde, false, meshes);
+        Transform bottle = Group(trash, "Botella");
+        CreateBottle(bottle, "Botella", new Vector3(0.2f, 0f, -0.3f), 120f, m, meshes);
+
+        GameObject[] options = { none.gameObject, cans.gameObject, one.gameObject, bottle.gameObject };
+        for (int i = 1; i < options.Length; i++) options[i].SetActive(false);
+        trash.gameObject.AddComponent<DecorRandomizer>().Setup(options, new[] { 4f, 1f, 1.2f, 0.8f });
     }
 
     /// <summary>Pared con malla de UV en metros (la textura no se estira) y collider.</summary>

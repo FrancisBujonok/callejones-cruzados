@@ -83,6 +83,10 @@ public static partial class AtmosphereBuilder
         // Paso 20: edificios. Fachadas con ventanas, el fondo mas oscuro, los detalles (todos con
         // la paleta) y los tubos fluorescentes del techado.
         public Material fachada, fachadaFondo, detalles, tuboLuz;
+        // Paso 27: basura en el piso, y las plumas y la sal sin brillo propio (el papel de los
+        // shide tiene emision para verse de noche; en el piso, cosas chicas que brillan llaman
+        // demasiado la atencion).
+        public Material pluma, sal, lataRoja, lataVerde, lataPlata, bolsa, telgopor, botella;
     }
 
     // ------------------------------------------------------------------ menus
@@ -105,6 +109,7 @@ public static partial class AtmosphereBuilder
         BuildLandmarks(mats);      // despues del sonido: la maquina y el altar usan sus clips
         SetupLures(BuildLureSounds(), sounds.zumbido); // Paso 25: pistas y mirar de cerca
         SetupMundane(BuildMundaneSounds());            // Paso 26: lo cotidiano (despues de las pistas)
+        SetupPrototypes();                             // Paso 27: la Figura y el trote (prototipos)
 
         AssetDatabase.SaveAssets();
         EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
@@ -222,6 +227,18 @@ public static partial class AtmosphereBuilder
             telefonoLuz = Mat("TelefonoLuz", Hex("#9FE0A0"), 0.4f, 0f, null, Hex("#9FE0A0") * 1.2f),
             // Lucecitas rojas lisas (botones, medidores): antes usaban la textura de los carteles.
             luzRoja = Mat("LuzRoja", Hex("#B8281A"), 0.3f, 0f, null, new Color(1f, 0.25f, 0.15f) * 1.2f),
+            // Paso 27: sin emision. Gris calido en vez de blanco: de noche no se encienden.
+            pluma = Mat("Pluma", Hex("#9C968C"), 0.1f),
+            sal = Mat("Sal", Hex("#A8A398"), 0.15f),
+            // Latas: colores mas vivos que el resto (con los faroles a 3 m del piso, una lata oscura
+            // no se ve) y un brillo metalico, para que el farol les saque un reflejo.
+            lataRoja = Mat("LataRoja", Hex("#C23A28"), 0.6f, 0.4f, new Color(0.8f, 0.72f, 0.62f)),
+            lataVerde = Mat("LataVerde", Hex("#5A8A48"), 0.6f, 0.4f, new Color(0.8f, 0.72f, 0.62f)),
+            lataPlata = Mat("LataPlata", Hex("#B0ACA4"), 0.65f, 0.6f, new Color(0.9f, 0.86f, 0.78f)),
+            // Bolsa de basura negra: plastico brillante, refleja los faroles.
+            bolsa = Mat("BolsaBasura", Hex("#2A2622"), 0.8f, 0f, new Color(0.7f, 0.62f, 0.55f)),
+            telgopor = Mat("Telgopor", Hex("#BDB5A6"), 0.1f),
+            botella = Mat("Botella", Hex("#3F5A48"), 0.85f, 0f, new Color(0.6f, 0.65f, 0.6f)),
         };
         BuildSigns(mats); // un material por cada PNG de Textures/Carteles
         BuildBuildingMaterials(mats); // Paso 20: los de los edificios (Textures/Edificios)

@@ -74,6 +74,13 @@ public class LanternLight : MonoBehaviour
     /// </summary>
     public void SetOff(bool value) => off = value;
 
+    /// <summary>
+    /// Paso 27: un corte breve, el mismo de cuando el miedo esta alto (luz, brillo y zumbido casi
+    /// en cero). Lo usa la Figura al desaparecer. No toca 'off': un farol apagado por una anomalia
+    /// sigue apagado despues.
+    /// </summary>
+    public void Dropout(float seconds) => dropoutTimer = Mathf.Max(dropoutTimer, seconds);
+
     private void Awake()
     {
         block = new MaterialPropertyBlock();

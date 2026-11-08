@@ -132,8 +132,10 @@ public static partial class AtmosphereBuilder
         BoxChild(t, "FarolitoTapa", m.farolTapa, new Vector3(0.3f, 1.98f, 0.9f), new Vector3(0.14f, 0.04f, 0.14f), Vector3.zero);
 
         // Morishio: dos montoncitos de sal a los costados de la puerta.
-        BoxChild(t, "SalIzq", m.papel, new Vector3(0.12f, 0.05f, -0.78f), new Vector3(0.1f, 0.1f, 0.1f), new Vector3(0f, 45f, 0f));
-        BoxChild(t, "SalDer", m.papel, new Vector3(0.12f, 0.05f, 0.78f), new Vector3(0.1f, 0.1f, 0.1f), new Vector3(0f, 45f, 0f));
+        // Paso 27: mas chicos y sin brillo propio (con el material del papel se encendian de noche
+        // y se veian como bolitas blancas en el piso).
+        BoxChild(t, "SalIzq", m.sal, new Vector3(0.12f, 0.03f, -0.78f), new Vector3(0.06f, 0.06f, 0.06f), new Vector3(0f, 45f, 0f));
+        BoxChild(t, "SalDer", m.sal, new Vector3(0.12f, 0.03f, 0.78f), new Vector3(0.06f, 0.06f, 0.06f), new Vector3(0f, 45f, 0f));
         return t.gameObject;
     }
 
