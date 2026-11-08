@@ -961,6 +961,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4491751325778977724}
   - component: {fileID: 8716018490353933481}
+  - component: {fileID: 1923946469144477677}
   m_Layer: 0
   m_Name: Lugar_Telefono
   m_TagString: Untagged
@@ -1009,6 +1010,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Landmark
   label: Telefono publico
   center: {x: 0.25, y: 1.2, z: 0}
+--- !u!114 &1923946469144477677
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8141129972750069667}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 32109483f183b4748aa097acdf153144, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Inspectable
+  key: telefono
+  maxDistance: 2.8
 --- !u!1 &8948250523724711899
 GameObject:
   m_ObjectHideFlags: 0

@@ -11,6 +11,8 @@ como en la PS1. El nombre del archivo le dice a Unity como usarlo:
              V2 = vertical, hasta 2 letras (carteles colgantes)
              H5 = horizontal, hasta 5 letras (pancartas)
              P  = afiche (titulo de 2 letras, foto y letra chica)
+             K  = afiche de un local, una tienda o la feria (Paso 29): titulo, un dibujo y
+                  letra chica. El estilo dice que dibujo lleva (feria, fuegos, fideos...)
              T  = placa del torii (fija, no se sortea)
              S  = cartel saliente, hasta 4 letras: caja de luz o neon (Paso 18)
              N  = neon horizontal de letras sueltas, hasta 5 (fondo transparente)
@@ -141,6 +143,23 @@ CARTELES = [
     # --- Paso 25: el afiche de Hugo, en castellano. Una fotocopia del doble de resolucion que
     #     los otros afiches (mismo tamano en el mundo): de cerca tiene que poder leerse.
     ("P",  "es", "fotocopia", "SE BUSCA|MANCHAS", "Se busca gato: Manchas (el afiche de Hugo)"),
+    # --- Paso 29: afiches de locales, tiendas y la feria. Van en las paredes de los rectos y de
+    #     las celdas (no en el lugar del afiche de persona buscada). El estilo elige el dibujo;
+    #     el texto chico de abajo va despues de "|".
+    ("K", "tw", "feria",     "夜市|每晚",     "Mercado nocturno, todas las noches"),
+    ("K", "tw", "fuegos",    "煙火|8.15",     "Fuegos artificiales, 15 de agosto"),
+    ("K", "tw", "fideos",    "拉麵|$90",      "Fideos (ramen), 90"),
+    ("K", "tw", "te",        "奶茶|$45",      "Te con leche (bubble tea), 45"),
+    ("K", "tw", "alquiler",  "租屋|",         "Se alquila una pieza (con tiritas para el telefono)"),
+    ("K", "tw", "banda",     "演唱會|11.20",  "Recital, 20 de noviembre"),
+    ("K", "tw", "adivina",   "算命|看手相",   "Adivina: lee las manos"),
+    ("K", "tw", "linternas", "燈會|元宵",     "Festival de faroles (Yuanxiao)"),
+    ("K", "tw", "perro",     "尋狗|",         "Se busca perro"),
+    ("K", "tw", "carnaval",  "嘉年華|今晚",   "Carnaval, esta noche"),
+    ("K", "tw", "mahjong",   "麻將|",         "Mahjong (club)"),
+    ("K", "jp", "matsuri",   "祭り|8月",      "Festival de verano, agosto"),
+    ("K", "kr", "karaoke",   "노래방|24시",   "Karaoke, abierto 24 horas"),
+    ("K", "kr", "oferta",    "세일|50%",      "Liquidacion, 50 por ciento"),
 ]
 
 ESTILOS = {  # (fondo, tinta)
@@ -510,6 +529,261 @@ def afiche_fotocopia(texto, idioma):
     return img
 
 
+# ------------------------------------------------------------------ Paso 29: afiches de locales
+
+def _latin(img, texto, alto, y, color, umbral=110, x=None):
+    """Numeros y letras latinas chicas (fechas, precios). x=None: centrado."""
+    ruta = next((r for r in FUENTES["es"] if os.path.exists(r[0])), None)
+    if ruta is None:
+        return 0
+    f = ImageFont.truetype(ruta[0], alto * GRANDE, index=ruta[1])
+    x0, y0, x1, y1 = ImageDraw.Draw(img).textbbox((0, 0), texto, font=f)
+    w, h = (x1 - x0) // GRANDE + 2, (y1 - y0) // GRANDE + 2
+    big = Image.new("L", (w * GRANDE, h * GRANDE), 0)
+    ImageDraw.Draw(big).text((GRANDE - x0, GRANDE - y0), texto, font=f, fill=255)
+    mascara = big.resize((w, h), Image.BOX).point(lambda v: 255 if v >= umbral else 0)
+    img.paste(color, ((img.width - w) // 2 if x is None else x, y), mascara)
+    return h
+
+
+def _titulo(img, texto, f, color, y=2):
+    """Titulo arriba: 2 letras grandes (24 px) o 3 de 16 px."""
+    if len(texto) <= 2:
+        x = (img.width - len(texto) * (CELDA + SEP) + SEP) // 2
+        for i, ch in enumerate(texto):
+            img.paste(color, (x + i * (CELDA + SEP), y), letra(ch, f, False))
+        return y + CELDA
+    lado = 16
+    x = (img.width - len(texto) * (lado + 1)) // 2
+    for i, ch in enumerate(texto):
+        img.paste(color, (x + i * (lado + 1), y + 4), letra_chica(ch, f, lado, 115))
+    return y + lado + 6
+
+
+def _chico(img, texto, f, color, y):
+    """Texto chico de abajo: CJK a 9 px, o latino si son numeros."""
+    if not texto:
+        return
+    if all(ch.isascii() for ch in texto):
+        _latin(img, texto, 8, y, color)
+        return
+    lado = 9
+    x = (img.width - len(texto) * (lado + 1)) // 2
+    for i, ch in enumerate(texto):
+        img.paste(color, (x + i * (lado + 1), y), letra_chica(ch, f, lado, 100))
+
+
+def _rayitas(d, x0, x1, y0, y1, color, paso=3):
+    for y in range(y0, y1, paso):
+        d.line([x0, y, x1, y], fill=color)
+
+
+def _tiritas(d, ancho, alto, papel, tinta, faltan=(1, 4)):
+    tira = alto - 12
+    d.line([2, tira, ancho - 3, tira], fill=(130, 120, 110))
+    paso = (ancho - 4) / 6.0
+    for k in range(6):
+        x0, x1 = int(2 + k * paso), int(2 + (k + 1) * paso) - 1
+        if k in faltan:
+            d.rectangle([x0, tira + 2, x1, alto - 1], fill=(58, 52, 46))
+            continue
+        for yy in range(tira + 3, alto - 2, 2):
+            d.line([x0 + 2, yy, x1 - 2, yy], fill=tinta)
+
+
+def afiche_comercio(texto, f, estilo):
+    """
+    Paso 29: afiche de un local, una tienda o la feria, del mismo tamano que los de persona
+    buscada (54 x 72). Arriba el titulo, en el medio un dibujo segun el estilo y abajo letra
+    chica (lo que va despues de "|"). Los dibujos son de pocos pixeles, como en la PS1.
+    """
+    import math, random
+    rnd = random.Random(sum(ord(c) for c in estilo))
+    titulo, chico = (texto.split("|") + [""])[:2]
+    W, H = 2 * CELDA + 3 * SEP, 3 * CELDA
+
+    # (fondo, tinta del titulo, tinta chica, borde)
+    paleta = {
+        "feria":     ((26, 28, 58),   (242, 200, 80),  (230, 210, 170), (242, 200, 80)),
+        "fuegos":    ((16, 12, 30),   (255, 120, 180), (220, 220, 240), (90, 70, 140)),
+        "fideos":    ((236, 222, 184), (176, 36, 26),  (60, 30, 20),    (176, 36, 26)),
+        "te":        ((236, 192, 180), (110, 60, 40),  (110, 60, 40),   (110, 60, 40)),
+        "alquiler":  ((240, 238, 230), (190, 30, 24),  (40, 30, 26),    (150, 146, 138)),
+        "banda":     ((20, 14, 14),   (230, 60, 40),   (220, 200, 190), (230, 60, 40)),
+        "adivina":   ((58, 28, 72),   (230, 190, 90),  (210, 180, 220), (230, 190, 90)),
+        "linternas": ((120, 26, 20),  (246, 206, 96),  (246, 220, 170), (246, 206, 96)),
+        "perro":     ((232, 214, 176), (42, 20, 16),   (42, 20, 16),    (42, 20, 16)),
+        "carnaval":  ((22, 58, 66),   (250, 220, 120), (230, 230, 210), (230, 70, 60)),
+        "mahjong":   ((24, 86, 52),   (246, 240, 220), (220, 240, 220), (246, 240, 220)),
+        "matsuri":   ((244, 240, 230), (196, 30, 34),  (60, 40, 40),    (196, 30, 34)),
+        "karaoke":   ((14, 10, 20),   (255, 79, 163),  (71, 230, 255),  (255, 79, 163)),
+        "oferta":    ((244, 212, 64), (200, 24, 24),   (60, 30, 10),    (200, 24, 24)),
+    }
+    fondo, tit, tin, borde = paleta[estilo]
+    img = Image.new("RGB", (W, H), fondo)
+    d = ImageDraw.Draw(img)
+    d.rectangle([0, 0, W - 1, H - 1], outline=borde)
+    y = _titulo(img, titulo, f, tit) + 2
+    cx = W // 2
+
+    if estilo == "feria":
+        # Farolitos colgados de una soga en curva y tres puestos con toldo a rayas.
+        for i in range(6):
+            x = 5 + i * 9
+            yy = y + 2 + int(3 * math.sin(i / 5.0 * math.pi))
+            d.line([x - 4, yy - 1, x + 5, yy - 1 + (1 if i < 3 else -1)], fill=(120, 110, 90))
+            d.ellipse([x - 2, yy, x + 3, yy + 6], fill=(220, 50, 36))
+            d.point((x, yy + 2), fill=(255, 210, 120))
+        for i in range(3):
+            x0 = 4 + i * 16
+            for k in range(0, 14, 2):
+                d.line([x0 + k, y + 14, x0 + k, y + 18], fill=(230, 60, 50) if (k // 2) % 2 == 0 else (240, 230, 210))
+            d.rectangle([x0 + 1, y + 19, x0 + 12, y + 26], fill=(60, 50, 40))
+            d.rectangle([x0 + 3, y + 21, x0 + 10, y + 24], fill=(250, 200, 110))
+        _chico(img, chico, f, tin, H - 13)
+    elif estilo == "fuegos":
+        for (fx, fy, r, col) in ((16, y + 10, 9, (255, 120, 180)), (38, y + 8, 7, (110, 230, 255)), (28, y + 22, 8, (255, 210, 90))):
+            for a in range(0, 360, 30):
+                ang = math.radians(a + rnd.randint(-6, 6))
+                x1, y1 = fx + int(r * math.cos(ang)), fy + int(r * math.sin(ang))
+                d.line([fx + int(2 * math.cos(ang)), fy + int(2 * math.sin(ang)), x1, y1], fill=col)
+                d.point((x1, y1), fill=(255, 255, 240))
+        for _ in range(14):
+            d.point((rnd.randrange(3, W - 3), rnd.randrange(y, y + 32)), fill=(200, 200, 230))
+        d.rectangle([2, H - 18, W - 3, H - 15], fill=(30, 26, 50))   # techos de la ciudad
+        for x in range(2, W - 3, 5):
+            d.rectangle([x, H - 21 - rnd.randint(0, 4), x + 3, H - 15], fill=(30, 26, 50))
+        _chico(img, chico, f, tin, H - 12)
+    elif estilo == "fideos":
+        by = y + 14
+        for i in range(3):                                           # vapor
+            x = cx - 8 + i * 8
+            for k in range(8):
+                d.point((x + int(1.5 * math.sin(k)), y + k), fill=(170, 160, 150))
+        d.chord([cx - 16, by - 8, cx + 16, by + 14], 0, 180, fill=(150, 30, 24))     # el bol
+        d.line([cx - 16, by + 3, cx + 16, by + 3], fill=(60, 20, 16))
+        for k in range(-12, 13, 3):                                  # fideos
+            d.line([cx + k, by + 1, cx + k + 2, by + 3], fill=(240, 210, 110))
+        d.ellipse([cx + 3, by - 1, cx + 9, by + 3], fill=(250, 250, 240))              # huevo
+        d.ellipse([cx + 5, by, cx + 7, by + 2], fill=(250, 180, 40))
+        d.line([cx - 14, by - 10, cx + 4, by + 1], fill=(120, 80, 40), width=1)         # palitos
+        d.line([cx - 11, by - 12, cx + 6, by], fill=(120, 80, 40), width=1)
+        _rayitas(d, 5, W - 6, by + 17, H - 14, (120, 90, 70))
+        _chico(img, chico, f, (176, 36, 26), H - 12)
+    elif estilo == "te":
+        top = y + 2
+        d.polygon([(cx - 9, top + 4), (cx + 9, top + 4), (cx + 7, top + 30), (cx - 7, top + 30)], fill=(214, 170, 120))
+        d.rectangle([cx - 10, top + 2, cx + 10, top + 4], fill=(240, 236, 226))            # tapa
+        d.line([cx + 3, top - 4, cx + 1, top + 18], fill=(230, 70, 80), width=2)          # sorbete
+        for _ in range(12):                                                                  # perlas
+            px, py = cx + rnd.randint(-6, 5), top + rnd.randint(22, 28)
+            d.ellipse([px, py, px + 2, py + 2], fill=(40, 26, 20))
+        _chico(img, chico, f, tin, H - 12)
+    elif estilo == "alquiler":
+        d.polygon([(cx - 12, y + 10), (cx, y + 1), (cx + 12, y + 10)], fill=(190, 30, 24))  # casita
+        d.rectangle([cx - 9, y + 10, cx + 9, y + 22], outline=(40, 30, 26))
+        d.rectangle([cx - 2, y + 15, cx + 2, y + 22], fill=(40, 30, 26))
+        _rayitas(d, 5, W - 6, y + 26, H - 14, (120, 116, 108))
+        _tiritas(d, W, H, fondo, (40, 30, 26))
+    elif estilo == "banda":
+        # Foto con mucho contraste: alguien con una guitarra, en rojo y negro.
+        fy0, fy1 = y, y + 30
+        d.rectangle([4, fy0, W - 5, fy1], fill=(160, 30, 24))
+        d.ellipse([cx - 4, fy0 + 3, cx + 3, fy0 + 10], fill=(18, 10, 10))                   # cabeza
+        d.polygon([(cx - 8, fy1), (cx - 5, fy0 + 11), (cx + 5, fy0 + 11), (cx + 8, fy1)], fill=(18, 10, 10))
+        d.line([cx - 12, fy0 + 24, cx + 10, fy0 + 14], fill=(18, 10, 10), width=2)        # guitarra
+        d.ellipse([cx - 14, fy0 + 20, cx - 6, fy0 + 28], fill=(18, 10, 10))
+        for _ in range(40):
+            d.point((rnd.randrange(4, W - 5), rnd.randrange(fy0, fy1)), fill=(18, 10, 10) if rnd.random() < 0.5 else (200, 60, 40))
+        _chico(img, chico, f, tin, H - 12)
+    elif estilo == "adivina":
+        ey = y + 14
+        for a in range(0, 360, 30):                                   # rayos
+            ang = math.radians(a)
+            d.line([cx + int(10 * math.cos(ang)), ey + int(10 * math.sin(ang)),
+                    cx + int(15 * math.cos(ang)), ey + int(15 * math.sin(ang))], fill=(230, 190, 90))
+        d.ellipse([cx - 9, ey - 5, cx + 9, ey + 5], fill=(240, 230, 210))                  # el ojo
+        d.ellipse([cx - 4, ey - 4, cx + 4, ey + 4], fill=(90, 40, 110))
+        d.ellipse([cx - 2, ey - 2, cx + 2, ey + 2], fill=(10, 6, 12))
+        _chico(img, chico, f, tin, H - 13)
+    elif estilo == "linternas":
+        ly = y + 1
+        d.line([cx, ly, cx, ly + 3], fill=(60, 30, 20))
+        d.ellipse([cx - 12, ly + 3, cx + 12, ly + 26], fill=(240, 120, 40))
+        for k in (-7, 0, 7):
+            d.arc([cx + k - 4, ly + 3, cx + k + 4, ly + 26], 270, 90 if k >= 0 else 270, fill=(200, 70, 20))
+            d.line([cx + k, ly + 4, cx + k, ly + 25], fill=(210, 80, 24))
+        d.rectangle([cx - 6, ly + 2, cx + 6, ly + 4], fill=(246, 206, 96))
+        d.rectangle([cx - 6, ly + 25, cx + 6, ly + 27], fill=(246, 206, 96))
+        d.line([cx, ly + 27, cx, ly + 33], fill=(246, 206, 96))                            # borla
+        d.line([cx - 1, ly + 30, cx - 1, ly + 34], fill=(246, 206, 96))
+        d.line([cx + 1, ly + 30, cx + 1, ly + 34], fill=(246, 206, 96))
+        _chico(img, chico, f, tin, H - 12)
+    elif estilo == "perro":
+        foto = [4, y, 4 + CELDA - 4, y + CELDA + 2]
+        d.rectangle(foto, fill=(60, 55, 50))
+        fx = (foto[0] + foto[2]) // 2
+        claro = (196, 160, 110)
+        d.ellipse([fx - 7, y + 12, fx + 7, y + 22], fill=claro)                           # cuerpo
+        d.rectangle([fx - 6, y + 20, fx - 4, foto[3]], fill=claro)                        # patas
+        d.rectangle([fx + 3, y + 20, fx + 5, foto[3]], fill=claro)
+        d.ellipse([fx - 10, y + 6, fx - 2, y + 14], fill=claro)                           # cabeza
+        d.polygon([(fx - 10, y + 7), (fx - 12, y + 13), (fx - 8, y + 9)], fill=(120, 90, 60))  # oreja caida
+        d.line([fx + 7, y + 15, fx + 10, y + 10], fill=claro, width=2)                    # cola
+        for yy in range(y + 1, foto[3] + 1, 4):
+            d.line([foto[2] + 4, yy, W - 5, yy], fill=tin)
+        _rayitas(d, 4, W - 5, foto[3] + 4, H - 14, tin, 4)
+        _tiritas(d, W, H, fondo, tin, faltan=(0, 2, 3))
+    elif estilo == "carnaval":
+        ty = y + 2
+        d.polygon([(cx, ty), (cx - 16, ty + 22), (cx + 16, ty + 22)], fill=(240, 236, 220))  # carpa
+        for k in range(-14, 15, 6):
+            d.polygon([(cx, ty), (cx + k, ty + 22), (cx + k + 3, ty + 22)], fill=(220, 50, 40))
+        d.rectangle([cx - 16, ty + 22, cx + 16, ty + 30], fill=(220, 50, 40))
+        d.rectangle([cx - 3, ty + 24, cx + 3, ty + 30], fill=(20, 14, 12))               # entrada
+        d.line([cx, ty - 4, cx, ty], fill=(240, 236, 220))
+        d.polygon([(cx, ty - 4), (cx + 5, ty - 3), (cx, ty - 1)], fill=(250, 220, 120))  # banderita
+        for x in range(4, W - 4, 5):                                                    # guirnalda
+            d.point((x, ty + 4 + abs((x % 20) - 10) // 3), fill=(250, 220, 120))
+        _chico(img, chico, f, tin, H - 12)
+    elif estilo == "mahjong":
+        for i in range(4):
+            x0 = 6 + i * 11
+            d.rectangle([x0, y + 4, x0 + 8, y + 18], fill=(246, 240, 220))
+            d.rectangle([x0, y + 17, x0 + 8, y + 19], fill=(200, 170, 60))
+            marca = [(200, 30, 30), (30, 120, 60), (30, 60, 150), (200, 30, 30)][i]
+            if i % 2 == 0:
+                d.rectangle([x0 + 3, y + 7, x0 + 5, y + 14], fill=marca)
+            else:
+                d.ellipse([x0 + 2, y + 8, x0 + 6, y + 12], outline=marca)
+        _rayitas(d, 5, W - 6, y + 24, H - 6, (150, 200, 160))
+    elif estilo == "matsuri":
+        for i in range(5):                                            # farolitos rojo y blanco
+            x = 6 + i * 10
+            d.line([x - 5, y + 1, x + 5, y + 1], fill=(60, 40, 40))
+            d.ellipse([x - 3, y + 2, x + 3, y + 10], fill=(220, 40, 40) if i % 2 == 0 else (250, 246, 236))
+            d.ellipse([x - 3, y + 2, x + 3, y + 10], outline=(150, 30, 30))
+        d.ellipse([cx - 10, y + 13, cx + 10, y + 31], fill=(40, 90, 170))               # abanico (uchiwa)
+        d.line([cx, y + 31, cx, y + 37], fill=(150, 110, 60), width=2)
+        d.ellipse([cx - 4, y + 17, cx + 4, y + 25], fill=(244, 240, 230))
+        _chico(img, chico, f, tin, H - 11)
+    elif estilo == "karaoke":
+        my = y + 4
+        d.ellipse([cx - 6, my, cx + 6, my + 12], outline=(71, 230, 255))                 # microfono
+        for k in range(my + 2, my + 11, 2):
+            d.line([cx - 4, k, cx + 4, k], fill=(40, 120, 140))
+        d.line([cx, my + 12, cx, my + 26], fill=(200, 200, 210), width=2)
+        for (nx, ny) in ((cx - 16, my + 4), (cx + 12, my + 10), (cx - 13, my + 18)):     # notas
+            d.ellipse([nx, ny + 5, nx + 3, ny + 8], fill=(255, 79, 163))
+            d.line([nx + 3, ny, nx + 3, ny + 6], fill=(255, 79, 163))
+        _chico(img, chico, f, tin, H - 12)
+    elif estilo == "oferta":
+        _latin(img, chico, 18, y + 4, (200, 24, 24), 120)
+        d.line([6, y + 28, W - 7, y + 28], fill=(200, 24, 24))
+        _rayitas(d, 6, W - 7, y + 32, H - 5, (120, 90, 30), 4)
+    return img
+
+
 def main():
     os.makedirs(SALIDA, exist_ok=True)
     for viejo in os.listdir(SALIDA):
@@ -538,6 +812,8 @@ def main():
             img = papelitos(texto, f, len(filas) * 7919)
         elif estilo == "fotocopia":
             img = afiche_fotocopia(texto, idioma)
+        elif formato == "K":
+            img = afiche_comercio(texto, f, estilo)
         else:
             img = afiche(texto, f, estilo)
         clave = (formato, idioma)
