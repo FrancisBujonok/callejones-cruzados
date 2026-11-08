@@ -221,6 +221,7 @@ public static partial class AtmosphereBuilder
         if (inspector == null) inspector = Undo.AddComponent<SignInspector>(player.gameObject);
         inspector.Setup(cam, controller);
         EditorUtility.SetDirty(inspector);
+        SetupObjectLines(); // Paso 28
 
         EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
     }

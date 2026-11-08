@@ -1487,6 +1487,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7298920760913832491}
   - component: {fileID: 5378463251540383765}
+  - component: {fileID: 3815049401975046617}
   m_Layer: 0
   m_Name: Lugar_Altar
   m_TagString: Untagged
@@ -1540,6 +1541,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Landmark
   label: Altar
   center: {x: 0.25, y: 0.8, z: 0}
+--- !u!114 &3815049401975046617
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7418039862248774654}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 32109483f183b4748aa097acdf153144, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Inspectable
+  key: altar
+  maxDistance: 2.8
 --- !u!1 &7435374390677263502
 GameObject:
   m_ObjectHideFlags: 0

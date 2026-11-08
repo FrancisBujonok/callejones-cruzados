@@ -51,6 +51,7 @@ public static partial class AtmosphereBuilder
         BuildMaze(m, farol);        // Esquina, Cruce y Fondo con sus fachadas y carteles
         BuildLandmarks(m);
         UpdateToriiPlaque(m);       // solo la placa: el torii conserva su sonido
+        SetupObjectLines();         // Paso 28: el archivo de lineas de los objetos
         AssetDatabase.SaveAssets();
         Debug.Log("[Callejones] Fachadas, carteles y lugares listos. Guarda con Ctrl+S.");
     }
@@ -96,6 +97,7 @@ public static partial class AtmosphereBuilder
 
         Transform options = Group(slot.transform, "Opciones");
         GameObject persiana = CreateShutterYaw(options, "Persiana", Vector3.zero, 0f, shutter, m);
+        Inspect(persiana, "persiana", 2.8f); // Paso 28: solo esta (la del Cruce es de la anomalia)
         // Papelitos pegados en la persiana (Paso 18). Solo en esta: la del Cruce es de la anomalia.
         // Paso 21: 2 cm por delante de las crestas de la persiana (antes 5 mm).
         CreateFlyers(persiana.transform, "Papelitos", new Vector3(0.06f, 1.3f, 0.55f), m);
@@ -134,8 +136,11 @@ public static partial class AtmosphereBuilder
         // Morishio: dos montoncitos de sal a los costados de la puerta.
         // Paso 27: mas chicos y sin brillo propio (con el material del papel se encendian de noche
         // y se veian como bolitas blancas en el piso).
+        Inspect(t.gameObject, "noren", 2.8f); // Paso 28
         BoxChild(t, "SalIzq", m.sal, new Vector3(0.12f, 0.03f, -0.78f), new Vector3(0.06f, 0.06f, 0.06f), new Vector3(0f, 45f, 0f));
         BoxChild(t, "SalDer", m.sal, new Vector3(0.12f, 0.03f, 0.78f), new Vector3(0.06f, 0.06f, 0.06f), new Vector3(0f, 45f, 0f));
+        Inspect(t.Find("SalIzq").gameObject, "sal", 2.6f);
+        Inspect(t.Find("SalDer").gameObject, "sal", 2.6f);
         return t.gameObject;
     }
 
@@ -143,6 +148,7 @@ public static partial class AtmosphereBuilder
     private static GameObject BuildUtilityWall(Transform parent, Mats m)
     {
         Transform t = Group(parent, "Equipos");
+        // Paso 29: los equipos ya no se miran con E (tapaban al afiche que tienen pegado).
         SolidBoxChild(t, "AireExterior", m.metal, new Vector3(0.16f, 0.28f, -0.55f), new Vector3(0.32f, 0.56f, 0.75f), Vector3.zero);
         BoxChild(t, "Rejilla", m.cable, new Vector3(0.325f, 0.3f, -0.6f), new Vector3(0.01f, 0.4f, 0.4f), Vector3.zero);
         BoxChild(t, "CanoA", m.metal, new Vector3(0.05f, 1.2f, 0.7f), new Vector3(0.06f, 2.4f, 0.06f), Vector3.zero);
@@ -203,9 +209,9 @@ public static partial class AtmosphereBuilder
         AudioClip bells = AssetDatabase.LoadAssetAtPath<AudioClip>(AudioDir + "/Torii_Campanas.wav");
         GameObject[] prefabs =
         {
-            SaveLandmark(BuildVendingMachine(m, hum), MaquinaPath),
-            SaveLandmark(BuildAltar(m, bells), AltarPath),
-            SaveLandmark(BuildPhone(m), TelefonoPath),
+            SaveLandmark(Inspect(BuildVendingMachine(m, hum), "maquina", 2.8f), MaquinaPath), // Paso 28: se miran con E
+            SaveLandmark(Inspect(BuildAltar(m, bells), "altar", 2.8f), AltarPath),
+            SaveLandmark(Inspect(BuildPhone(m), "telefono", 2.8f), TelefonoPath),
         };
 
         // Una copia de cada uno en la escena, apagada, dentro de Laberinto/Lugares.

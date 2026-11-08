@@ -78,6 +78,8 @@ public static partial class AtmosphereBuilder
         // Paso 18: cajas de luz salientes (S), neones sueltos (N), placas y flechas (D y F)
         // y papelitos pegados (A).
         public SignSet signsS, signsN, signsPlaca, signsA;
+        // Paso 29: afiches de locales, tiendas y la feria (K), en las paredes de los rectos y celdas.
+        public SignSet signsK;
         // Paso 19: mensajes escondidos que muestran los neones al fallar (no se sortean).
         public SignSet signsXS, signsXN;
         // Paso 20: edificios. Fachadas con ventanas, el fondo mas oscuro, los detalles (todos con

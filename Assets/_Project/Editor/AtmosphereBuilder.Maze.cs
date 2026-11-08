@@ -232,11 +232,11 @@ public static partial class AtmosphereBuilder
 
         Transform b = Group(sets, "SetB");
         Vector3 crate = Spot(1);
-        SolidBoxChild(b, "Cajon", m.madera, crate + new Vector3(0f, 0.25f, 0f), new Vector3(0.5f, 0.5f, 0.5f), new Vector3(0f, 7f, 0f));
-        SolidBoxChild(b, "CajonChico", m.madera, crate + new Vector3(0.03f, 0.69f, 0.02f), new Vector3(0.38f, 0.38f, 0.38f), new Vector3(0f, 21f, 0f));
+        Inspect(SolidBoxChild(b, "Cajon", m.madera, crate + new Vector3(0f, 0.25f, 0f), new Vector3(0.5f, 0.5f, 0.5f), new Vector3(0f, 7f, 0f)), "cajon");
+        Inspect(SolidBoxChild(b, "CajonChico", m.madera, crate + new Vector3(0.03f, 0.69f, 0.02f), new Vector3(0.38f, 0.38f, 0.38f), new Vector3(0f, 21f, 0f)), "cajon");
 
         Transform c = Group(sets, "SetC");
-        CreateSolidLathe(c, "Balde", Spot(0), bucket, m.balde, new Vector3(0.34f, 0.34f, 0.34f));
+        Inspect(CreateSolidLathe(c, "Balde", Spot(0), bucket, m.balde, new Vector3(0.34f, 0.34f, 0.34f)), "balde");
         // Paso 27: sin maceta.
 
         // Carteles y ventanas en las paredes de los costados, si estan cerradas.
@@ -250,6 +250,10 @@ public static partial class AtmosphereBuilder
             CreateWindow(a, "Ventana", new Vector3(WallInnerX, 1.8f, 0f), true, false, m);
             CreateHangingSign(b, "CartelColgante", new Vector3(WallInnerX, 2.2f, -0.3f), true, m);
         }
+
+        // Paso 29: un afiche de local en SetB (pared O) y en SetC (pared E), si estan cerradas.
+        if ((open & Side.O) == 0) CreateShopPoster(b, "AficheLocal", 1.45f, -0.3f, false, 2f, m);
+        if ((open & Side.E) == 0) CreateShopPoster(c, "AficheLocal", 1.45f, 0.25f, true, -3f, m);
 
         // Placas de direccion o flechas de salida (Paso 18): SetA prefiere la pared O y SetB la E.
         // Del lado de la entrada (z negativo en A, positivo en B), lejos de los colgantes y ventanas.
