@@ -1,0 +1,50 @@
+# Lo que dicen las notas escritas a mano (Paso 30). Las pego gente que paso por aca antes, y
+# cuentan el mito del barrio cada una a su manera. No se ponen de acuerdo, y eso es a proposito.
+#
+# Formato: clave | cuando | linea   (igual que Objetos.txt)
+#   clave:  el nombre de la nota (el de su PNG, sin .png).
+#   calma:  lo que se lee. Entre comillas lo que dice la nota, despues lo que piensa el personaje.
+#   otra_vez: si ya leiste esa nota (sale 6 de cada 10 veces).
+#   miedo:  con el miedo en 50 o mas (opcional).
+#
+# Version 1: algo camina detras tuyo contando tus pasos y te cuida; no mires atras.
+# Version 2: lo que cuenta tus pasos te cambia las calles; mira atras seguido.
+# Version 3: no hay nada sobrenatural: los vecinos mueven las cosas de noche.
+# Ademas: la sal, la puerta roja, el gato, alguien perdido y una nota que desmiente a todas.
+# Para cambiar el mito, cambia estos textos: el juego no depende de lo que digan.
+
+M_es_01_cuaderno | calma | «No mires atrás. La que camina detrás tuyo cuenta tus pasos para que no te pierdas. Si te das vuelta, pierde la cuenta.» Sin firma.
+M_es_01_cuaderno | otra_vez | «Si te das vuelta, pierde la cuenta.» Otra nota decía exactamente lo contrario.
+M_es_01_cuaderno | miedo | «La que camina detrás tuyo cuenta tus pasos.» No quiero saber cuántos lleva.
+
+M_es_02_ticket | calma | Un ticket. Del lado de atrás, a lápiz: «Doce pasos. Mirar. Doce pasos. Mirar. Doce pasos. Mirar.» Así hasta el final del papel.
+M_es_02_ticket | otra_vez | «Doce pasos. Mirar.» Me descubro contando.
+
+M_es_03_carton | calma | Con fibrón, en un pedazo de caja: «Lo que cuenta tus pasos se come el camino. Mirá atrás seguido y no le das tiempo.» Firma: un vecino.
+M_es_03_carton | otra_vez | «Mirá atrás seguido.» Un vecino que no firma con su nombre.
+
+M_es_04_dibujo | calma | El dibujo de un chico: una figura negra, muy alta, al lado de una más chica. Abajo, en crayón: «MI MAMÁ DISE QUE LA SEÑORA DE ATRÁS ES BUENA».
+M_es_04_dibujo | otra_vez | La figura del dibujo tiene los brazos hasta las rodillas. El chico la pintó con cuidado.
+M_es_04_dibujo | miedo | «LA SEÑORA DE ATRÁS ES BUENA.» Y abajo, más chiquito: «NO HAY QUE MIRARLA A LA CARA».
+
+M_es_05_cuaderno | calma | «No hay ningún espíritu. Los del barrio corren las persianas y cambian los carteles de noche, para que los de afuera no encuentren nada.» —R.
+M_es_05_cuaderno | otra_vez | «Para que los de afuera no encuentren nada.» ¿Nada de qué?
+
+M_es_06_ticket | calma | En un ticket, apretado: «La sal en las puertas no es para que no entre algo. Es para que no salga.»
+M_es_06_ticket | otra_vez | «Es para que no salga.» Me acuerdo de cada montoncito de sal que pasé.
+
+M_es_07_carton | calma | Un gato dibujado con fibrón y una flecha: «El gato blanco y negro sabe por dónde se sale. Seguilo.»
+M_es_07_carton | otra_vez | «Seguilo.» ¿Y si el gato también está perdido?
+
+M_es_08_cuaderno | calma | «La puerta roja no es la salida. Es donde empieza.» Al lado dibujaron un torii, en rojo.
+M_es_08_cuaderno | otra_vez | «Es donde empieza.» ¿Donde empieza qué?
+
+M_es_09_carta | calma | Una carta, con letra inclinada: «Ya pasé tres veces por el mismo cartel de fideos. Si alguien lee esto: voy para la izquierda.» —L.
+M_es_09_carta | otra_vez | «Voy para la izquierda.» No dice cuándo la escribió.
+M_es_09_carta | miedo | «Ya pasé tres veces por el mismo cartel.» Yo también.
+
+M_es_10_carton | calma | «Si ves la puerta roja, no corras. Si corrés, se aleja.» Hay un torii dibujado, rojo, en una esquina.
+M_es_10_carton | otra_vez | «Si corrés, se aleja.» Contradice a la del cuaderno. O no.
+
+M_es_11_dibujo | calma | Un ojo dibujado, y arriba, en crayón: «NO LE CREAS A NINGUNA NOTA. LAS ESCRIBE ELLA.»
+M_es_11_dibujo | otra_vez | «Las escribe ella.» La letra es igual a la del otro dibujo.
