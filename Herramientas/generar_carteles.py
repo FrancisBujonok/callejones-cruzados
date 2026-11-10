@@ -13,6 +13,9 @@ como en la PS1. El nombre del archivo le dice a Unity como usarlo:
              P  = afiche (titulo de 2 letras, foto y letra chica)
              K  = afiche de un local, una tienda o la feria (Paso 29): titulo, un dibujo y
                   letra chica. El estilo dice que dibujo lleva (feria, fuegos, fideos...)
+             M  = nota escrita a mano en castellano (Paso 30): el mito del barrio contado por
+                  distintas personas. Fondo transparente, como los papelitos (comparten lugar).
+                  Lo que dice cada una esta en Assets/_Project/Dialogos/Notas.txt
              T  = placa del torii (fija, no se sortea)
              S  = cartel saliente, hasta 4 letras: caja de luz o neon (Paso 18)
              N  = neon horizontal de letras sueltas, hasta 5 (fondo transparente)
@@ -160,6 +163,20 @@ CARTELES = [
     ("K", "jp", "matsuri",   "祭り|8月",      "Festival de verano, agosto"),
     ("K", "kr", "karaoke",   "노래방|24시",   "Karaoke, abierto 24 horas"),
     ("K", "kr", "oferta",    "세일|50%",      "Liquidacion, 50 por ciento"),
+    # --- Paso 30: notas escritas a mano por gente que paso por aca. Cuentan el mito del barrio
+    #     y no se ponen de acuerdo. El dibujo es ilegible a proposito (garabatos); lo que dice
+    #     cada una lo transcribe el personaje (Dialogos/Notas.txt). texto = que dibujito lleva.
+    ("M", "es", "cuaderno", "",        "No mires atras: la que camina detras cuenta tus pasos"),
+    ("M", "es", "ticket",   "pasos",   "Doce pasos, mirar (repetido)"),
+    ("M", "es", "carton",   "",        "Lo que cuenta tus pasos se come el camino: mira atras"),
+    ("M", "es", "dibujo",   "figura",  "Dibujo de un chico: la senora de atras es buena"),
+    ("M", "es", "cuaderno", "",        "No hay espiritus: los vecinos mueven persianas y carteles"),
+    ("M", "es", "ticket",   "",        "La sal no es para que no entre algo: es para que no salga"),
+    ("M", "es", "carton",   "gato",    "El gato blanco y negro sabe la salida"),
+    ("M", "es", "cuaderno", "puerta",  "La puerta roja no es la salida: es donde empieza"),
+    ("M", "es", "carta",    "",        "Ya pase tres veces por el mismo cartel: voy a la izquierda"),
+    ("M", "es", "carton",   "puerta",  "Si ves la puerta roja, no corras: se aleja"),
+    ("M", "es", "dibujo",   "ojo",     "No le creas a ninguna nota: las escribe ella"),
 ]
 
 ESTILOS = {  # (fondo, tinta)
@@ -784,6 +801,133 @@ def afiche_comercio(texto, f, estilo):
     return img
 
 
+# ------------------------------------------------------------------ Paso 30: notas a mano
+
+def _garabato(d, x0, x1, y, color, rnd, alto=2):
+    """Un renglon de letra a mano ilegible: trazos cortos ondulados con espacios entre palabras."""
+    x = x0
+    while x < x1 - 2:
+        largo = rnd.randint(3, 8)
+        for k in range(largo):
+            if x + k >= x1:
+                break
+            d.point((x + k, y + (rnd.randint(0, alto) if rnd.random() < 0.6 else 0)), fill=color)
+            if rnd.random() < 0.35:
+                d.point((x + k, y - 1), fill=color)
+        x += largo + rnd.randint(1, 3)
+
+
+def nota(texto, estilo, semilla):
+    """
+    Paso 30: una nota escrita a mano, pegada a la pared (48 x 48, fondo transparente).
+    cuaderno = hoja rayada arrancada; ticket = papel de ticket angosto; carton = pedazo de caja
+    con fibron; dibujo = dibujo de un chico con crayones; carta = hoja amarillenta con letra
+    inclinada y firma. texto: un dibujito (pasos, figura, gato, puerta, ojo) o nada.
+    """
+    import random
+    rnd = random.Random(semilla)
+    papeles = {"cuaderno": (232, 230, 220), "ticket": (238, 236, 228), "carton": (150, 112, 70),
+               "dibujo": (244, 242, 236), "carta": (226, 212, 170)}
+    tintas = {"cuaderno": (34, 46, 120), "ticket": (110, 108, 104), "carton": (20, 16, 12),
+              "dibujo": (30, 30, 30), "carta": (60, 36, 20)}
+    w, h = {"ticket": (18, 40), "carton": (34, 28), "dibujo": (34, 30)}.get(estilo, (30, 38))
+    hoja = Image.new("RGBA", (w, h), papeles[estilo] + (255,))
+    d = ImageDraw.Draw(hoja)
+    tinta = tintas[estilo] + (255,)
+    if estilo == "cuaderno":
+        for y in range(6, h - 1, 4):
+            d.line([0, y, w - 1, y], fill=(150, 170, 210, 255))
+        d.line([4, 0, 4, h - 1], fill=(210, 110, 110, 255))
+        for x in range(0, w, 2):                                  # borde de arriba arrancado
+            d.point((x, rnd.randint(0, 1)), fill=(0, 0, 0, 0))
+        filas = range(5, h - 3, 4)
+        x0 = 6
+    elif estilo == "ticket":
+        for x in range(0, w, 3):                                  # borde serrucho
+            d.point((x, h - 1), fill=(0, 0, 0, 0))
+            d.point((x + 1, h - 1), fill=(0, 0, 0, 0))
+        filas = range(3, h - 3, 3)
+        x0 = 2
+    elif estilo == "carton":
+        for _ in range(30):
+            d.point((rnd.randrange(w), rnd.randrange(h)), fill=(120, 88, 52, 255))
+        d.line([0, h // 2, w - 1, h // 2 + 1], fill=(126, 92, 56, 255))  # doblez
+        filas = range(4, h - 4, 6)
+        x0 = 3
+    elif estilo == "dibujo":
+        filas = range(3, 9, 5)
+        x0 = 3
+    else:  # carta
+        for _ in range(12):
+            d.point((rnd.randrange(w), rnd.randrange(h)), fill=(200, 184, 140, 255))
+        filas = range(4, h - 8, 3)
+        x0 = 3
+
+    # El dibujito, si lleva, y los renglones alrededor.
+    zona = None
+    if texto == "pasos":
+        for i, y in enumerate(range(h - 14, h - 2, 4)):
+            x = w // 2 + (2 if i % 2 else -3)
+            d.ellipse([x, y, x + 2, y + 3], fill=tinta)
+        zona = (h - 15, h)
+    elif texto == "figura":
+        # Una figura alta y negra con brazos largos, al lado de un chico chiquito y un sol.
+        d.ellipse([w - 9, 2, w - 3, 8], fill=(240, 190, 40, 255))
+        fx = 10
+        d.ellipse([fx - 2, 10, fx + 2, 14], fill=(20, 20, 20, 255))
+        d.line([fx, 14, fx, 24], fill=(20, 20, 20, 255), width=2)
+        d.line([fx - 1, 15, fx - 5, 25], fill=(20, 20, 20, 255))
+        d.line([fx + 1, 15, fx + 5, 25], fill=(20, 20, 20, 255))
+        d.line([fx, 24, fx - 2, h - 2], fill=(20, 20, 20, 255))
+        d.line([fx, 24, fx + 2, h - 2], fill=(20, 20, 20, 255))
+        cx = 22
+        d.ellipse([cx - 1, 19, cx + 2, 22], fill=(220, 60, 50, 255))
+        d.line([cx, 22, cx, 26], fill=(220, 60, 50, 255))
+        d.line([cx, 26, cx - 1, h - 2], fill=(40, 80, 200, 255))
+        d.line([cx, 26, cx + 1, h - 2], fill=(40, 80, 200, 255))
+        zona = (9, h)
+    elif texto == "gato":
+        cx, cy = w - 9, h - 9
+        d.ellipse([cx - 4, cy - 1, cx + 4, cy + 6], fill=tinta)
+        d.ellipse([cx - 3, cy - 6, cx + 2, cy - 1], fill=tinta)
+        d.point((cx - 3, cy - 7), fill=tinta)
+        d.point((cx + 2, cy - 7), fill=tinta)
+        zona = None
+    elif texto == "puerta":
+        px = w - 11
+        d.line([px, h - 3, px, h - 12], fill=(190, 40, 30, 255), width=1)
+        d.line([px + 7, h - 3, px + 7, h - 12], fill=(190, 40, 30, 255), width=1)
+        d.line([px - 2, h - 12, px + 9, h - 12], fill=(190, 40, 30, 255), width=2)
+        d.line([px - 1, h - 10, px + 8, h - 10], fill=(190, 40, 30, 255))
+    elif texto == "ojo":
+        cx, cy = w // 2, 18
+        d.ellipse([cx - 7, cy - 4, cx + 7, cy + 4], outline=(20, 20, 20, 255))
+        d.ellipse([cx - 2, cy - 2, cx + 2, cy + 2], fill=(20, 20, 20, 255))
+        for k in range(-6, 7, 3):
+            d.line([cx + k, cy - 5, cx + k, cy - 7], fill=(20, 20, 20, 255))
+        zona = (12, 24)
+    for y in filas:
+        if zona and zona[0] <= y <= zona[1]:
+            continue
+        fin = w - 2 - (rnd.randint(0, 8) if estilo != "ticket" else rnd.randint(0, 4))
+        if estilo == "dibujo":
+            colores = [(220, 60, 50), (40, 80, 200), (40, 140, 60)]
+            _garabato(d, x0, fin, y, colores[rnd.randrange(3)] + (255,), rnd, 1)
+        else:
+            _garabato(d, x0, fin, y, tinta, rnd, 1 if estilo == "ticket" else 2)
+    if estilo == "carta":                                          # firma
+        d.line([w - 14, h - 5, w - 9, h - 7], fill=tinta)
+        d.line([w - 9, h - 7, w - 4, h - 4], fill=tinta)
+
+    hoja = hoja.rotate(rnd.uniform(-9, 9), resample=Image.NEAREST, expand=True)
+    img = Image.new("RGBA", (48, 48), (0, 0, 0, 0))
+    img.alpha_composite(hoja, ((48 - hoja.width) // 2, (48 - hoja.height) // 2))
+    if estilo != "carton":                                         # cinta
+        cinta = Image.new("RGBA", (8, 3), (236, 232, 214, 200))
+        img.alpha_composite(cinta, (20, max(0, (48 - hoja.height) // 2 - 1)))
+    return img
+
+
 def main():
     os.makedirs(SALIDA, exist_ok=True)
     for viejo in os.listdir(SALIDA):
@@ -814,6 +958,8 @@ def main():
             img = afiche_fotocopia(texto, idioma)
         elif formato == "K":
             img = afiche_comercio(texto, f, estilo)
+        elif formato == "M":
+            img = nota(texto, estilo, len(filas) * 104729)
         else:
             img = afiche(texto, f, estilo)
         clave = (formato, idioma)

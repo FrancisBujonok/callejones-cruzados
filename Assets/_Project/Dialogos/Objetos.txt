@@ -153,3 +153,7 @@ altar | calma | La estatuita no se parece a ningún dios que conozca.
 altar | miedo | La estatuita mira hacia el lado por donde vine.
 altar | miedo | Alguien cambió las ofrendas. Ahora hay un juguete de gato.
 altar | otra_vez | Las velas no bajaron nada desde la última vez.
+# Paso 30: el altar tambien cuenta el mito, a su manera.
+altar | calma | Detrás de la estatuita hay otra más alta y flaca, de espaldas. Nadie le dejó nada.
+altar | miedo | Las ofrendas están puestas mirando para atrás, hacia el callejón por donde vine.
+altar | otra_vez | Alguien raspó la cara de la estatuita alta. Las otras están intactas.

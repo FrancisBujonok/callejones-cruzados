@@ -18,6 +18,7 @@ using UnityEngine;
 public static partial class AtmosphereBuilder
 {
     private const string ObjectLinesPath = Root + "/Dialogos/Objetos.txt";
+    private const string NotesPath = Root + "/Dialogos/Notas.txt"; // Paso 30: lo que dicen las notas del mito
 
     /// <summary>Le agrega (o actualiza) un Inspectable. Devuelve el mismo objeto, para encadenar.</summary>
     private static GameObject Inspect(GameObject go, string key, float maxDistance = 2.6f)
@@ -41,6 +42,9 @@ public static partial class AtmosphereBuilder
         if (lines == null) Debug.LogWarning("[Callejones] Falta " + ObjectLinesPath + ": los objetos van a decir 'No tiene nada de especial.'");
         Undo.RecordObject(inspector, "Lineas de los objetos");
         inspector.SetupObjects(lines, inspector.GetComponent<FearMeter>());
+        TextAsset notes = AssetDatabase.LoadAssetAtPath<TextAsset>(NotesPath);
+        if (notes == null) Debug.LogWarning("[Callejones] Falta " + NotesPath + ": las notas del mito no van a decir nada.");
+        inspector.SetupNotes(notes);
         EditorUtility.SetDirty(inspector);
     }
 }

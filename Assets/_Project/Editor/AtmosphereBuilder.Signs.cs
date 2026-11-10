@@ -88,7 +88,7 @@ public static partial class AtmosphereBuilder
             Material mat = Mat("Carteles/" + name, Color.white, 0.3f, 0f, null, SignEmission(parts[3]), tex, tex);
             // Neones sueltos, papelitos y el mensaje de los neones: sin fondo. El resto es un
             // rectangulo lleno.
-            SetCutout(mat, parts[0] == "N" || parts[0] == "A" || parts[0] == "XN");
+            SetCutout(mat, parts[0] == "N" || parts[0] == "A" || parts[0] == "XN" || parts[0] == "M");
             float weight = parts[1] == "tw" ? TaiwanWeight : 1f;
 
             SignSet set = parts[0] switch
@@ -103,6 +103,7 @@ public static partial class AtmosphereBuilder
                 "F" => m.signsPlaca, // las flechas de salida comparten lugar con las placas
                 "A" => m.signsA,
                 "K" => m.signsK, // Paso 29
+                "M" => m.signsA, // Paso 30: las notas del mito van donde van los papelitos
                 // Paso 19: mensajes escondidos. No se sortean: los usa NeonFlicker.
                 "XS" => m.signsXS,
                 "XN" => m.signsXN,

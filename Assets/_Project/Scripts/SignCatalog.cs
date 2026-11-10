@@ -168,6 +168,7 @@ public static class SignCatalog
     {
         string clean = Clean(name);
         if (clean == Manchas) return 0.15f;
+        if (clean.StartsWith("M_")) return 0.25f; // Paso 30: las notas del mito comparten lugar con los papelitos y salen poco
         if (RareWarnings.Contains(clean)) return 0.35f;
         return 1f;
     }
