@@ -168,6 +168,7 @@ public static partial class AtmosphereBuilder
         mundane.Setup(controller.transform, fear, lures, wall, filter, machine, c.platos, c.tos, c.motos, c.lata);
         mundane.SetupMore(c.persianas, c.perros, c.campanillas);
         UseRecordedDrips();
+        SetupPosterEchoes(controller.transform, lures, c.perros);
         EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
     }
 
@@ -194,5 +195,49 @@ public static partial class AtmosphereBuilder
     {
         array.arraySize = clips.Length;
         for (int i = 0; i < clips.Length; i++) array.GetArrayElementAtIndex(i).objectReferenceValue = clips[i];
+    }
+
+    // ------------------------------------------------------------------ 4. ecos de los afiches (Paso 30)
+
+    /// <summary>
+    /// "EcosDeAfiches" (raiz de la escena): PosterEchoes con una fuente 3D y un pasa bajos, y lo
+    /// que suena con cada tipo de afiche. Los sonidos son grabados (Audio/Reales, CC0):
+    /// Fichas, Canto, FuegosLejos, Tambor, Guitarra, Feria y Cuenco; el perro usa los de siempre.
+    /// </summary>
+    private static void SetupPosterEchoes(Transform player, LookBackLures lures, AudioClip[] dogs)
+    {
+        foreach (GameObject go in SceneManager.GetActiveScene().GetRootGameObjects())
+            if (go.name == "EcosDeAfiches") Undo.DestroyObjectImmediate(go);
+        var root = new GameObject("EcosDeAfiches");
+        Undo.RegisterCreatedObjectUndo(root, "Crear EcosDeAfiches");
+
+        AudioSource source = NewSource(root.transform, "Fuente", null, false, 60);
+        Make3D(source, 1.5f, 30f);
+        AudioLowPassFilter filter = source.gameObject.AddComponent<AudioLowPassFilter>();
+        filter.cutoffFrequency = 2000f;
+
+        var echoes = new[]
+        {
+            Echo("mahjong",  LoadRealSounds("Fichas"),      0.7f,  3, 3f, 5f,   2.5f, 2200f, 0.7f,  14f),
+            Echo("karaoke",  LoadRealSounds("Canto"),       0.7f,  3, 6f, 10f,  3.5f, 1400f, 0.8f,  22f),
+            Echo("perro",    dogs,                          0.6f,  3, 4f, 7f,   0f,   2500f, 0.9f,  25f),
+            Echo("fuegos",   LoadRealSounds("FuegosLejos"), 0.6f,  1, 20f, 30f, 15f,  1500f, 1f,    60f),
+            Echo("matsuri",  LoadRealSounds("Tambor"),      0.6f,  2, 18f, 26f, 4f,   700f,  1f,    50f),
+            Echo("banda",    LoadRealSounds("Guitarra"),    0.65f, 3, 3f, 6f,   3f,   2200f, 0.6f,  16f),
+            Echo("feria",    LoadRealSounds("Feria"),       0.6f,  2, 16f, 24f, 2f,   800f,  1f,    45f),
+            Echo("adivina",  LoadRealSounds("Cuenco"),      0.5f,  2, 1.2f, 2f, 0.3f, 6000f, 0.55f, 12f),
+        };
+        root.AddComponent<PosterEchoes>().Setup(player, lures, source, filter, echoes);
+    }
+
+    private static PosterEchoes.Echo Echo(string style, AudioClip[] clips, float chance, int max,
+        float depthMin, float depthMax, float height, float cutoff, float volume, float maxDistance)
+    {
+        return new PosterEchoes.Echo
+        {
+            style = style, clips = clips, chance = chance, maxPerGame = max,
+            depth = new Vector2(depthMin, depthMax), height = height, cutoff = cutoff,
+            volume = volume, maxDistance = maxDistance,
+        };
     }
 }

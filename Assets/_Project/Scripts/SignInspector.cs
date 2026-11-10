@@ -26,6 +26,10 @@ using UnityEngine.InputSystem;
 /// el mundo sigue a la vista y abajo aparece la linea. Las lineas de los objetos estan en
 /// Dialogos/Objetos.txt (ObjectLines); las de los carteles, en SignCatalog.cs.
 /// Si un cartel y un objeto estan cerca, gana el que este mas cerca del centro de la vista.
+///
+/// Paso 30: las notas escritas a mano (carteles M_) dicen lo que esta en Dialogos/Notas.txt, y
+/// cada vez que se abre un cartel se avisa con SignOpened (lo usa PosterEchoes: algunos afiches
+/// hacen sonar algo cerca).
 /// </summary>
 public class SignInspector : MonoBehaviour
 {
@@ -33,6 +37,8 @@ public class SignInspector : MonoBehaviour
     public static bool IsOpen { get; private set; }
     /// <summary>El cuadro en que se cerro: ese mismo Esc tampoco tiene que pausar.</summary>
     public static int ClosedFrame { get; private set; } = -1;
+    /// <summary>Paso 30: se abrio un cartel (el cartel y el nombre de su material, sin "(Instance)").</summary>
+    public static event System.Action<SignRandomizer, string> SignOpened;
 
     [Header("Referencias")]
     [Tooltip("La camara del jugador. Si se deja vacia, usa la Main Camera.")]
@@ -41,6 +47,8 @@ public class SignInspector : MonoBehaviour
     [SerializeField] private FirstPersonController controller;
     [Tooltip("Paso 28: las lineas de los objetos (Dialogos/Objetos.txt).")]
     [SerializeField] private TextAsset objectLinesFile;
+    [Tooltip("Paso 30: lo que dicen las notas escritas a mano (Dialogos/Notas.txt).")]
+    [SerializeField] private TextAsset notesFile;
     [Tooltip("Paso 28: con miedo alto, los objetos dicen otras cosas. Si se deja vacio, usa el de este objeto.")]
     [SerializeField] private FearMeter fear;
 
@@ -69,6 +77,7 @@ public class SignInspector : MonoBehaviour
     private RawImage picture;
     private Image background, shadow;
     private ObjectLines objectLines;
+    private ObjectLines notes;
     private readonly Dictionary<string, int> objectsSeen = new Dictionary<string, int>();
     private RectTransform pictureRect, shadowRect;
     private TMPro.TMP_Text line;
@@ -90,12 +99,16 @@ public class SignInspector : MonoBehaviour
         fear = fearMeter;
     }
 
+    /// <summary>Paso 30: lo usa la herramienta de editor.</summary>
+    public void SetupNotes(TextAsset file) => notesFile = file;
+
     private void Awake()
     {
         if (view == null) view = Camera.main;
         if (controller == null) controller = GetComponent<FirstPersonController>();
         if (fear == null) fear = GetComponent<FearMeter>();
         objectLines = new ObjectLines(objectLinesFile);
+        notes = new ObjectLines(notesFile);
         IsOpen = false;
         BuildInterface();
     }
@@ -184,7 +197,10 @@ public class SignInspector : MonoBehaviour
 
         string key = SignCatalog.Clean(mat.name);
         timesSeen.TryGetValue(key, out int seen);
-        LastLine = SignCatalog.Line(key, seen, warningsSeen);
+        // Paso 30: las notas a mano dicen lo que esta en Notas.txt; el resto, lo de SignCatalog.
+        LastLine = key.StartsWith("M_") && notes != null && notes.Count > 0
+            ? notes.Line(key, seen, fear != null ? fear.Normalized : 0f)
+            : SignCatalog.Line(key, seen, warningsSeen);
         timesSeen[key] = seen + 1;
         if (SignCatalog.IsWarning(key)) warningsSeen++;
 
@@ -194,6 +210,7 @@ public class SignInspector : MonoBehaviour
         IsOpen = true;
         if (controller != null) controller.enabled = false;
         Debug.Log($"[SignInspector] Mirando '{key}': {LastLine}");
+        SignOpened?.Invoke(sign, key);
     }
 
     /// <summary>Paso 28: mirar un objeto. Sin imagen: el mundo sigue a la vista, un poco mas oscuro.</summary>
@@ -367,7 +384,7 @@ public class SignInspector : MonoBehaviour
         lineRect.anchorMin = lineRect.anchorMax = new Vector2(0.5f, 0f);
         lineRect.pivot = new Vector2(0.5f, 0f);
         lineRect.anchoredPosition = new Vector2(0f, 18f);
-        lineRect.sizeDelta = new Vector2(560f, 44f);
+        lineRect.sizeDelta = new Vector2(560f, 62f); // Paso 30: tres renglones (las notas son largas)
         line = NewText(lineRect, sample, 14f, paper);
 
         // La indicacion: aparte, para que se vea sin el panel.
