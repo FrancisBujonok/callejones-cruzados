@@ -21,3 +21,14 @@ Campanillas_1.._3 <- #2687 Cluster chimes #1     https://bigsoundbank.com/cluste
 Gota_1.._4       <- #1384 Drops of water #1      https://bigsoundbank.com/drops-of-water-1-s1384.html
 Gota_5, _6       <- #1387 Drops of water #4      https://bigsoundbank.com/drops-of-water-4-s1387.html
 GotaChapa_1, _2  <- #1382 Drops, metal pan       https://bigsoundbank.com/drops-metal-pan-s1382.html
+
+Paso 30, para los afiches (mismo origen y licencia):
+Fichas_1.._3      <- #0582 Four dice on wooden table y #0942-#0945 Poker chips (mezclados: no hay fichas de mahjong)
+                     https://bigsoundbank.com/four-dice-on-wooden-table-s0582.html  https://bigsoundbank.com/poker-chips-s0942.html
+Canto_1.._3       <- #2194 Happy Birthday         https://bigsoundbank.com/happy-birthday-s2194.html
+FuegosLejos_1.._3 <- #1050 Fireworks far away     https://bigsoundbank.com/fireworks-far-away-s1050.html
+Tambor_1.._3      <- #2338, #2339, #2341 Bass tom (mas lentos y graves, en ritmos armados aca, con eco)
+                     https://bigsoundbank.com/bass-tom-1-s2338.html
+Guitarra_1.._3    <- #1563 y #1565 Guitar, exercise, beginner  https://bigsoundbank.com/guitar-exercise-beginner-1-s1563.html
+Feria_1.._3       <- #2728 Outdoor market #1      https://bigsoundbank.com/outdoor-market-1-s2728.html
+Cuenco_1, _2      <- #1110 y #2553 Tibetan bowl struck  https://bigsoundbank.com/tibetan-bowl-struck-s1110.html
