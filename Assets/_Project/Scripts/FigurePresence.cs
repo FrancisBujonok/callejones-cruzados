@@ -23,11 +23,25 @@ using UnityEngine.InputSystem;
 /// Suma miedo al verla (8), al volver a verla despues de un paso (5) y al desaparecer (3).
 /// Para probar: F6 la pone detras ahora mismo, sin importar el miedo (si hay lugar).
 ///
+/// Paso 31: ASOMARSE. Para que no se le agarre el ritmo, no siempre aparece igual:
+/// - Con miedo medio (desde peekFromFear) se asoma detras de una esquina o un cruce de ADELANTE,
+///   a 7-13 m. Aparece escondida del todo detras de la pared y se inclina despacio hasta que se
+///   ve un pedazo (la cabeza y un hombro). Apenas la miras, se esconde rapido y ya no esta.
+/// - Con miedo alto aparece atras, como antes, pero parte de las veces (peekShareHighFear) se
+///   asoma adelante.
+/// - Si te acercas o quedas viendola entera, se esconde (o, si no la estas mirando, se va).
+/// El lugar se busca probando posiciones en la boca del ramal (de 10 cm a 1.3 m hacia adentro: de
+/// lejos, de un ramal de costado solo se ve el borde): una donde no se ve casi nada de ella (como
+/// mucho 1 de 8 puntos del cuerpo: el borde de un brazo, en la oscuridad) y, a 15 cm-1.2 m hacia el
+/// lado abierto, otra donde, inclinada (leanAngle), se ve la cabeza y entre el 12 y el 65% del
+/// cuerpo. La inclinacion cuenta: la cabeza sale de la esquina antes que los pies.
+/// Para probar: F8 la hace asomarse ya (si hay una esquina adelante).
+///
 /// Va en el objeto "Figura" (raiz de la escena). Lo arma Callejones > Figura y trote.
 /// </summary>
 public class FigurePresence : MonoBehaviour
 {
-    public enum State { Hidden, Waiting, Watched, Unwatched }
+    public enum State { Hidden, Waiting, Watched, Unwatched, Peeking, Retreating }
 
     [Header("Referencias")]
     [SerializeField] private Transform player;
@@ -79,6 +93,33 @@ public class FigurePresence : MonoBehaviour
     [SerializeField] private float fearOnStep = 5f;
     [SerializeField] private float fearOnVanish = 3f;
 
+    [Header("Asomarse (Paso 31)")]
+    [Tooltip("El laberinto: de ahi salen las esquinas de adelante. Si se deja vacio, lo busca.")]
+    [SerializeField] private CorridorTreadmill paths;
+    [Tooltip("Miedo (0 a 1) desde el que puede asomarse en una esquina de adelante.")]
+    [SerializeField, Range(0f, 1f)] private float peekFromFear = 0.2f;
+    [Tooltip("Con miedo alto (desde appearFromFear), parte de las veces se asoma en vez de aparecer atras.")]
+    [SerializeField, Range(0f, 1f)] private float peekShareHighFear = 0.3f;
+    [SerializeField] private float peekMinDistance = 7f;
+    [SerializeField] private float peekMaxDistance = 13.5f;
+    [Tooltip("Cuanto se ve de ella asomada: entre estas fracciones del cuerpo (0 = nada, 1 = entera).")]
+    [SerializeField] private Vector2 peekVisible = new Vector2(0.12f, 0.65f);
+    [Tooltip("Escondida: como mucho esta fraccion del cuerpo a la vista (0.13 = 1 de 8 puntos).")]
+    [SerializeField, Range(0f, 0.5f)] private float peekHiddenMax = 0.13f;
+    [Tooltip("Grados que se inclina el cuerpo hacia el lado abierto al asomarse (a 2 m de altura, 12 grados = 42 cm).")]
+    [SerializeField] private float leanAngle = 12f;
+    [Tooltip("Segundos que tarda en asomarse.")]
+    [SerializeField] private float leanTime = 1.4f;
+    [Tooltip("Grados desde el centro de la vista: mas cerca que esto, la notaste.")]
+    [SerializeField] private float noticeAngle = 22f;
+    [SerializeField] private float noticeTime = 0.2f;
+    [Tooltip("Metros por segundo al esconderse.")]
+    [SerializeField] private float hideSpeed = 5f;
+    [Tooltip("Si nadie la ve en este tiempo, se va sola.")]
+    [SerializeField] private float peekForget = 15f;
+    [SerializeField] private float peekCooldown = 45f;
+    [SerializeField] private float fearOnPeek = 5f;
+
     [Header("Al irse")]
     [SerializeField] private float flickerRadius = 9f;
     [SerializeField] private float flickerTime = 0.15f;
@@ -87,6 +128,8 @@ public class FigurePresence : MonoBehaviour
     [SerializeField] private bool showDebugOverlay = true;
     [Tooltip("Prototipo: F6 la pone detras del jugador ahora, sin importar el miedo.")]
     [SerializeField] private bool forceKey = true;
+    [Tooltip("Prototipo: F8 la hace asomarse en una esquina de adelante.")]
+    [SerializeField] private bool peekKey = true;
 
     public State Current { get; private set; } = State.Hidden;
     public int Appearances { get; private set; }
@@ -104,6 +147,20 @@ public class FigurePresence : MonoBehaviour
     private bool losClear, decided, stepPending;
     private int steps;
     private float headYaw, headRoll, tiltSign = 1f;
+
+    // Paso 31: asomarse.
+    private static readonly Vector2[] PeekSamples =
+    {
+        new Vector2(0f, 1.98f), new Vector2(0f, 1.78f), new Vector2(-0.17f, 1.7f), new Vector2(0.17f, 1.7f),
+        new Vector2(0f, 1.35f), new Vector2(-0.08f, 1.0f), new Vector2(0.08f, 1.0f), new Vector2(0f, 0.5f),
+    };
+    private static readonly float[] PeekDepths = { 0.1f, 0.25f, 0.45f, 0.8f, 1.3f };
+    private readonly List<CorridorTreadmill.Mouth> mouths = new List<CorridorTreadmill.Mouth>();
+    private readonly List<Vector3> peekHidden = new List<Vector3>();
+    private readonly List<Vector3> peekOut = new List<Vector3>();
+    private Vector3 hiddenPos, peekPos, peekLean;
+    private float leanT, notice, peekFraction, peekCheck;
+    private bool lastWasPeek;
 
     /// <summary>Lo usa la herramienta de editor.</summary>
     public void Setup(Transform playerTransform, Camera cam, FearMeter fearMeter, LookBackLures lookBackLures,
@@ -127,6 +184,7 @@ public class FigurePresence : MonoBehaviour
             return;
         }
         parts = body.GetComponentsInChildren<Renderer>(true);
+        if (paths == null) paths = FindAnyObjectByType<CorridorTreadmill>();
         availableAt = firstAfter;
         Hide(null);
     }
@@ -148,16 +206,22 @@ public class FigurePresence : MonoBehaviour
         RecordCrumb();
 
         if (forceKey && ForcePressed()) TryAppear(true);
+        if (peekKey && PeekPressed()) TryPeek(true);
 
         if (Current == State.Hidden)
         {
             if (playTime < availableAt || playTime < nextCheck) return;
             nextCheck = playTime + checkEvery;
-            if (fear != null && fear.Normalized >= appearFromFear && Random.value < chancePerCheck) TryAppear(false);
+            if (fear == null || Random.value >= chancePerCheck) return;
+            // Paso 31: con miedo alto, casi siempre atras; con miedo medio, asomada adelante.
+            float f = fear.Normalized;
+            if (f >= appearFromFear && Random.value >= peekShareHighFear) TryAppear(false);
+            else if (f >= peekFromFear) TryPeek(false);
             return;
         }
 
-        UpdatePresent(dt);
+        if (Current == State.Peeking || Current == State.Retreating) UpdatePeek(dt);
+        else UpdatePresent(dt);
     }
 
     // ------------------------------------------------------------------ aparecer
@@ -183,8 +247,17 @@ public class FigurePresence : MonoBehaviour
             return;
         }
 
+        ShowAt(feet);
+        LastEvent = forced ? "puesta con F6" : "aparecio atras";
+        Debug.Log($"[FigurePresence] {LastEvent} (a {FlatDistance():0.0} m).");
+    }
+
+    /// <summary>La para ahi, quieta y mirando hacia un costado, lista para que la veas.</summary>
+    private void ShowAt(Vector3 feet)
+    {
         body.position = feet;
         FacePlayer();
+        lastWasPeek = false;
         headYaw = (Random.value < 0.5f ? -1f : 1f) * Random.Range(60f, 85f); // mirando hacia un costado
         headRoll = 0f;
         tiltSign = Random.value < 0.5f ? -1f : 1f;
@@ -202,8 +275,6 @@ public class FigurePresence : MonoBehaviour
         steps = 0;
         decided = stepPending = false;
         losTimer = 0f;
-        LastEvent = forced ? "puesta con F6" : "aparecio atras";
-        Debug.Log($"[FigurePresence] {LastEvent} (a {FlatDistance():0.0} m).");
     }
 
     /// <summary>
@@ -334,12 +405,235 @@ public class FigurePresence : MonoBehaviour
         if (breath != null) breath.Stop();
         bool wasPresent = Current != State.Hidden;
         Current = State.Hidden;
-        if (wasPresent) availableAt = playTime + cooldown;
+        if (wasPresent) availableAt = playTime + (lastWasPeek ? peekCooldown : cooldown);
         if (reason != null)
         {
             LastEvent = reason;
             Debug.Log($"[FigurePresence] Se fue: {reason}.");
         }
+    }
+
+    // ------------------------------------------------------------------ asomarse (Paso 31)
+
+    private void TryPeek(bool forced)
+    {
+        if (Current != State.Hidden) Hide(null);
+        if (!forced && (SignInspector.IsOpen || (lures != null && lures.Active != LookBackLures.Cue.None))) return;
+        if (paths == null || !FindPeekSpot())
+        {
+            if (forced) LastEvent = "no hay una esquina adelante para asomarse";
+            return;
+        }
+
+        lastWasPeek = true;
+        body.position = hiddenPos;
+        leanT = notice = 0f;
+        peekCheck = 0f;
+        peekFraction = 0f;
+        ApplyLean(0f);
+        SetVisible(true);
+        if (breath != null && breath.clip != null)
+        {
+            breath.Play();
+            breath.timeSamples = Random.Range(0, breath.clip.samples);
+        }
+
+        Current = State.Peeking;
+        Appearances++;
+        aliveTime = 0f;
+        LastEvent = forced ? "asomada con F8" : "se asoma en una esquina";
+        Debug.Log($"[FigurePresence] {LastEvent} (a {FlatDistance():0.0} m).");
+    }
+
+    /// <summary>
+    /// Prueba posiciones en los ramales de las esquinas y cruces de adelante. En cada uno barre de
+    /// pared a pared a varias profundidades y busca un borde: un lugar donde casi no se ve y, hasta
+    /// 1.2 m hacia el lado abierto, uno donde (inclinada) se ve la cabeza y un pedazo del cuerpo.
+    /// Elige uno al azar.
+    /// </summary>
+    private bool FindPeekSpot()
+    {
+        peekHidden.Clear();
+        peekOut.Clear();
+        paths.GetMouthsAhead(peekMinDistance - 3f, peekMaxDistance + 3f, mouths);
+        Vector3 eye = playerCamera.transform.position;
+        Vector3 view = Flat(playerCamera.transform.forward).normalized;
+        const int count = 15;
+        const float step = 0.15f;
+        var pos = new Vector3[count];
+        var frac = new float[count];
+        var ok = new bool[count];
+
+        foreach (CorridorTreadmill.Mouth m in mouths)
+        {
+            Vector3 toMouth = Flat(m.position - eye);
+            if (toMouth.magnitude < peekMinDistance - 2f || Vector3.Dot(toMouth.normalized, view) < 0.2f) continue;
+            Vector3 f = Flat(m.outward).normalized;
+            Vector3 across = Vector3.Cross(Vector3.up, f);
+
+            foreach (float depth in PeekDepths)
+            {
+                for (int i = 0; i < count; i++)
+                {
+                    ok[i] = false;
+                    Vector3 p = m.position + f * depth + across * (-1.05f + i * step);
+                    if (!Physics.Raycast(p + Vector3.up * 0.5f, Vector3.down, out RaycastHit hit, 2f, ~0, QueryTriggerInteraction.Ignore))
+                        continue;
+                    float d = Flat(hit.point - player.position).magnitude;
+                    if (d < peekMinDistance || d > peekMaxDistance) continue;
+                    pos[i] = hit.point;
+                    frac[i] = VisibleFraction(hit.point, Vector3.zero);
+                    ok[i] = true;
+                }
+
+                for (int i = 0; i < count; i++)
+                {
+                    if (!ok[i] || frac[i] > peekHiddenMax || HeadVisible(pos[i], Vector3.zero)) continue;
+                    foreach (int dir in new[] { -1, 1 })
+                    {
+                        for (int k = 1; k <= 8; k++)
+                        {
+                            int j = i + dir * k;
+                            if (j < 0 || j >= count || !ok[j] || frac[j] > peekVisible.y) break;
+                            if (frac[j] < frac[i]) break; // hacia el lado cerrado, no
+                            // Inclinada hacia el lado abierto: la cabeza y los hombros salen primero.
+                            Vector3 lean = Flat(pos[j] - pos[i]).normalized * Mathf.Tan(leanAngle * Mathf.Deg2Rad);
+                            float leaning = VisibleFraction(pos[j], lean);
+                            if (leaning >= peekVisible.x && leaning <= peekVisible.y && HeadVisible(pos[j], lean))
+                            {
+                                peekHidden.Add(pos[i]);
+                                peekOut.Add(pos[j]);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (peekHidden.Count == 0) return false;
+        int pick = Random.Range(0, peekHidden.Count);
+        hiddenPos = peekHidden[pick];
+        peekPos = peekOut[pick];
+        peekLean = Flat(peekPos - hiddenPos).normalized * Mathf.Tan(leanAngle * Mathf.Deg2Rad);
+        return true;
+    }
+
+    /// <summary>
+    /// Que parte de ella (0 a 1) se ve desde los ojos del jugador si estuviera parada ahi.
+    /// 'lean' = cuanto se corre cada punto por metro de altura (inclinada hacia un costado).
+    /// </summary>
+    private float VisibleFraction(Vector3 feet, Vector3 lean)
+    {
+        Vector3 eye = playerCamera.transform.position;
+        Vector3 right = Vector3.Cross(Vector3.up, Flat(feet - eye)).normalized;
+        int clear = 0;
+        foreach (Vector2 sample in PeekSamples)
+            if (ClearLine(eye, feet + Vector3.up * sample.y + right * sample.x + lean * sample.y)) clear++;
+        return clear / (float)PeekSamples.Length;
+    }
+
+    private bool HeadVisible(Vector3 feet, Vector3 lean) =>
+        ClearLine(playerCamera.transform.position, feet + (Vector3.up + lean) * PeekSamples[0].y);
+
+    private void UpdatePeek(float dt)
+    {
+        aliveTime += dt;
+
+        if (Current == State.Retreating)
+        {
+            body.position = Vector3.MoveTowards(body.position, hiddenPos, hideSpeed * dt);
+            if ((body.position - hiddenPos).sqrMagnitude < 0.0004f) Hide(null);
+            return;
+        }
+
+        leanT += dt;
+        float s = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(leanT / leanTime));
+        body.position = Vector3.Lerp(hiddenPos, peekPos, s);
+        ApplyLean(s);
+
+        peekCheck -= dt;
+        if (peekCheck <= 0f)
+        {
+            peekCheck = 0.1f;
+            peekFraction = VisibleFraction(body.position, peekLean * s);
+        }
+
+        float distance = FlatDistance();
+        bool inFrame = InFrame(body.position, 0f);
+
+        // Te acercaste o la estas viendo casi entera: se esconde (o se va, si no la mirabas).
+        if (distance < vanishIfCloser + 0.5f || peekFraction > 0.75f)
+        {
+            if (inFrame) Retreat("se escondio (te acercaste)");
+            else Hide("ya no esta");
+            return;
+        }
+
+        // La notaste: se esconde rapido.
+        bool looking = inFrame && peekFraction > 0f && distance <= viewDistance
+                       && AngleFromView(body.position + Vector3.up * 1.6f) < noticeAngle;
+        if (looking)
+        {
+            notice += dt;
+            if (notice >= noticeTime)
+            {
+                AddFear(fearOnPeek);
+                Retreat("la viste asomada");
+            }
+        }
+        else notice = Mathf.Max(0f, notice - dt);
+
+        if (aliveTime > peekForget && !inFrame) Hide("se fue sin que la vieras");
+    }
+
+    private void Retreat(string reason)
+    {
+        Current = State.Retreating;
+        LastEvent = reason;
+        Debug.Log($"[FigurePresence] {reason}.");
+    }
+
+    /// <summary>De frente al jugador; al asomarse se inclina hacia el lado abierto, y la cabeza mas.</summary>
+    private void ApplyLean(float s)
+    {
+        Vector3 to = Flat(player.position - body.position);
+        Quaternion face = to.sqrMagnitude > 0.01f ? Quaternion.LookRotation(to) : body.rotation;
+        Vector3 side = Flat(peekPos - hiddenPos);
+        float sign = Vector3.Dot(side, face * Vector3.right) >= 0f ? 1f : -1f;
+        body.rotation = face * Quaternion.Euler(0f, 0f, -sign * leanAngle * s);
+        headYaw = 0f;
+        headRoll = -sign * 24f * s;
+        ApplyHead();
+    }
+
+    private float AngleFromView(Vector3 point) =>
+        Vector3.Angle(playerCamera.transform.forward, point - playerCamera.transform.position);
+
+    /// <summary>Paso 31: la pone atras ahora (si hay lugar en el camino recorrido). true si aparecio.</summary>
+    public bool AppearBehindNow(string why)
+    {
+        TryAppear(true);
+        if (Current == State.Hidden) return false;
+        LastEvent = why;
+        return true;
+    }
+
+    /// <summary>
+    /// Paso 31: la pone en ese punto, con las mismas reglas de siempre: fuera de la imagen y donde
+    /// se ve si te das vuelta. La usa la falsa salida (en el cruce por el que entraste). true si aparecio.
+    /// </summary>
+    public bool AppearAt(Vector3 point, string why)
+    {
+        if (!Physics.Raycast(point + Vector3.up * 0.5f, Vector3.down, out RaycastHit hit, 2f, ~0, QueryTriggerInteraction.Ignore))
+            return false;
+        Vector3 feet = hit.point;
+        if (InFrame(feet, 0.15f) || !ClearLine(playerCamera.transform.position, feet + Vector3.up * 1.6f)) return false;
+        if (Current != State.Hidden) Hide(null);
+        ShowAt(feet);
+        LastEvent = why;
+        Debug.Log($"[FigurePresence] {why} (a {FlatDistance():0.0} m).");
+        return true;
     }
 
     // ------------------------------------------------------------------ vista
@@ -409,8 +703,10 @@ public class FigurePresence : MonoBehaviour
 
 #if ENABLE_INPUT_SYSTEM
     private static bool ForcePressed() => Keyboard.current != null && Keyboard.current.f6Key.wasPressedThisFrame;
+    private static bool PeekPressed() => Keyboard.current != null && Keyboard.current.f8Key.wasPressedThisFrame;
 #else
     private static bool ForcePressed() => Input.GetKeyDown(KeyCode.F6);
+    private static bool PeekPressed() => Input.GetKeyDown(KeyCode.F8);
 #endif
 
     private void OnGUI()
@@ -418,7 +714,9 @@ public class FigurePresence : MonoBehaviour
         if (!showDebugOverlay || !DebugOverlay.Visible || !Playing()) return;
         string state = Current == State.Hidden
             ? (playTime < availableAt ? $"oculta (disponible en {availableAt - playTime:0} s)" : "oculta")
-            : $"{Current} a {FlatDistance():0.0} m, pasos {steps}, mirada {stare:0.0} s";
-        GUI.Label(new Rect(12, 298, 900, 22), $"Figura: {state}, veces {Appearances}, ultimo: {LastEvent} (F6 la pone)");
+            : Current == State.Peeking || Current == State.Retreating
+                ? $"{Current} a {FlatDistance():0.0} m, se ve {peekFraction * 100f:0}%"
+                : $"{Current} a {FlatDistance():0.0} m, pasos {steps}, mirada {stare:0.0} s";
+        GUI.Label(new Rect(12, 298, 900, 22), $"Figura: {state}, veces {Appearances}, ultimo: {LastEvent} (F6 atras, F8 asomada)");
     }
 }

@@ -96,6 +96,10 @@ public static partial class AtmosphereBuilder
 
         FigurePresence presence = root.AddComponent<FigurePresence>();
         presence.Setup(player, cam, fear, lures, body, head, breath);
+        // Paso 31: el laberinto, para asomarse en las esquinas de adelante.
+        var so = new SerializedObject(presence);
+        so.FindProperty("paths").objectReferenceValue = FindInScene<CorridorTreadmill>(null);
+        so.ApplyModifiedPropertiesWithoutUndo();
     }
 
     /// <summary>Arma el cuerpo mirando hacia +Z, con los pies en y = 0. Devuelve el pivote de la cabeza.</summary>
