@@ -12,6 +12,8 @@ using UnityEngine.UI;
 ///   - Pausa A, "afiche de desaparecido" (失蹤): la foto es lo que se estaba viendo al pausar.
 ///   - Final B, "boleto de vuelta" (歸途): pasos, cambios descubiertos y tiempo.
 ///   - Opciones: volumen, brillo (con un cartel para calibrar) y sensibilidad del mouse.
+///   - Paso 32: CAPITULOS en el inicio (debajo de ENTRAR), la hoja con la lista de capitulos y la
+///     tarjeta que anuncia el capitulo sobre el negro.
 ///
 /// Todo se mide en "pixeles de la interfaz": el Canvas usa una resolucion de referencia de
 /// 640 x 360 (CanvasScaler), asi que (0, 0) es la esquina de arriba a la izquierda y (640, 360)
@@ -92,6 +94,9 @@ public static partial class AtmosphereBuilder
         CanvasGroup options = UiPanel(root.transform, "Opciones");
         var optionRefs = BuildOptionsPanel(options.transform, s);
 
+        CanvasGroup chapters = UiPanel(root.transform, "Capitulos");
+        var chapterRefs = BuildChaptersPanel(chapters.transform, s);
+
         CanvasGroup fade = UiPanel(root.transform, "Fundido");
         fade.blocksRaycasts = false;
         fade.interactable = false;
@@ -99,6 +104,12 @@ public static partial class AtmosphereBuilder
 
         CanvasGroup ending = UiPanel(root.transform, "Final");
         var endRefs = BuildEnding(ending.transform, s);
+
+        // La tarjeta del capitulo va arriba de todo: se ve sobre el negro del fundido.
+        CanvasGroup card = UiPanel(root.transform, "Tarjeta");
+        card.blocksRaycasts = false;
+        card.interactable = false;
+        var cardRefs = BuildChapterCard(card.transform);
 
         var ui = root.AddComponent<GameUI>();
         SetRefs(ui,
@@ -112,7 +123,11 @@ public static partial class AtmosphereBuilder
             ("optionsBackButton", optionRefs.back), ("calibrationSign", optionRefs.sign),
             ("ticket", endRefs.ticket), ("stepsValue", endRefs.steps), ("changesValue", endRefs.changes),
             ("timeValue", endRefs.time), ("ticketNumber", endRefs.number), ("endingButtons", endRefs.buttons),
-            ("restartButton", endRefs.restart), ("endingTitleButton", endRefs.title));
+            ("restartButton", endRefs.restart), ("endingTitleButton", endRefs.title),
+            ("titleChaptersButton", titleRefs.chapters), ("chaptersPanel", chapters),
+            ("chapter1Button", chapterRefs.first), ("chapter2Button", chapterRefs.second),
+            ("chaptersBackButton", chapterRefs.back),
+            ("chapterCard", card), ("cardNumber", cardRefs.number), ("cardName", cardRefs.name));
 
         // Fuera de Play solo se ve el inicio; los otros paneles quedan con alpha 0 para no
         // encimarse. Para editar uno, subile el Alpha de su Canvas Group a 1 (y volvelo a 0).
@@ -121,12 +136,14 @@ public static partial class AtmosphereBuilder
         fade.alpha = 0f;
         ending.alpha = 0f;
         endRefs.buttons.alpha = 0f;
+        chapters.alpha = 0f;
+        card.alpha = 0f;
         return ui;
     }
 
     // ------------------------------------------------------------------ inicio (mockup C)
 
-    private struct TitleRefs { public Button play, options, quit; }
+    private struct TitleRefs { public Button play, chapters, options, quit; }
 
     private static TitleRefs BuildTitle(Transform panel, UiSprites s)
     {
@@ -139,13 +156,15 @@ public static partial class AtmosphereBuilder
         UiBox(c, "Raya", UiAccent, 92f, 104f, 32f, 2f);
 
         // Menu abajo a la izquierda: el farolito marca la opcion elegida.
+        // Paso 32: CAPITULOS debajo de ENTRAR (las filas se juntaron un poco para que entren las cuatro).
         var refs = new TitleRefs
         {
-            play = UiMenuButton(c, "Entrar", "ENTRAR", 54f, 236f, s.farol, UiPaper, UiAccent),
-            options = UiMenuButton(c, "Opciones", "OPCIONES", 54f, 268f, s.farol, UiPaper, UiAccent),
-            quit = UiMenuButton(c, "Salir", "SALIR", 54f, 300f, s.farol, UiPaper, UiAccent),
+            play = UiMenuButton(c, "Entrar", "ENTRAR", 54f, 214f, s.farol, UiPaper, UiAccent),
+            chapters = UiMenuButton(c, "Capitulos", "CAPÍTULOS", 54f, 243f, s.farol, UiPaper, UiAccent),
+            options = UiMenuButton(c, "Opciones", "OPCIONES", 54f, 272f, s.farol, UiPaper, UiAccent),
+            quit = UiMenuButton(c, "Salir", "SALIR", 54f, 301f, s.farol, UiPaper, UiAccent),
         };
-        UiChain(refs.play, refs.options, refs.quit);
+        UiChain(refs.play, refs.chapters, refs.options, refs.quit);
 
         // La ventana: contorno oscuro, un espacio, el borde de papel y adentro el laberinto.
         UiBox(c, "Contorno", UiInkSoft, 266.7f, 21.7f, 350.6f, 317.6f);
@@ -312,6 +331,80 @@ public static partial class AtmosphereBuilder
         rt.gameObject.AddComponent<SelectOnHover>();
         rt.gameObject.AddComponent<MenuItemMarker>().Setup(bar);
         return slider;
+    }
+
+    // ------------------------------------------------------------------ capitulos (Paso 32)
+
+    private struct ChapterRefs { public Button first, second, back; }
+
+    /// <summary>
+    /// La hoja de capitulos: como la de opciones (papel sobre el inicio oscurecido), con un renglon
+    /// por capitulo: numero, nombre y a que hora pasa. Debajo, VOLVER.
+    /// </summary>
+    private static ChapterRefs BuildChaptersPanel(Transform panel, UiSprites s)
+    {
+        UiFill(panel, "Velo", new Color(UiNight.r, UiNight.g, UiNight.b, 0.92f));
+        Transform c = UiContent(panel);
+
+        RectTransform sheet = UiRect(c, "Hoja", 157f, 52f, 327f, 256f);
+        UiBox(sheet, "Contorno", UiDim, -4f, -4f, 335f, 264f);
+        UiBox(sheet, "Borde", UiInk, -2.7f, -2.7f, 332.4f, 261.4f);
+        UiBox(sheet, "Papel", UiPaper, 0f, 0f, 327f, 256f);
+
+        UiText(sheet, "Titulo", "CAPÍTULOS", 19f, 14f, 200f, 24f, 19f, UiInk, TextAlignmentOptions.TopLeft, 20f);
+        UiBox(sheet, "Regla", UiInk, 19f, 42f, 289f, 2f);
+
+        var refs = new ChapterRefs
+        {
+            first = UiChapterRow(sheet, "Capitulo1", "1", "Delante de la feria", "atardecer", 62f),
+            second = UiChapterRow(sheet, "Capitulo2", "2", "Los callejones", "noche", 116f),
+        };
+
+        UiTiled(sheet, "Corte", s.dashH, UiDim, 19f, 214f, 289f, 2f);
+        RectTransform backRect = UiRect(sheet, "Volver", 19f, 223f, 84f, 24f);
+        var backBox = backRect.gameObject.AddComponent<Image>();
+        backBox.color = Color.white;
+        UiText(backRect, "Texto", "VOLVER", 0f, 5f, 84f, 16f, 14f, UiPaper, TextAlignmentOptions.Top, 14f);
+        refs.back = backRect.gameObject.AddComponent<Button>();
+        refs.back.targetGraphic = backBox;
+        refs.back.colors = UiColors(UiInk, UiRed);
+        backRect.gameObject.AddComponent<SelectOnHover>();
+        UiText(sheet, "Ayuda", "↑↓ elegir · Enter entrar", 120f, 228f, 188f, 14f, 12f, UiBrown, TextAlignmentOptions.TopRight);
+
+        UiChain(refs.first, refs.second, refs.back);
+        return refs;
+    }
+
+    /// <summary>Un renglon de capitulo: el numero grande, el nombre (es el boton) y la hora abajo.</summary>
+    private static Button UiChapterRow(Transform sheet, string name, string number, string title, string when, float y)
+    {
+        Image mark = UiBox(sheet, name + "Marca", UiRed, 13f, y, 3f, 40f);
+        UiText(sheet, name + "Numero", number, 26f, y + 2f, 30f, 34f, 30f, UiInk, TextAlignmentOptions.TopLeft);
+        TextMeshProUGUI label = UiText(sheet, name, title, 62f, y + 4f, 240f, 20f, 17f, Color.white, TextAlignmentOptions.TopLeft);
+        label.raycastTarget = true;
+        UiText(sheet, name + "Hora", when, 62f, y + 25f, 240f, 14f, 12f, UiBrown, TextAlignmentOptions.TopLeft);
+
+        var button = label.gameObject.AddComponent<Button>();
+        button.targetGraphic = label;
+        button.colors = UiColors(UiInkSoft, UiRed);
+        label.gameObject.AddComponent<SelectOnHover>();
+        label.gameObject.AddComponent<MenuItemMarker>().Setup(mark);
+        return button;
+    }
+
+    private struct CardRefs { public TMP_Text number, name; }
+
+    /// <summary>La tarjeta del capitulo: "CAPITULO 1", una raya naranja y el nombre, centrados.</summary>
+    private static CardRefs BuildChapterCard(Transform panel)
+    {
+        Transform c = UiContent(panel);
+        var refs = new CardRefs
+        {
+            number = UiText(c, "Numero", "CAPÍTULO 1", 120f, 146f, 400f, 18f, 13f, UiDim, TextAlignmentOptions.Top, 14f),
+            name = UiText(c, "Nombre", "Delante de la feria", 70f, 176f, 500f, 34f, 26f, UiPaper, TextAlignmentOptions.Top),
+        };
+        UiBox(c, "Raya", UiAccent, 304f, 168f, 32f, 2f);
+        return refs;
     }
 
     // ------------------------------------------------------------------ final (mockup B)

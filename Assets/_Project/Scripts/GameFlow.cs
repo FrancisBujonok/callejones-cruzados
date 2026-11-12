@@ -21,6 +21,16 @@ using UnityEngine.InputSystem;
 /// Una variable estatica (enterOnLoad) sobrevive a la recarga y le avisa al GameFlow nuevo que
 /// tiene que saltear el inicio.
 ///
+/// Paso 32: CAPITULOS. El juego tiene dos escenas:
+///   Feria (capitulo 1, "Delante de la feria", de dia) y Prototipo (capitulo 2, "Los callejones").
+/// - El inicio esta en Prototipo. ENTRAR carga el capitulo 1. CAPITULOS abre la lista y deja elegir.
+/// - En la feria no hay inicio (hasTitle = false): empieza directo, con la tarjeta del capitulo.
+///   "Volver al inicio" carga Prototipo con el inicio.
+/// - Al entrar al callejon de la feria, ChapterExit llama a CompleteChapter: fundido y carga
+///   Prototipo jugando directo, con la tarjeta del capitulo 2.
+/// - La tarjeta ("CAPITULO 2 / Los callejones") sale sobre el negro antes del fundido, cuando se llega
+///   a la escena desde un capitulo (showCardOnLoad, estatica como enterOnLoad).
+///
 /// Teclas de prueba: F1 muestra u oculta los textos de prueba; con ellos visibles, F2 abre la salida.
 /// (F3 es la barra de miedo, FearHUD; E es mirar de cerca, SignInspector.)
 ///
@@ -38,6 +48,9 @@ public class GameFlow : MonoBehaviour
     /// Es estatica: las variables estaticas no se borran al recargar la escena.
     /// </summary>
     private static bool enterOnLoad;
+
+    /// <summary>Paso 32: true = al cargar, mostrar la tarjeta del capitulo antes del fundido.</summary>
+    private static bool showCardOnLoad;
 
     private const string ExitsKey = "Callejones.Salidas";
 
@@ -69,6 +82,21 @@ public class GameFlow : MonoBehaviour
     [Tooltip("Fundido a negro antes de recargar la escena.")]
     [SerializeField] private float reloadFade = 0.8f;
 
+    [Header("Capitulos (Paso 32)")]
+    [Tooltip("La escena tiene la pantalla de inicio. En la feria, no: empieza directo.")]
+    [SerializeField] private bool hasTitle = true;
+    [Tooltip("La escena con la pantalla de inicio (para Volver al inicio desde otro capitulo).")]
+    [SerializeField] private string titleScene = "Prototipo";
+    [Tooltip("La escena del capitulo 1: ENTRAR la carga. Si no esta en Build Settings, ENTRAR juega aca.")]
+    [SerializeField] private string firstChapterScene = "Feria";
+    [Tooltip("La escena del capitulo 2 (los callejones).")]
+    [SerializeField] private string secondChapterScene = "Prototipo";
+    [Tooltip("Lo que dice la tarjeta de ESTA escena.")]
+    [SerializeField] private string chapterNumber = "CAPÍTULO 2";
+    [SerializeField] private string chapterName = "Los callejones";
+    [Tooltip("Segundos que la tarjeta queda a la vista.")]
+    [SerializeField] private float cardHold = 2f;
+
     [Header("Pruebas")]
     [Tooltip("Solo en el editor: saltea el inicio y empieza a jugar directo.")]
     [SerializeField] private bool skipTitleInEditor = false;
@@ -77,6 +105,7 @@ public class GameFlow : MonoBehaviour
 
     private float playTime;
     private bool optionsOpen;
+    private bool chaptersOpen;
     private bool leaving;
 
     private void Awake()
@@ -100,6 +129,10 @@ public class GameFlow : MonoBehaviour
             ui.onBackToTitle.AddListener(BackToTitle);
             ui.onRestart.AddListener(Restart);
             ui.onQuit.AddListener(Quit);
+            ui.onChapters.AddListener(OpenChapters);
+            ui.onChaptersBack.AddListener(CloseChapters);
+            ui.onChapter1.AddListener(PlayChapter1);
+            ui.onChapter2.AddListener(PlayChapter2);
         }
         if (loopExit != null) loopExit.onLoopCompleted.AddListener(OnLoopCompleted);
     }
@@ -115,6 +148,10 @@ public class GameFlow : MonoBehaviour
             ui.onBackToTitle.RemoveListener(BackToTitle);
             ui.onRestart.RemoveListener(Restart);
             ui.onQuit.RemoveListener(Quit);
+            ui.onChapters.RemoveListener(OpenChapters);
+            ui.onChaptersBack.RemoveListener(CloseChapters);
+            ui.onChapter1.RemoveListener(PlayChapter1);
+            ui.onChapter2.RemoveListener(PlayChapter2);
         }
         if (loopExit != null) loopExit.onLoopCompleted.RemoveListener(OnLoopCompleted);
     }
@@ -134,16 +171,28 @@ public class GameFlow : MonoBehaviour
             ui.SetFadeInstant(1f);
         }
 
-        bool enter = enterOnLoad || (Application.isEditor && skipTitleInEditor);
+        bool enter = enterOnLoad || !hasTitle || (Application.isEditor && skipTitleInEditor);
+        // La tarjeta: si se llego desde un capitulo, o siempre en una escena sin inicio (la feria).
+        bool card = showCardOnLoad || !hasTitle;
         enterOnLoad = false;
+        showCardOnLoad = false;
         if (enter)
         {
             BeginPlay();
-            if (ui != null) StartCoroutine(ui.FadeScreen(0f, enterFade));
+            if (ui != null) StartCoroutine(card ? CardThenFade() : ui.FadeScreen(0f, enterFade));
             return;
         }
 
         StartCoroutine(Intro());
+    }
+
+    /// <summary>Paso 32: la tarjeta del capitulo sobre el negro y despues el fundido. Sin control mientras tanto.</summary>
+    private IEnumerator CardThenFade()
+    {
+        SetControl(false);
+        yield return ui.ShowChapterCard(chapterNumber, chapterName, cardHold);
+        if (Current == State.Playing) SetControl(true);
+        yield return ui.FadeScreen(0f, enterFade);
     }
 
     private IEnumerator Intro()
@@ -169,6 +218,7 @@ public class GameFlow : MonoBehaviour
         {
             case State.Title:
                 if (optionsOpen && EscapePressed()) CloseOptions();
+                else if (chaptersOpen && EscapePressed()) CloseChapters();
                 break;
 
             case State.Playing:
@@ -194,9 +244,79 @@ public class GameFlow : MonoBehaviour
 
     private void OnPlayPressed()
     {
-        if (Current != State.Title || leaving || optionsOpen) return;
+        if (Current != State.Title || leaving || optionsOpen || chaptersOpen) return;
+        // Paso 32: ENTRAR empieza por el capitulo 1. Si esa escena no esta, se juega aca, como antes.
+        if (CanLoad(firstChapterScene)) LoadChapter(firstChapterScene);
+        else
+        {
+            enterOnLoad = true;
+            StartCoroutine(Reload(startFade));
+        }
+    }
+
+    // ------------------------------------------------------------------ capitulos (Paso 32)
+
+    private static bool CanLoad(string scene) =>
+        !string.IsNullOrEmpty(scene) && Application.CanStreamedLevelBeLoaded(scene);
+
+    private void OpenChapters()
+    {
+        if (Current != State.Title || leaving || optionsOpen || chaptersOpen || ui == null) return;
+        chaptersOpen = true;
+        ui.ShowTitle(false, 0.2f);
+        ui.ShowChapters(true, 0.2f);
+        ui.SelectFirstChapter();
+    }
+
+    private void CloseChapters()
+    {
+        if (!chaptersOpen || ui == null) return;
+        chaptersOpen = false;
+        ui.ShowChapters(false, 0.2f);
+        ui.ShowTitle(true, 0.2f);
+        ui.SelectTitleChapters();
+    }
+
+    private void PlayChapter1()
+    {
+        if (leaving) return;
+        if (CanLoad(firstChapterScene)) LoadChapter(firstChapterScene);
+        else Debug.LogWarning("[GameFlow] La escena " + firstChapterScene + " no esta en Build Settings.");
+    }
+
+    private void PlayChapter2()
+    {
+        if (leaving) return;
+        LoadChapter(CanLoad(secondChapterScene) ? secondChapterScene : SceneManager.GetActiveScene().name);
+    }
+
+    /// <summary>Carga una escena jugando directo y con la tarjeta de su capitulo.</summary>
+    private void LoadChapter(string scene)
+    {
         enterOnLoad = true;
-        StartCoroutine(Reload(startFade));
+        showCardOnLoad = true;
+        StartCoroutine(LoadScene(scene, startFade));
+    }
+
+    /// <summary>
+    /// Paso 32: se termino este capitulo (lo llama ChapterExit al entrar al callejon de la feria).
+    /// Fundido lento a negro y se carga el siguiente, jugando directo y con su tarjeta.
+    /// </summary>
+    public void CompleteChapter(string nextScene)
+    {
+        if (Current != State.Playing || leaving) return;
+        Current = State.Ending;
+        SetControl(false);
+        enterOnLoad = true;
+        showCardOnLoad = true;
+        StartCoroutine(LoadScene(CanLoad(nextScene) ? nextScene : titleScene, endFade));
+    }
+
+    private IEnumerator LoadScene(string scene, float seconds)
+    {
+        leaving = true;
+        if (ui != null) yield return ui.FadeScreen(1f, seconds);
+        SceneManager.LoadScene(scene);
     }
 
     private void BeginPlay()
@@ -273,7 +393,9 @@ public class GameFlow : MonoBehaviour
     {
         if (leaving) return;
         enterOnLoad = false;
-        StartCoroutine(Reload(reloadFade));
+        // Paso 32: desde la feria (sin inicio), se vuelve a la escena que tiene el inicio.
+        if (!hasTitle && CanLoad(titleScene)) StartCoroutine(LoadScene(titleScene, reloadFade));
+        else StartCoroutine(Reload(reloadFade));
     }
 
     /// <summary>Volver a entrar (desde el final): recarga la escena y empieza a jugar directo.</summary>

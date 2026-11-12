@@ -15,6 +15,9 @@ using UnityEngine.UI;
 /// y las reglas de GameFlow casi no cambiaron. Los paneles los arma el menu
 /// Callejones > Menus (AtmosphereBuilder.Menus.cs).
 ///
+/// Paso 32: el boton CAPITULOS del inicio, el panel con la lista de capitulos y la tarjeta que
+/// anuncia el capitulo sobre el negro (ShowChapterCard).
+///
 /// Va en el objeto "Interfaz" (el Canvas).
 /// Todos los fundidos usan tiempo "sin escala" (unscaledDeltaTime): en pausa el juego tiene
 /// timeScale 0, y con tiempo normal los menus quedarian congelados.
@@ -52,6 +55,17 @@ public class GameUI : MonoBehaviour
     [Tooltip("Cartel oscuro para calibrar el brillo: se aclara o se oscurece con la barra.")]
     [SerializeField] private Graphic calibrationSign;
 
+    [Header("Capitulos (Paso 32)")]
+    [SerializeField] private Button titleChaptersButton;
+    [SerializeField] private CanvasGroup chaptersPanel;
+    [SerializeField] private Button chapter1Button;
+    [SerializeField] private Button chapter2Button;
+    [SerializeField] private Button chaptersBackButton;
+    [Tooltip("La tarjeta que anuncia el capitulo, arriba del fundido.")]
+    [SerializeField] private CanvasGroup chapterCard;
+    [SerializeField] private TMPro.TMP_Text cardNumber;
+    [SerializeField] private TMPro.TMP_Text cardName;
+
     [Header("Final")]
     [Tooltip("El boleto: entra desde abajo, como si lo imprimiera una maquina.")]
     [SerializeField] private RectTransform ticket;
@@ -71,6 +85,10 @@ public class GameUI : MonoBehaviour
     public UnityEvent onBackToTitle = new UnityEvent();
     public UnityEvent onRestart = new UnityEvent();
     public UnityEvent onQuit = new UnityEvent();
+    public UnityEvent onChapters = new UnityEvent();
+    public UnityEvent onChaptersBack = new UnityEvent();
+    public UnityEvent onChapter1 = new UnityEvent();
+    public UnityEvent onChapter2 = new UnityEvent();
 
     // Una animacion por panel: si se pide otra antes de que termine (pausar y despausar rapido),
     // la anterior se corta en vez de pelearse con la nueva.
@@ -90,6 +108,10 @@ public class GameUI : MonoBehaviour
         Listen(optionsBackButton, onOptionsBack);
         Listen(restartButton, onRestart);
         Listen(endingTitleButton, onBackToTitle);
+        Listen(titleChaptersButton, onChapters);
+        Listen(chaptersBackButton, onChaptersBack);
+        Listen(chapter1Button, onChapter1);
+        Listen(chapter2Button, onChapter2);
 
         // Las barras cambian la opcion en el momento: se ve (y se oye) mientras se ajusta.
         if (volumeSlider != null) volumeSlider.onValueChanged.AddListener(v => GameSettings.SetMasterVolume(Mathf.RoundToInt(v)));
@@ -119,12 +141,33 @@ public class GameUI : MonoBehaviour
         SetGroup(optionsPanel, 0f);
         SetGroup(endingPanel, 0f);
         SetGroup(endingButtons, 0f);
+        SetGroup(chaptersPanel, 0f);
+        SetGroup(chapterCard, 0f);
     }
 
     public void ShowTitle(bool visible, float seconds) => Fade(titlePanel, visible, seconds);
     public void ShowPause(bool visible, float seconds) => Fade(pausePanel, visible, seconds);
     public void ShowEnding(bool visible, float seconds) => Fade(endingPanel, visible, seconds);
     public void ShowEndingButtons(float seconds) => Fade(endingButtons, true, seconds);
+
+    public void ShowChapters(bool visible, float seconds) => Fade(chaptersPanel, visible, seconds);
+    public void SelectFirstChapter() => Select(chapter1Button);
+    public void SelectTitleChapters() => Select(titleChaptersButton);
+
+    /// <summary>
+    /// Paso 32: la tarjeta del capitulo. Aparece sobre el negro, queda 'hold' segundos y se va.
+    /// Se puede esperar con yield (GameFlow espera que termine para hacer el fundido).
+    /// </summary>
+    public IEnumerator ShowChapterCard(string number, string chapter, float hold)
+    {
+        if (chapterCard == null) yield break;
+        if (cardNumber != null) cardNumber.text = number;
+        if (cardName != null) cardName.text = chapter;
+        Stop(chapterCard);
+        yield return Animate(chapterCard, 1f, 0.7f);
+        yield return new WaitForSecondsRealtime(hold);
+        yield return Animate(chapterCard, 0f, 0.7f);
+    }
 
     public void ShowOptions(bool visible, float seconds)
     {
