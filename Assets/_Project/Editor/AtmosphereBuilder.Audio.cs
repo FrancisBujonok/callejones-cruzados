@@ -109,6 +109,9 @@ public static partial class AtmosphereBuilder
         settings.loadType = loop ? AudioClipLoadType.CompressedInMemory : AudioClipLoadType.DecompressOnLoad;
         settings.compressionFormat = AudioCompressionFormat.ADPCM;
         settings.sampleRateSetting = AudioSampleRateSetting.PreserveSampleRate;
+        // Paso 32b: cargado de antemano. Sin esto, el primer Play lo lee del disco en ese momento: un
+        // tiron en la imagen y, a veces, el sonido no sale esa primera vez.
+        settings.preloadAudioData = true;
         importer.defaultSampleSettings = settings;
         importer.SaveAndReimport();
 
