@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -8,8 +7,13 @@ using UnityEngine;
 /// - Tambor: desde el escenario.
 /// - Campanillas: en el puesto de la adivina.
 /// - Perros: lejos, detras de los edificios.
-/// Cada capa usa su propia fuente de sonido (hija de este objeto) y nunca repite el mismo clip dos
-/// veces seguidas.
+///
+/// Paso 32b (arreglo): antes cada capa tenia UNA fuente que se movia a un punto nuevo en cada
+/// sonido. Como los clips se enciman, al moverla tambien se llevaba los que todavia sonaban: si el
+/// punto nuevo caia lejos, el murmullo entero se cortaba de golpe. Ahora cada capa tiene varias
+/// "voces" (fuentes) y cada sonido usa una libre, que no se mueve hasta que termina. Y con
+/// "Cerca del jugador", el punto se elige dentro de la caja pero a pocos metros de donde estas,
+/// asi el murmullo te acompana por todo el pasillo.
 ///
 /// Mas adelante se pueden sumar capas (autos pasando, vendedores que llaman) sin tocar el codigo:
 /// es agregar una fila en el Inspector.
@@ -33,31 +37,50 @@ public class FairAmbience : MonoBehaviour
         public float maxDistance = 30f;
         [Tooltip("Variacion de tono (+-).")]
         public float pitchJitter = 0.04f;
+        [Tooltip("Cuantos sonidos de esta capa pueden sonar a la vez.")]
+        [Range(1, 6)] public int voices = 2;
+        [Tooltip("Cerca del jugador: el punto se elige dentro de la caja pero a esta distancia del " +
+                 "jugador como mucho (0 = en cualquier lugar de la caja).")]
+        public float nearPlayer = 0f;
 
-        [System.NonSerialized] public AudioSource source;
+        [System.NonSerialized] public AudioSource[] sources;
         [System.NonSerialized] public float next;
         [System.NonSerialized] public int last = -1;
     }
 
     [SerializeField] private Layer[] layers;
+    [Tooltip("El que escucha (la camara del jugador). Vacio = el AudioListener de la escena.")]
+    [SerializeField] private Transform listener;
 
     /// <summary>Lo usa la herramienta de editor.</summary>
     public void Setup(Layer[] list) => layers = list;
 
     private void Start()
     {
+        if (listener == null)
+        {
+            AudioListener l = FindFirstObjectByType<AudioListener>();
+            if (l != null) listener = l.transform;
+        }
         if (layers == null) return;
         foreach (Layer layer in layers)
         {
-            var go = new GameObject("Fuente_" + layer.name);
-            go.transform.SetParent(transform, false);
-            layer.source = go.AddComponent<AudioSource>();
-            layer.source.playOnAwake = false;
-            layer.source.spatialBlend = 1f;
-            layer.source.rolloffMode = AudioRolloffMode.Linear;
-            layer.source.minDistance = 2f;
-            layer.source.maxDistance = layer.maxDistance;
-            layer.source.dopplerLevel = 0f;
+            int count = Mathf.Max(1, layer.voices);
+            layer.sources = new AudioSource[count];
+            for (int i = 0; i < count; i++)
+            {
+                var go = new GameObject("Fuente_" + layer.name + "_" + i);
+                go.transform.SetParent(transform, false);
+                AudioSource s = go.AddComponent<AudioSource>();
+                s.playOnAwake = false;
+                s.spatialBlend = 1f;
+                s.rolloffMode = AudioRolloffMode.Linear;
+                s.minDistance = 2f;
+                s.maxDistance = layer.maxDistance;
+                s.dopplerLevel = 0f;
+                s.priority = 90;
+                layer.sources[i] = s;
+            }
             layer.next = Time.time + Random.Range(0f, layer.every.y);
         }
     }
@@ -67,16 +90,43 @@ public class FairAmbience : MonoBehaviour
         if (layers == null) return;
         foreach (Layer layer in layers)
         {
-            if (layer.source == null || layer.clips == null || layer.clips.Length == 0 || Time.time < layer.next) continue;
+            if (layer.sources == null || layer.clips == null || layer.clips.Length == 0 || Time.time < layer.next) continue;
             layer.next = Time.time + Random.Range(layer.every.x, layer.every.y);
 
-            Vector3 r = new Vector3(Random.value - 0.5f, Random.value - 0.5f, Random.value - 0.5f);
-            layer.source.transform.position = layer.center + Vector3.Scale(r, layer.size);
+            AudioSource source = FreeSource(layer);
+            if (source == null) continue; // todas ocupadas: se saltea este (el siguiente llega enseguida)
+
+            source.transform.position = PickPoint(layer);
             int i = Random.Range(0, layer.clips.Length);
             if (layer.clips.Length > 1 && i == layer.last) i = (i + 1) % layer.clips.Length;
             layer.last = i;
-            layer.source.pitch = 1f + Random.Range(-layer.pitchJitter, layer.pitchJitter);
-            layer.source.PlayOneShot(layer.clips[i], layer.volume);
+            source.clip = layer.clips[i];
+            source.volume = layer.volume;
+            source.pitch = 1f + Random.Range(-layer.pitchJitter, layer.pitchJitter);
+            source.Play();
         }
+    }
+
+    private static AudioSource FreeSource(Layer layer)
+    {
+        foreach (AudioSource s in layer.sources)
+            if (s != null && !s.isPlaying) return s;
+        return null;
+    }
+
+    private Vector3 PickPoint(Layer layer)
+    {
+        Vector3 r = new Vector3(Random.value - 0.5f, Random.value - 0.5f, Random.value - 0.5f);
+        Vector3 p = layer.center + Vector3.Scale(r, layer.size);
+        if (layer.nearPlayer <= 0f || listener == null) return p;
+
+        // Un punto a pocos metros del jugador, metido adentro de la caja.
+        Vector2 around = Random.insideUnitCircle * layer.nearPlayer;
+        Vector3 near = listener.position + new Vector3(around.x, 0f, around.y);
+        Vector3 half = layer.size * 0.5f;
+        near.x = Mathf.Clamp(near.x, layer.center.x - half.x, layer.center.x + half.x);
+        near.z = Mathf.Clamp(near.z, layer.center.z - half.z, layer.center.z + half.z);
+        near.y = layer.center.y;
+        return near;
     }
 }

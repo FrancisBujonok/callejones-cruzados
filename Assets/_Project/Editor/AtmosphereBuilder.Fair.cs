@@ -307,7 +307,8 @@ public static partial class AtmosphereBuilder
         var go = new GameObject("SonidoFeria");
         go.transform.SetParent(world, false);
         var layers = new List<FairAmbience.Layer>();
-        void Layer(string name, string prefix, Vector2 every, float volume, Vector3 center, Vector3 size, float maxDistance)
+        void Layer(string name, string prefix, Vector2 every, float volume, Vector3 center, Vector3 size, float maxDistance,
+            int voices, float nearPlayer = 0f)
         {
             AudioClip[] clips = LoadRealSounds(prefix);
             if (clips.Length == 0) return;
@@ -315,14 +316,16 @@ public static partial class AtmosphereBuilder
             {
                 name = name, clips = clips, every = every, volume = volume,
                 center = center, size = size, maxDistance = maxDistance,
+                voices = voices, nearPlayer = nearPlayer,
             });
         }
-        // El murmullo: clips de 7 s que arrancan cada 2-3.5 s en cualquier punto del pasillo.
-        Layer("Gente", "Feria", new Vector2(2.2f, 3.5f), 0.5f, new Vector3(0f, 1.6f, 1.5f), new Vector3(52f, 0f, 5f), 26f);
-        Layer("Tambor", "Tambor", new Vector2(8f, 14f), 0.6f, new Vector3(31f, 1.2f, 1.5f), Vector3.zero, 48f);
-        Layer("Campanillas", "Campanillas", new Vector2(10f, 18f), 0.35f, FortuneStallSpot, Vector3.zero, 14f);
-        Layer("Musico", "Guitarra", new Vector2(9f, 14f), 0.3f, new Vector3(-12f, 1.2f, -4.6f), Vector3.zero, 18f);
-        Layer("Perros", "Perro", new Vector2(25f, 45f), 0.3f, new Vector3(0f, 3f, 30f), new Vector3(120f, 0f, 12f), 60f);
+        // El murmullo: clips de 7 s que arrancan cada 2-3.5 s (hasta 4 a la vez), siempre a menos de
+        // 12 m del jugador pero dentro del pasillo: te acompana de punta a punta (Paso 32b).
+        Layer("Gente", "Feria", new Vector2(2.2f, 3.5f), 0.5f, new Vector3(0f, 1.6f, 1.5f), new Vector3(64f, 0f, 5f), 26f, 4, 12f);
+        Layer("Tambor", "Tambor", new Vector2(8f, 14f), 0.6f, new Vector3(31f, 1.2f, 1.5f), Vector3.zero, 48f, 2);
+        Layer("Campanillas", "Campanillas", new Vector2(10f, 18f), 0.35f, FortuneStallSpot, Vector3.zero, 14f, 1);
+        Layer("Musico", "Guitarra", new Vector2(9f, 14f), 0.3f, new Vector3(-12f, 1.2f, -4.6f), Vector3.zero, 18f, 2);
+        Layer("Perros", "Perro", new Vector2(25f, 45f), 0.3f, new Vector3(0f, 3f, 30f), new Vector3(120f, 0f, 12f), 60f, 2);
         go.AddComponent<FairAmbience>().Setup(layers.ToArray());
     }
 

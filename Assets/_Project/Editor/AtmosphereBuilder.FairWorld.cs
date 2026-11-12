@@ -77,6 +77,7 @@ public static partial class AtmosphereBuilder
                     for (int x = 0; x < w; x++)
                         px[y * w + x] = ((x / 2) % 2 == 0 ? a : b) * (0.94f + 0.06f * Rand(r));
             });
+            UseMipmaps(t); // las rayas de los toldos lejanos tambien titilaban
             f.toldos[i] = Mat("ToldoRayas" + stripes[i, 0], Color.white, 0.15f, baseMap: t);
         }
 
@@ -94,6 +95,9 @@ public static partial class AtmosphereBuilder
                 }
         });
         f.baldosa = Mat("Baldosas", Color.white, 0.2f, baseMap: baldosa);
+        // Paso 32b: el piso de la feria se ve de lejos (en los callejones no pasa de 30 m). Sin
+        // mipmaps, las juntas a lo lejos titilan al caminar; con mipmaps (y pixeles duros igual), no.
+        UseMipmaps(baldosa);
 
         Texture2D asfalto = GetOrCreateTexture("Asfalto", 64, 64, 67, (px, w, h, r) =>
         {
@@ -104,6 +108,7 @@ public static partial class AtmosphereBuilder
             }
         });
         f.asfalto = Mat("Asfalto", Color.white, 0.25f, baseMap: asfalto);
+        UseMipmaps(asfalto);
         f.pintura = Mat("PinturaCalle", Hex("#DEDAD0"), 0.2f);
         f.revoque = Mat("Revoque", Hex("#A89A86"), 0.1f);
         f.farola = Mat("FarolaLuz", Hex("#FFE2B0"), 0.3f, 0f, null, Hex("#FFE2B0") * 1.6f);
@@ -119,6 +124,15 @@ public static partial class AtmosphereBuilder
         foreach (Material s in m.signsV5.mats) if (s != null && !SignCatalog.IsWarning(s.name)) f.nobori.Add(s);
         f.gatoBuscado = AssetDatabase.LoadAssetAtPath<Material>(MaterialsDir + "/Carteles/P_es_01_fotocopia.mat");
         return f;
+    }
+
+    private static void UseMipmaps(Texture2D tex)
+    {
+        var importer = AssetImporter.GetAtPath(AssetDatabase.GetAssetPath(tex)) as TextureImporter;
+        if (importer == null || importer.mipmapEnabled) return;
+        importer.mipmapEnabled = true;
+        importer.filterMode = FilterMode.Point;
+        importer.SaveAndReimport();
     }
 
     private static Material FairTextureMat(string matName, string texName)
@@ -168,24 +182,58 @@ public static partial class AtmosphereBuilder
 
         var d = new MeshDraft();
         // Cordones (15 cm) y lineas de la calle.
-        d.Box(new Vector3(1f, -0.075f, -6.65f), new Vector3(222f, 0.15f, 0.3f), FConcreto);
-        d.Box(new Vector3(1f, -0.075f, -14.35f), new Vector3(222f, 0.15f, 0.3f), FConcreto);
+        LongBoxX(d, -110f, 112f, -0.075f, -6.65f, 0.15f, 0.3f, FConcreto);
+        LongBoxX(d, -110f, 112f, -0.075f, -14.35f, 0.15f, 0.3f, FConcreto);
         FairDraft(g, "Cordones", d, f.paleta, false);
 
         var paint = new MeshDraft();
         for (float x = -110f; x < 112f; x += 6f)
             paint.Box(new Vector3(x + 1.5f, -0.145f, -10.5f), new Vector3(3f, 0.01f, 0.15f), FBlanco);
-        paint.Box(new Vector3(1f, -0.145f, -7.2f), new Vector3(222f, 0.01f, 0.12f), FBlanco);
-        paint.Box(new Vector3(1f, -0.145f, -13.8f), new Vector3(222f, 0.01f, 0.12f), FBlanco);
+        LongBoxX(paint, -110f, 112f, -0.145f, -7.2f, 0.01f, 0.12f, FBlanco);
+        LongBoxX(paint, -110f, 112f, -0.145f, -13.8f, 0.01f, 0.12f, FBlanco);
         // Senda peatonal frente a la parada del colectivo.
         for (float z = -13.6f; z <= -7.4f; z += 0.8f)
             paint.Box(new Vector3(-27f, -0.145f, z), new Vector3(3f, 0.01f, 0.4f), FBlanco);
         FairDraft(g, "Pintura", paint, f.pintura, false);
     }
 
+    /// <summary>
+    /// Paso 32b: el piso va en baldosones de 2 m como mucho, no en un solo cuadrado. El shader PS1
+    /// mueve cada vertice a una grilla de la pantalla; con un cuadrado de 222 m, sus esquinas quedan
+    /// lejisimos y al saltar arrastran todo el piso: se veia "nadar" al caminar. Con cuadrados chicos
+    /// el temblor queda en cada baldosa, como en los callejones.
+    /// </summary>
+    private static Mesh TiledFloorMesh(string name, Vector3 size, float cell = 2f)
+    {
+        var v = new List<Vector3>(); var n = new List<Vector3>(); var uv = new List<Vector2>(); var t = new List<int>();
+        int nx = Mathf.Max(1, Mathf.CeilToInt(size.x / cell)), nz = Mathf.Max(1, Mathf.CeilToInt(size.z / cell));
+        float hx = size.x * 0.5f, hz = size.z * 0.5f;
+        for (int i = 0; i < nx; i++)
+            for (int j = 0; j < nz; j++)
+            {
+                float x0 = -hx + size.x * i / nx, x1 = -hx + size.x * (i + 1) / nx;
+                float z0 = -hz + size.z * j / nz, z1 = -hz + size.z * (j + 1) / nz;
+                AddQuadUV(v, n, uv, t, new Vector3(x0, 0f, z0), new Vector3(x1, 0f, z0), new Vector3(x1, 0f, z1), new Vector3(x0, 0f, z1),
+                    Vector3.right, Vector3.forward, Vector3.up);
+            }
+        var mesh = new Mesh { name = name };
+        mesh.indexFormat = v.Count > 65000 ? IndexFormat.UInt32 : IndexFormat.UInt16;
+        Apply(mesh, v, n, t, uv);
+        return mesh;
+    }
+
+    /// <summary>Una tira larga a lo largo de X (cordon, linea) cortada en tramos de 3 m (Paso 32b).</summary>
+    private static void LongBoxX(MeshDraft d, float x0, float x1, float y, float z, float height, float depth, int palette)
+    {
+        int count = Mathf.Max(1, Mathf.CeilToInt((x1 - x0) / 3f));
+        float step = (x1 - x0) / count;
+        for (int i = 0; i < count; i++)
+            d.Box(new Vector3(x0 + step * (i + 0.5f), y, z), new Vector3(step, height, depth), palette);
+    }
+
     private static void FloorPiece(Transform parent, string name, Material mat, Vector3 center, Vector3 size)
     {
-        Mesh mesh = GetFloorMesh(size);
+        Mesh mesh = TiledFloorMesh("Feria_" + name, size);
         GameObject go = MeshChild(parent, name, mesh, mat, center);
         go.GetComponent<MeshRenderer>().shadowCastingMode = ShadowCastingMode.Off;
         if (mat == null) go.GetComponent<MeshRenderer>().sharedMaterial = AssetDatabase.LoadAssetAtPath<Material>(MaterialsDir + "/PisoMojado.mat");
@@ -231,10 +279,14 @@ public static partial class AtmosphereBuilder
     private static void FairStorefront(Transform side, float length, System.Random rng, bool near, Mesh shutter, Mats m, FairMats f)
     {
         float half = length * 0.5f;
-        SolidBoxChild(side, "PlantaBaja", f.revoque, new Vector3(-0.15f, 1.5f, 0f), new Vector3(0.3f, 3f, length), Vector3.zero);
+        for (float z = -half; z < half - 0.01f; z += 3f)
+            SolidBoxChild(side, "PlantaBaja", f.revoque, new Vector3(-0.15f, 1.5f, z + 1.5f), new Vector3(0.3f, 3f, 3f), Vector3.zero);
         var d = new MeshDraft();
-        d.Box(new Vector3(0.04f, 3.0f, 0f), new Vector3(0.12f, 0.14f, length), FConcreto); // cornisa
-        d.Box(new Vector3(0.03f, 0.08f, 0f), new Vector3(0.08f, 0.16f, length), FMaderaOscura); // zocalo
+        for (float z = -half; z < half - 0.01f; z += 3f) // de a 3 m, por el temblor de los vertices (Paso 32b)
+        {
+            d.Box(new Vector3(0.04f, 3.0f, z + 1.5f), new Vector3(0.12f, 0.14f, 3f), FConcreto); // cornisa
+            d.Box(new Vector3(0.03f, 0.08f, z + 1.5f), new Vector3(0.08f, 0.16f, 3f), FMaderaOscura); // zocalo
+        }
 
         int bays = Mathf.RoundToInt(length / 3f);
         for (int j = 0; j < bays; j++)

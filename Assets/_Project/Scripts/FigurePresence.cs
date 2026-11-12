@@ -101,7 +101,7 @@ public class FigurePresence : MonoBehaviour
     [Tooltip("Con miedo alto (desde appearFromFear), parte de las veces se asoma en vez de aparecer atras.")]
     [SerializeField, Range(0f, 1f)] private float peekShareHighFear = 0.3f;
     [SerializeField] private float peekMinDistance = 7f;
-    [SerializeField] private float peekMaxDistance = 13.5f;
+    [SerializeField] private float peekMaxDistance = 10.5f; // Paso 32: lo probado en el Paso 31 (mas lejos, con la niebla no se ve)
     [Tooltip("Cuanto se ve de ella asomada: entre estas fracciones del cuerpo (0 = nada, 1 = entera).")]
     [SerializeField] private Vector2 peekVisible = new Vector2(0.12f, 0.65f);
     [Tooltip("Escondida: como mucho esta fraccion del cuerpo a la vista (0.13 = 1 de 8 puntos).")]
