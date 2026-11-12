@@ -108,7 +108,8 @@ public static partial class AtmosphereBuilder
             ("resumeButton", pauseRefs.resume), ("pauseOptionsButton", pauseRefs.options),
             ("backToTitleButton", pauseRefs.title), ("pauseQuitButton", pauseRefs.quit), ("pauseSeen", pauseRefs.seen),
             ("volumeSlider", optionRefs.volume), ("brightnessSlider", optionRefs.brightness),
-            ("sensitivitySlider", optionRefs.sensitivity), ("optionsBackButton", optionRefs.back), ("calibrationSign", optionRefs.sign),
+            ("sensitivitySlider", optionRefs.sensitivity), ("cameraSlider", optionRefs.camera),
+            ("optionsBackButton", optionRefs.back), ("calibrationSign", optionRefs.sign),
             ("ticket", endRefs.ticket), ("stepsValue", endRefs.steps), ("changesValue", endRefs.changes),
             ("timeValue", endRefs.time), ("ticketNumber", endRefs.number), ("endingButtons", endRefs.buttons),
             ("restartButton", endRefs.restart), ("endingTitleButton", endRefs.title));
@@ -222,7 +223,7 @@ public static partial class AtmosphereBuilder
 
     // ------------------------------------------------------------------ opciones
 
-    private struct OptionRefs { public Slider volume, brightness, sensitivity; public Button back; public RawImage sign; }
+    private struct OptionRefs { public Slider volume, brightness, sensitivity, camera; public Button back; public RawImage sign; }
 
     private static OptionRefs BuildOptionsPanel(Transform panel, UiSprites s)
     {
@@ -244,6 +245,8 @@ public static partial class AtmosphereBuilder
             volume = UiOptionRow(sheet, "Volumen", "Volumen general", 58f, 0, s),
             brightness = UiOptionRow(sheet, "Brillo", "Brillo", 92f, 0, s),
             sensitivity = UiOptionRow(sheet, "Sensibilidad", "Sensibilidad del mouse", 126f, 1, s),
+            // Paso 31: balanceo, vaiven y vista que se cierra con el miedo. 0 = quieta (por si marea).
+            camera = UiOptionRow(sheet, "Movimiento", "Movimiento de cámara", 160f, 0, s),
         };
 
         // Cartel para calibrar el brillo: muy oscuro a proposito. Con el brillo bien puesto,
@@ -271,7 +274,7 @@ public static partial class AtmosphereBuilder
         backRect.gameObject.AddComponent<SelectOnHover>();
         UiText(sheet, "Ayuda", "↑↓ elegir · ← → cambiar", 200f, 268f, 208f, 14f, 12f, UiBrown, TextAlignmentOptions.TopRight);
 
-        UiChain(refs.volume, refs.brightness, refs.sensitivity, refs.back);
+        UiChain(refs.volume, refs.brightness, refs.sensitivity, refs.camera, refs.back);
         return refs;
     }
 

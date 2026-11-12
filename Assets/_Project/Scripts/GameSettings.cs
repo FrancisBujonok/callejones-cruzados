@@ -4,6 +4,7 @@ using UnityEngine.Rendering.Universal;
 
 /// <summary>
 /// Las opciones del jugador (Paso 17): volumen, brillo y sensibilidad del mouse.
+/// Paso 31: movimiento de camara (balanceo, vaiven y vista que se cierra con el miedo).
 /// Cada una va de 0 a 10, como las barras del menu de opciones, y se guarda en PlayerPrefs
 /// (queda guardada entre partidas, incluso despues de cerrar el juego).
 ///
@@ -17,6 +18,7 @@ public static class GameSettings
     private const string VolumeKey = "Callejones.Volumen";
     private const string BrightnessKey = "Callejones.Brillo";
     private const string SensitivityKey = "Callejones.Sensibilidad";
+    private const string CameraMotionKey = "Callejones.MovimientoCamara";
 
     /// <summary>Volumen general: 0 = mudo, 10 = maximo.</summary>
     public static int MasterVolume { get; private set; } = 8;
@@ -24,6 +26,11 @@ public static class GameSettings
     public static int Brightness { get; private set; } = 5;
     /// <summary>Sensibilidad del mouse: 5 = la de siempre.</summary>
     public static int Sensitivity { get; private set; } = 5;
+    /// <summary>Paso 31: movimiento de camara. 0 = quieta (por si marea), 5 = como esta pensado.</summary>
+    public static int CameraMotion { get; private set; } = 5;
+
+    /// <summary>Lo que CameraFeel multiplica por sus movimientos: 0 con 0, 1 con 5, 2 con 10.</summary>
+    public static float CameraMotionScale => CameraMotion / 5f;
 
     /// <summary>Lo que FirstPersonController multiplica por su sensibilidad: 1 = 0.2x, 5 = 1x, 10 = 2x.</summary>
     public static float SensitivityScale => Mathf.Max(1, Sensitivity) / 5f;
@@ -43,6 +50,7 @@ public static class GameSettings
         MasterVolume = Mathf.Clamp(PlayerPrefs.GetInt(VolumeKey, MasterVolume), 0, Max);
         Brightness = Mathf.Clamp(PlayerPrefs.GetInt(BrightnessKey, Brightness), 0, Max);
         Sensitivity = Mathf.Clamp(PlayerPrefs.GetInt(SensitivityKey, Sensitivity), 1, Max);
+        CameraMotion = Mathf.Clamp(PlayerPrefs.GetInt(CameraMotionKey, CameraMotion), 0, Max);
     }
 
     public static void SetMasterVolume(int value)
@@ -63,6 +71,12 @@ public static class GameSettings
     {
         Sensitivity = Mathf.Clamp(value, 1, Max);
         PlayerPrefs.SetInt(SensitivityKey, Sensitivity);
+    }
+
+    public static void SetCameraMotion(int value)
+    {
+        CameraMotion = Mathf.Clamp(value, 0, Max);
+        PlayerPrefs.SetInt(CameraMotionKey, CameraMotion);
     }
 
     /// <summary>Escribe en disco lo cambiado (se llama al cerrar el menu de opciones).</summary>

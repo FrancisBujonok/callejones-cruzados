@@ -9,6 +9,13 @@ using UnityEngine;
 /// - Respiracion: sube y baja despacio; con miedo, mas rapido y mas marcado.
 /// - Inclinacion al girar: al girar rapido, la cabeza se inclina un poco hacia ese lado.
 /// - Temblor: con miedo alto, un temblor chico e irregular.
+/// - Paso 31: con miedo, la vista se cierra unos grados (el callejon parece mas angosto) y la
+///   cabeza se mece despacio de un lado a otro: una onda atada a los pasos (ida y vuelta cada
+///   swaySteps pasos), mas una deriva lenta e irregular que la tira un poco hacia un costado. Quieto,
+///   el vaiven sigue, mas suave.
+/// - Paso 31: la opcion "Movimiento de camara" (GameSettings.CameraMotionScale) escala todo lo de
+///   arriba: 0 = sin balanceo, inclinacion, temblor, vaiven ni cambio de vista (por si marea);
+///   5 = como esta pensado; 10 = el doble (el cambio de vista no pasa de lo pensado).
 ///
 /// Va en el objeto "Cabeza", entre Player y Main Camera:
 ///   Player (gira izquierda/derecha) > Cabeza (este script) > Main Camera (mira arriba/abajo)
@@ -54,12 +61,30 @@ public class CameraFeel : MonoBehaviour
     [SerializeField] private float tremorAngle = 0.35f;
     [SerializeField] private float tremorSpeed = 9f;
 
+    [Header("Vista que se cierra con miedo (Paso 31)")]
+    [Tooltip("Grados que se cierra el campo de vision con el miedo al maximo. 0 = nada.")]
+    [SerializeField] private float fovNarrow = 6f;
+    [Tooltip("Miedo desde el que empieza a cerrarse.")]
+    [SerializeField, Range(0f, 1f)] private float fovFrom = 0.25f;
+    [Tooltip("Que tan rapido sigue al miedo.")]
+    [SerializeField] private float fovBlend = 1.2f;
+
+    [Header("Vaiven con miedo (Paso 31)")]
+    [Tooltip("Miedo desde el que la cabeza empieza a mecerse de un lado a otro.")]
+    [SerializeField, Range(0f, 1f)] private float swayFrom = 0.45f;
+    [Tooltip("Grados de inclinacion con el miedo al maximo.")]
+    [SerializeField] private float swayAngle = 2.4f;
+    [Tooltip("Pasos para ir de un lado al otro y volver.")]
+    [SerializeField] private float swaySteps = 4f;
+
     private Vector3 basePosition;
     private float walkWeight;
     private float breathPhase;
     private float lastYaw;
     private float tilt;
     private float seed;
+    private Camera cam;
+    private float baseFov, fov, swayAmount, idlePhase;
 
     /// <summary>Lo usa la herramienta de editor al armar la escena.</summary>
     public void Setup(StepCounter stepCounter, FearMeter fearMeter, Transform bodyTransform)
@@ -75,6 +100,8 @@ public class CameraFeel : MonoBehaviour
         if (body == null) body = transform.parent;
         if (body != null) lastYaw = body.eulerAngles.y;
         seed = Random.value * 100f;
+        cam = GetComponentInChildren<Camera>(true);
+        if (cam != null) baseFov = fov = cam.fieldOfView;
     }
 
     // LateUpdate: despues de que el jugador se movio y giro en este frame.
@@ -84,6 +111,7 @@ public class CameraFeel : MonoBehaviour
         if (dt <= 0f) return; // en pausa (timeScale 0) la cabeza queda quieta donde estaba
 
         float f = fear != null ? fear.Normalized : 0f;
+        float motion = GameSettings.CameraMotionScale; // Paso 31: 0 = quieta, 1 = como esta pensado
 
         // 1. Balanceo. walkWeight va de 0 (quieto) a 1 (caminando): suaviza el arranque y el frenado.
         float targetWeight = steps != null ? Mathf.Clamp01(steps.Speed / fullBobSpeed) : 0f;
@@ -95,7 +123,7 @@ public class CameraFeel : MonoBehaviour
         float down = (1f + Mathf.Cos(2f * Mathf.PI * progress)) * 0.5f;
         // Cada paso cambia de pie: el seno pasa de positivo a negativo en pasos alternos.
         float side = Mathf.Sin(Mathf.PI * (stepCount + progress));
-        Vector3 bob = new Vector3(side * bobSide, -down * bobHeight, 0f) * walkWeight;
+        Vector3 bob = new Vector3(side * bobSide, -down * bobHeight, 0f) * walkWeight * motion;
 
         // 2. Respiracion.
         float rate = Mathf.Lerp(calmBreathRate, fearBreathRate, f);
@@ -110,12 +138,28 @@ public class CameraFeel : MonoBehaviour
         tilt += (targetTilt - tilt) * (1f - Mathf.Exp(-tiltBlend * dt));
 
         // 4. Temblor: ruido Perlin (suave pero irregular), solo con miedo alto.
-        float tremor = Mathf.InverseLerp(tremorFrom, 1f, f) * tremorAngle;
+        float tremor = Mathf.InverseLerp(tremorFrom, 1f, f) * tremorAngle * motion;
         float t = Time.time * tremorSpeed;
         float tremorX = (Mathf.PerlinNoise(seed, t) - 0.5f) * 2f * tremor;
         float tremorY = (Mathf.PerlinNoise(seed + 31.7f, t) - 0.5f) * 2f * tremor;
 
+        // 5. Paso 31: vaiven. Una onda atada a los pasos (quieto, una mas lenta) y una deriva sin ritmo.
+        swayAmount += (Mathf.InverseLerp(swayFrom, 1f, f) - swayAmount) * (1f - Mathf.Exp(-1.5f * dt));
+        idlePhase += dt * 0.45f;
+        float stepWave = Mathf.Sin((stepCount + progress) / Mathf.Max(1f, swaySteps) * 2f * Mathf.PI);
+        float wave = stepWave * walkWeight + Mathf.Sin(idlePhase) * (1f - walkWeight) * 0.6f;
+        float drift = (Mathf.PerlinNoise(seed + 77f, Time.time * 0.08f) - 0.5f) * 0.8f;
+        float sway = (wave + drift) * swayAngle * swayAmount * motion;
+
+        // 6. Paso 31: la vista se cierra con el miedo.
+        if (cam != null)
+        {
+            float narrow = fovNarrow * Mathf.InverseLerp(fovFrom, 1f, f) * Mathf.Min(1f, motion);
+            fov += (baseFov - narrow - fov) * (1f - Mathf.Exp(-fovBlend * dt));
+            cam.fieldOfView = fov;
+        }
+
         transform.localPosition = basePosition + bob + Vector3.up * breath;
-        transform.localRotation = Quaternion.Euler(tremorX, tremorY, tilt);
+        transform.localRotation = Quaternion.Euler(tremorX, tremorY, tilt * motion + sway);
     }
 }

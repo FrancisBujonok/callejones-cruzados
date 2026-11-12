@@ -46,6 +46,8 @@ public class GameUI : MonoBehaviour
     [SerializeField] private Slider volumeSlider;
     [SerializeField] private Slider brightnessSlider;
     [SerializeField] private Slider sensitivitySlider;
+    [Tooltip("Paso 31: movimiento de camara.")]
+    [SerializeField] private Slider cameraSlider;
     [SerializeField] private Button optionsBackButton;
     [Tooltip("Cartel oscuro para calibrar el brillo: se aclara o se oscurece con la barra.")]
     [SerializeField] private Graphic calibrationSign;
@@ -98,6 +100,7 @@ public class GameUI : MonoBehaviour
         });
         if (calibrationSign != null) calibrationBase = calibrationSign.color;
         if (sensitivitySlider != null) sensitivitySlider.onValueChanged.AddListener(v => GameSettings.SetSensitivity(Mathf.RoundToInt(v)));
+        if (cameraSlider != null) cameraSlider.onValueChanged.AddListener(v => GameSettings.SetCameraMotion(Mathf.RoundToInt(v)));
 
         if (ticket != null) ticketRest = ticket.anchoredPosition;
     }
@@ -171,6 +174,7 @@ public class GameUI : MonoBehaviour
         if (volumeSlider != null) volumeSlider.SetValueWithoutNotify(GameSettings.MasterVolume);
         if (brightnessSlider != null) brightnessSlider.SetValueWithoutNotify(GameSettings.Brightness);
         if (sensitivitySlider != null) sensitivitySlider.SetValueWithoutNotify(GameSettings.Sensitivity);
+        if (cameraSlider != null) cameraSlider.SetValueWithoutNotify(GameSettings.CameraMotion);
         UpdateCalibration();
     }
 
