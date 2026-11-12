@@ -33,8 +33,9 @@ using UnityEngine.Events;
 /// y vuelve a aparecer mas adelante: la salida "lo sigue".
 ///
 /// Los bucles (un mismo tramo que se repite varias veces seguidas) estan en
-/// CorridorTreadmill.Loops.cs, y las plazas (Paso 23) en CorridorTreadmill.Plazas.cs: es la
-/// misma clase, partida en varios archivos (partial).
+/// CorridorTreadmill.Loops.cs, las plazas (Paso 23) en CorridorTreadmill.Plazas.cs y la falsa
+/// salida (Paso 31) en CorridorTreadmill.FalseExit.cs: es la misma clase, partida en varios
+/// archivos (partial).
 ///
 /// Va en el objeto "Laberinto"; todas las piezas son hijas de Laberinto (el deposito).
 /// </summary>
@@ -143,6 +144,10 @@ public partial class CorridorTreadmill : MonoBehaviour
         public LoopPlan loop;
         public int loopCopy = -1;
         public int loopStep = -1;
+
+        // Paso 31: si es parte de una falsa salida, cuantos rectos faltan antes del callejon
+        // sin salida (0 = lo proximo es el callejon). -1 = no es parte de ninguna.
+        public int falseLeft = -1;
     }
 
     private struct Option
@@ -417,6 +422,9 @@ public partial class CorridorTreadmill : MonoBehaviour
         if (ExitRequested && exitNode == null && exitSegment != null && IsAhead(parent, socket))
             AddIfValid(SegmentKind.Salida, 0, 1000f, s);
 
+        // Paso 31: la falsa salida (un ramal de un cruce que termina en un callejon sin salida).
+        AddFalseExitOptions(parent, socket, s);
+
         // Un lado de un cruce puede ser un callejon sin salida (nunca los dos).
         if (parent.seg.Kind == SegmentKind.Cruce && !parent.hasDeadEnd && rng.NextDouble() < deadEndChance)
             AddIfValid(SegmentKind.Fondo, 0, 500f, s);
@@ -538,6 +546,7 @@ public partial class CorridorTreadmill : MonoBehaviour
         }
 
         if (seg.Kind == SegmentKind.Fondo && parent.seg.Kind == SegmentKind.Cruce) parent.hasDeadEnd = true;
+        OnPlacedForFalseExit(parent, socket, node); // Paso 31
         return node;
     }
 
@@ -605,6 +614,7 @@ public partial class CorridorTreadmill : MonoBehaviour
 
     private void Recycle(Node node)
     {
+        if (node.falseLeft >= 0) BreakFalsePlan(node); // Paso 31: el ramal quedo a medias
         for (int i = 0; i < node.links.Length; i++)
         {
             Node other = node.links[i];
@@ -660,6 +670,7 @@ public partial class CorridorTreadmill : MonoBehaviour
         cap.transform.SetPositionAndRotation(s.position - s.forward * 0.25f, s.rotation);
         cap.SetActive(true);
         node.caps[socket] = cap;
+        if (node.falseLeft >= 0) BreakFalsePlan(node); // Paso 31: no entro lo que seguia del ramal
     }
 
     private void ReleaseCap(GameObject cap)

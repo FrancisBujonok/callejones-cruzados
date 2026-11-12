@@ -191,6 +191,38 @@ public class LandmarkDirector : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Paso 31: pone un lugar en una pieza a pedido (la falsa salida pide el altar en su callejon).
+    /// Solo si ese lugar esta guardado (o esperando reaparecer) y la pieza tiene un pedazo de pared
+    /// libre. Desde ahi el lugar sigue las reglas de siempre: si lo ves y lo dejas atras, puede mentir.
+    /// </summary>
+    public bool PlaceAt(CorridorSegment segment, string labelStart)
+    {
+        if (!enabled || segment == null || landmarks == null) return false;
+        Landmark pick = null;
+        foreach (Landmark l in landmarks)
+            if (l != null && l.Slot == null && l.Label.StartsWith(labelStart)) { pick = l; break; }
+        if (pick == null) return false;
+
+        LandmarkSlot[] slots = segment.GetComponentsInChildren<LandmarkSlot>(true);
+        if (slots.Length == 0) return false;
+        foreach (LandmarkSlot s in slots)
+            if (s.Occupant != null) return false;
+
+        LandmarkSlot slot = slots[Random.Range(0, slots.Length)];
+        slot.Occupy(pick);
+        pick.Slot = slot;
+        pick.Host = segment;
+        pick.Seen = false;
+        pick.Decided = false;
+        if (!pick.Pending) pick.LiesInARow = 0;
+        pick.Pending = false;
+        nextAt = walked + minGap;
+        lastPut = walked;
+        Debug.Log($"[LandmarkDirector] '{pick.Label}' puesto a pedido en '{segment.name}'.");
+        return true;
+    }
+
     /// <summary>Una pieza vuelve al deposito: si tenia un lugar, el lugar se guarda.</summary>
     private void OnPieceRecycled(CorridorSegment segment)
     {
