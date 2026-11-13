@@ -156,7 +156,7 @@ public static partial class AtmosphereBuilder
         BuildLathe(GetOrCreateMesh("Chochin"), ChochinProfile, 8);
         BuildShutter(GetOrCreateMesh("Persiana"), ShutterWidth, ShutterHeight, 0.12f, 0.04f);
         BuildFairGround(Group(world, "Suelo"), f);
-        BuildFairBuildings(Group(world, "Edificios"), m, f);
+        BuildFairBlocks(Group(world, "Edificios"), m, f); // Paso 34: variados (AtmosphereBuilder.FairBlocks.cs)
         BuildFairStalls(Group(world, "Puestos"), m, f);
         BuildFairOverhead(Group(world, "Arriba"), m, f);
         BuildFairSidewalk(Group(world, "Vereda"), m, f);
@@ -245,41 +245,12 @@ public static partial class AtmosphereBuilder
     // ------------------------------------------------------------------ edificios
 
     /// <summary>
-    /// Fachadas a los dos lados, de x = -110 a 112: del lado de la feria (z = 12, mirando al sur) con
-    /// un hueco para el callejon (x de 7 a 10), y enfrente (z = -17.5, mirando al norte). Cada tramo
-    /// tiene planta baja con locales (persianas, vidrieras, puertas con noren, carteles y toldos) y
-    /// arriba los pisos de BuildBuildingSide. Los tramos lejanos llevan menos detalle.
+    /// Planta baja en espacio de lado: pared en x = 0 mirando a +X, a lo largo de z.
+    /// Paso 34: signs = false deja solo persianas (sin carteles ni toldos); skipBay saltea los
+    /// tramos donde va un local especial (la pared igual se arma).
     /// </summary>
-    private static void BuildFairBuildings(Transform g, Mats m, FairMats f)
-    {
-        var rng = new System.Random(3201);
-        Mesh shutter = GetOrCreateMesh("Persiana");
-        int n = 0;
-        void Row(float from, float to, float z, float yaw, int minFloors, int maxFloors, string prefix)
-        {
-            float x = from;
-            while (x < to - 0.1f)
-            {
-                float len = new[] { 9f, 12f, 15f }[rng.Next(3)];
-                if (x + len > to) len = to - x;
-                float center = x + len * 0.5f;
-                Transform side = Group(g, prefix + n);
-                side.localPosition = new Vector3(center, 0f, z);
-                side.localRotation = Quaternion.Euler(0f, yaw, 0f);
-                bool near = Mathf.Abs(center) < 48f;
-                FairStorefront(side, len, rng, near, shutter, m, f);
-                BuildBuildingSide(side, "Feria_" + prefix + n, len, rng.Next(minFloors, maxFloors + 1), 900 + n, false, m);
-                n++;
-                x += len;
-            }
-        }
-        Row(-110f, AlleyX0, FairBackZ, 90f, 3, 5, "Norte");
-        Row(AlleyX1, 112f, FairBackZ, 90f, 3, 5, "Norte");
-        Row(-110f, 112f, -17.5f, -90f, 3, 6, "Sur");
-    }
-
-    /// <summary>Planta baja en espacio de lado: pared en x = 0 mirando a +X, a lo largo de z.</summary>
-    private static void FairStorefront(Transform side, float length, System.Random rng, bool near, Mesh shutter, Mats m, FairMats f)
+    private static void FairStorefront(Transform side, float length, System.Random rng, bool near, Mesh shutter, Mats m, FairMats f,
+        bool signs = true, System.Func<int, bool> skipBay = null)
     {
         float half = length * 0.5f;
         for (float z = -half; z < half - 0.01f; z += 3f)
@@ -295,7 +266,8 @@ public static partial class AtmosphereBuilder
         for (int j = 0; j < bays; j++)
         {
             float zc = -half + 1.5f + j * 3f;
-            int type = near ? rng.Next(5) : 0;
+            if (skipBay != null && skipBay(j)) continue;
+            int type = near && signs ? rng.Next(5) : 0;
             Transform bay = Group(side, "Local" + j);
             bay.localPosition = new Vector3(0f, 0f, zc);
             switch (type)
@@ -326,7 +298,7 @@ public static partial class AtmosphereBuilder
                     break;
             }
 
-            if (!near) continue;
+            if (!near || !signs) continue;
             // Arriba de cada local: un cartel horizontal o un toldito.
             if (rng.NextDouble() < 0.6 && f.carteles.Count > 0)
             {
@@ -952,7 +924,8 @@ public static partial class AtmosphereBuilder
             side.localPosition = new Vector3(left ? AlleyX0 : AlleyX1, 0f, zc);
             side.localRotation = Quaternion.Euler(0f, left ? 0f : 180f, 0f);
             SolidBoxChild(side, "PlantaBaja", m.pared, new Vector3(-0.15f, 1.5f, 0f), new Vector3(0.3f, 3f, AlleyDepth), Vector3.zero);
-            BuildBuildingSide(side, "Feria_Callejon" + (left ? "O" : "E"), AlleyDepth - 1f, 4, left ? 971 : 972, true, m);
+            // Paso 34: el relleno de arriba llega a 8 pisos (24 m), como los edificios de al lado.
+            BuildBuildingSide(side, "Feria_Callejon" + (left ? "O" : "E"), AlleyDepth - 1f, 4, left ? 971 : 972, true, m, fillTo: 8);
         }
         // El fondo: oscuro, como si el callejon siguiera y doblara.
         SolidBoxChild(g, "Fondo", m.hueco, new Vector3(xc, 3f, z1), new Vector3(AlleyX1 - AlleyX0, 6f, 0.3f), Vector3.zero);

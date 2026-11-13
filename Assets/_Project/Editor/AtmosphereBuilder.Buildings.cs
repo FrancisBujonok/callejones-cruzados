@@ -373,8 +373,9 @@ public static partial class AtmosphereBuilder
     /// Paso 21: roof es el techado de la pieza (o null); si esta prendido, las gotas de los aires
     /// caen sobre la chapa. roofGap: este lado es el derecho del recto, donde falta media chapa
     /// sobre z local de 0 a 1.5: ahi las gotas siguen de largo.
+    /// Paso 34: fillTo = hasta que piso llega el relleno de atras (la feria lo usa mas bajo).
     private static void BuildBuildingSide(Transform parent, string meshName, float length, int floors, int seed, bool overhangs, Mats m,
-        GameObject roof = null, bool roofGap = false)
+        GameObject roof = null, bool roofGap = false, int fillTo = MaxFloors)
     {
         var rng = new System.Random(seed);
         // Aparte, para no cambiar el resto del sorteo (ventanas y detalles quedan como antes).
@@ -442,7 +443,7 @@ public static partial class AtmosphereBuilder
         }
 
         // 4. Si el edificio es bajo, detras sigue otro hasta 30 m: mas oscuro, casi sin luces.
-        for (int k = floors; k < MaxFloors; k++)
+        for (int k = floors; k < fillTo; k++)
         {
             float y0 = k * FloorHeight;
             for (int j = 0; j < bays; j++)
