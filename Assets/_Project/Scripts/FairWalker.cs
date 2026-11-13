@@ -7,6 +7,11 @@ using UnityEngine;
 /// atraviesa).
 ///
 /// Mientras camina mueve piernas y brazos y sube y baja un poco; parado, mira para los costados.
+/// Paso 36 (lo raro de a poco), lo maneja FairUnease:
+/// - Freeze: por unos segundos, una parte de los que pasean se queda quieta y se da vuelta hacia
+///   el jugador. Despues siguen como si nada.
+/// - VanishShare: hacia el final, algunos desaparecen cuando el jugador no los esta mirando.
+///
 /// El modelo mira hacia +Z. Pivotes: "Cabeza", "BrazoIzq", "BrazoDer", "PiernaIzq", "PiernaDer".
 /// Lo arma Callejones > Feria de dia (capitulo 1), dentro de "Gente".
 /// </summary>
@@ -19,7 +24,32 @@ public class FairWalker : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float stopChance = 0.3f;
     [SerializeField] private Vector2 stopSeconds = new Vector2(2f, 6f);
 
+    /// <summary>Paso 36: hasta cuando (Time.time) se quedan quietos los elegidos por Freeze.</summary>
+    public static float FreezeUntil;
+    /// <summary>Paso 36: que parte de los que pasean se queda quieta con Freeze.</summary>
+    public static float FreezeShare;
+    /// <summary>Paso 36: que parte desaparece cuando nadie la mira (0 = ninguno).</summary>
+    public static float VanishShare;
+    /// <summary>Paso 36: cuantos de los que estan quietos mirando se ven ahora en pantalla (cerca).</summary>
+    public static int FrozenInView { get; private set; }
+    private static int frozenCountFrame = -1, frozenCounting;
+
+    /// <summary>Paso 36: una parte de los que pasean se queda quieta mirando al jugador.</summary>
+    public static void Freeze(float seconds, float share)
+    {
+        FreezeUntil = Time.time + seconds;
+        FreezeShare = share;
+    }
+
+    /// <summary>Paso 36: vuelve todo a la calma (al cargar la escena).</summary>
+    public static void ResetUnease()
+    {
+        FreezeUntil = 0f; FreezeShare = 0f; VanishShare = 0f; FrozenInView = 0;
+    }
+
     private Transform player;
+    private Camera cam;
+    private float rank;
     private int target;
     private float phase, waitUntil, glanceYaw, nextGlance;
     private Quaternion headRest, aL, aR, lL, lR;
@@ -40,6 +70,8 @@ public class FairWalker : MonoBehaviour
     {
         GameObject p = GameObject.FindWithTag("Player");
         if (p != null) player = p.transform;
+        cam = Camera.main;
+        rank = Random.value;
         if (head != null) headRest = head.localRotation;
         if (armLeft != null) aL = armLeft.localRotation;
         if (armRight != null) aR = armRight.localRotation;
@@ -54,10 +86,30 @@ public class FairWalker : MonoBehaviour
         if (dt <= 0f || route == null || route.Length < 2) return;
         float t = Time.time;
 
+        // Paso 36: desaparecer cuando nadie mira.
+        bool inView = InView();
+        if (rank < VanishShare && !inView && Distance() > 7f)
+        {
+            gameObject.SetActive(false);
+            return;
+        }
+
+        // Paso 36: quieto, dado vuelta hacia el jugador.
+        bool frozen = player != null && t < FreezeUntil && rank < FreezeShare;
+        if (Time.frameCount != frozenCountFrame) { FrozenInView = frozenCounting; frozenCounting = 0; frozenCountFrame = Time.frameCount; }
+        if (frozen && inView && Distance() < 18f) frozenCounting++;
+
         Vector3 goal = route[target];
         Vector3 to = goal - transform.position;
         to.y = 0f;
-        bool walking = t >= waitUntil && !Blocked();
+        bool walking = !frozen && t >= waitUntil && !Blocked();
+        if (frozen)
+        {
+            Vector3 toPlayer = player.position - transform.position;
+            toPlayer.y = 0f;
+            if (toPlayer.sqrMagnitude > 0.01f)
+                transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(toPlayer.normalized), 1f - Mathf.Exp(-2.5f * dt));
+        }
 
         if (walking)
         {
@@ -89,10 +141,21 @@ public class FairWalker : MonoBehaviour
         // Parado, mira para los costados (hacia los puestos); caminando, adelante.
         if (head != null)
         {
-            if (!walking && t >= nextGlance) { glanceYaw = Random.Range(-60f, 60f); nextGlance = t + Random.Range(1.5f, 3.5f); }
-            float yaw = walking ? 0f : glanceYaw;
+            if (!walking && !frozen && t >= nextGlance) { glanceYaw = Random.Range(-60f, 60f); nextGlance = t + Random.Range(1.5f, 3.5f); }
+            float yaw = walking || frozen ? 0f : glanceYaw;
             head.localRotation = Quaternion.Slerp(head.localRotation, headRest * Quaternion.Euler(0f, yaw, 0f), 1f - Mathf.Exp(-3f * dt));
         }
+    }
+
+    private float Distance() => player != null ? Vector3.Distance(player.position, transform.position) : 999f;
+
+    /// <summary>Paso 36: se ve en pantalla (sin contar paredes: alcanza para decidir si desaparecer).</summary>
+    private bool InView()
+    {
+        if (cam == null) cam = Camera.main;
+        if (cam == null) return true;
+        Vector3 v = cam.WorldToViewportPoint(transform.position + Vector3.up * 1.0f);
+        return v.z > 0f && v.z < 80f && v.x > -0.15f && v.x < 1.15f && v.y > -0.2f && v.y < 1.2f;
     }
 
     /// <summary>El jugador esta a menos de 1.3 m y adelante.</summary>

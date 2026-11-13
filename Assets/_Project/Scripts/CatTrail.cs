@@ -36,6 +36,8 @@ public class CatTrail : MonoBehaviour
     private int current = -1;
 
     public int Current => current;
+    /// <summary>Paso 36: cuantas apariciones hay (FairUnease mide cuanto se avanzo).</summary>
+    public int Count => sightings != null ? sightings.Length : 0;
 
     /// <summary>Lo usa la herramienta de editor.</summary>
     public void Setup(LeadingCat[] cats, AlleyGate alleyGate, GameObject exit)

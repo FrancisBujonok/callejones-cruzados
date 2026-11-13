@@ -9,6 +9,12 @@ using UnityEngine;
 /// - segun el papel, mueve los brazos: el vendedor atiende (levanta un brazo como si sirviera o
 ///   cobrara), el cliente señala algo, y el del tambor golpea cada vez que suena el tambor.
 ///
+/// Paso 36 (lo raro de a poco): FairUnease decide que parte de la gente "mira de mas"
+/// (StareShare). Cada persona tiene su numero (rank): si es menor que esa parte, deja de hacer lo
+/// suyo, mira al jugador desde mucho mas lejos y no le saca los ojos de encima; si el jugador se
+/// va hacia un costado, gira el cuerpo para seguirlo. Con VendorsStare (cuando el gato ya esta en
+/// el callejon) todos los vendedores miran.
+///
 /// El modelo mira hacia +Z. Pivotes: "Cabeza", "BrazoIzq", "BrazoDer" (hombros).
 /// Lo arma Callejones > Feria de dia (capitulo 1), dentro de "Gente".
 /// </summary>
@@ -23,8 +29,14 @@ public class FairPerson : MonoBehaviour
     [Tooltip("A cuantos metros mira al jugador si pasa por delante.")]
     [SerializeField] private float noticeDistance = 4f;
 
+    /// <summary>Paso 36: que parte de la gente mira al jugador de mas (0 = nadie, 1 = todos). Lo pone FairUnease.</summary>
+    public static float StareShare;
+    /// <summary>Paso 36: todos los vendedores miran al jugador. Lo pone FairUnease.</summary>
+    public static bool VendorsStare;
+
     private Transform player;
-    private Quaternion headRest, leftRest, rightRest;
+    private Quaternion headRest, leftRest, rightRest, bodyRest;
+    private float rank;
     private Vector3 restPos;
     private float breathPhase, nextGlance, glanceYaw, glancePitch;
     private float gestureStart = -99f, gestureLength, nextGesture;
@@ -47,6 +59,8 @@ public class FairPerson : MonoBehaviour
         GameObject p = GameObject.FindWithTag("Player");
         if (p != null) player = p.transform;
         restPos = transform.localPosition;
+        bodyRest = transform.localRotation;
+        rank = Random.value;
         if (head != null) headRest = head.localRotation;
         if (armLeft != null) leftRest = armLeft.localRotation;
         if (armRight != null) rightRest = armRight.localRotation;
@@ -71,14 +85,60 @@ public class FairPerson : MonoBehaviour
         breathPhase += dt * (role == Role.Drummer ? 2.2f : 1.4f);
         transform.localPosition = restPos + Vector3.up * (Mathf.Sin(breathPhase) * 0.006f);
 
-        Head(t, dt);
-        Arms(t, dt);
+        bool watching = Watching();
+        Body(watching, dt);
+        Head(t, dt, watching);
+        Arms(t, dt, watching);
     }
 
-    private void Head(float t, float dt)
+    /// <summary>Paso 36: esta persona mira de mas.</summary>
+    private bool Watching()
+    {
+        if (player == null) return false;
+        if (VendorsStare && role == Role.Vendor) return true;
+        return rank < StareShare * 0.85f; // nunca todos: siempre queda alguien en lo suyo
+    }
+
+    /// <summary>Paso 36: si mira de mas y el jugador se le va de costado, gira el cuerpo despacio.</summary>
+    private void Body(bool watching, float dt)
+    {
+        Quaternion want = bodyRest;
+        if (watching && role != Role.Seated)
+        {
+            Vector3 to = player.position - transform.position;
+            to.y = 0f;
+            if (to.magnitude < 16f && to.sqrMagnitude > 0.01f)
+            {
+                Quaternion face = Quaternion.LookRotation(to.normalized);
+                Quaternion rest = transform.parent != null ? transform.parent.rotation * bodyRest : bodyRest;
+                // El cuerpo gira lo que la cabeza no alcanza (la cabeza llega hasta 70 grados).
+                float off = Mathf.DeltaAngle(rest.eulerAngles.y, face.eulerAngles.y);
+                float body = off - Mathf.Clamp(off, -70f, 70f);
+                want = bodyRest * Quaternion.Euler(0f, body, 0f);
+            }
+        }
+        transform.localRotation = Quaternion.Slerp(transform.localRotation, want, 1f - Mathf.Exp(-1.2f * dt));
+    }
+
+    private void Head(float t, float dt, bool watching)
     {
         if (head == null) return;
         float yaw = glanceYaw, pitch = glancePitch;
+
+        if (watching)
+        {
+            // Mira al jugador, lejos o cerca, sin cortar.
+            Vector3 to = player.position + Vector3.up * 0.6f - head.position;
+            if (new Vector3(to.x, 0f, to.z).magnitude < 16f)
+            {
+                Vector3 local = transform.InverseTransformDirection(to.normalized);
+                float y = Mathf.Atan2(local.x, local.z) * Mathf.Rad2Deg;
+                float p = -Mathf.Asin(Mathf.Clamp(local.y, -1f, 1f)) * Mathf.Rad2Deg;
+                Quaternion stare = headRest * Quaternion.Euler(Mathf.Clamp(p, -20f, 25f), Mathf.Clamp(y, -70f, 70f), 0f);
+                head.localRotation = Quaternion.Slerp(head.localRotation, stare, 1f - Mathf.Exp(-2f * dt));
+                return;
+            }
+        }
 
         if (t >= nextGlance)
         {
@@ -105,11 +165,17 @@ public class FairPerson : MonoBehaviour
         head.localRotation = Quaternion.Slerp(head.localRotation, want, 1f - Mathf.Exp(-3f * dt));
     }
 
-    private void Arms(float t, float dt)
+    private void Arms(float t, float dt, bool watching)
     {
         float left = 0f, right = 0f;
 
-        if (role == Role.Drummer)
+        if (watching && role != Role.Drummer)
+        {
+            // Deja lo que estaba haciendo: los brazos quietos al costado.
+            if (role == Role.Seated) { left = 35f; right = 35f; }
+            nextGesture = t + 2f;
+        }
+        else if (role == Role.Drummer)
         {
             // Mientras suena el tambor: golpes alternados, rapidos.
             if (t - gestureStart < gestureLength)

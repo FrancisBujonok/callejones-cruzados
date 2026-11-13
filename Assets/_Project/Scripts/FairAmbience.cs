@@ -18,6 +18,11 @@ using UnityEngine;
 /// Mas adelante se pueden sumar capas (autos pasando, vendedores que llaman) sin tocar el codigo:
 /// es agregar una fila en el Inspector.
 ///
+/// Paso 36 (lo raro de a poco), lo maneja FairUnease:
+/// - RepeatAmount: el musico y el tambor repiten siempre el mismo clip, cada vez un poco mas
+///   grave (sin variacion).
+/// - CrowdFade: el murmullo de la gente se va apagando (tambien lo que ya esta sonando).
+///
 /// Va en el objeto "SonidoFeria". Lo arma Callejones > Feria de dia (capitulo 1).
 /// </summary>
 public class FairAmbience : MonoBehaviour
@@ -53,6 +58,11 @@ public class FairAmbience : MonoBehaviour
     /// el que toca el tambor (FairPerson) para golpear cuando suena el tambor.
     /// </summary>
     public static event System.Action<string, float> Played;
+
+    /// <summary>Paso 36: 0 = normal; 1 = el musico y el tambor repiten el mismo clip, bien graves.</summary>
+    public static float RepeatAmount;
+    /// <summary>Paso 36: 0 = normal; 1 = el murmullo de la gente apagado.</summary>
+    public static float CrowdFade;
 
     [SerializeField] private Layer[] layers;
     [Tooltip("El que escucha (la camara del jugador). Vacio = el AudioListener de la escena.")]
@@ -96,7 +106,15 @@ public class FairAmbience : MonoBehaviour
         if (layers == null) return;
         foreach (Layer layer in layers)
         {
-            if (layer.sources == null || layer.clips == null || layer.clips.Length == 0 || Time.time < layer.next) continue;
+            if (layer.sources == null) continue;
+            bool crowd = layer.name == "Gente";
+            bool repeats = RepeatAmount > 0f && (layer.name == "Musico" || layer.name == "Tambor");
+            float volume = layer.volume * (crowd ? 1f - 0.92f * CrowdFade : 1f);
+            if (crowd) // Paso 36: el murmullo que ya suena tambien baja
+                foreach (AudioSource s in layer.sources)
+                    if (s != null && s.isPlaying) s.volume = Mathf.MoveTowards(s.volume, volume, Time.deltaTime * 0.2f);
+
+            if (layer.clips == null || layer.clips.Length == 0 || Time.time < layer.next) continue;
             layer.next = Time.time + Random.Range(layer.every.x, layer.every.y);
 
             AudioSource source = FreeSource(layer);
@@ -105,10 +123,13 @@ public class FairAmbience : MonoBehaviour
             source.transform.position = PickPoint(layer);
             int i = Random.Range(0, layer.clips.Length);
             if (layer.clips.Length > 1 && i == layer.last) i = (i + 1) % layer.clips.Length;
+            if (repeats && layer.last >= 0 && Random.value < 0.4f + 0.6f * RepeatAmount) i = layer.last; // la misma, otra vez
             layer.last = i;
             source.clip = layer.clips[i];
-            source.volume = layer.volume;
-            source.pitch = 1f + Random.Range(-layer.pitchJitter, layer.pitchJitter);
+            source.volume = volume;
+            source.pitch = repeats
+                ? 1f - 0.16f * RepeatAmount
+                : 1f + Random.Range(-layer.pitchJitter, layer.pitchJitter);
             source.Play();
             Played?.Invoke(layer.name, source.clip.length / Mathf.Max(0.1f, source.pitch));
         }
