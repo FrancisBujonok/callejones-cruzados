@@ -26,6 +26,7 @@ public static partial class AtmosphereBuilder
         public readonly List<Material> afiches = new List<Material>();   // afiches de locales (K)
         public readonly List<Material> nobori = new List<Material>();    // verticales (V5): los nobori
         public Material gatoBuscado;                                     // SE BUSCA / MANCHAS
+        public readonly List<Material> avisos = new List<Material>();    // Paso 36: H5 de "no mires atras" (lo raro)
     }
 
     // Colores de FeriaPaleta.png (cuadritos de 4 x 4 pixeles, en el orden de PaletteUV).
@@ -41,7 +42,10 @@ public static partial class AtmosphereBuilder
 
     // Lo llenan los puestos; lo usan el sonido, la gente (Paso 33) y las marcas.
     private static readonly List<Vector3> FairVendorSpots = new List<Vector3>();
-    private struct StallInfo { public Vector3 pos; public float yaw; public int type; public Vector3 vendor; }
+    private struct StallInfo { public Vector3 pos; public float yaw; public int type; public Vector3 vendor; public bool game; }
+    // Paso 36: los carteles y las bombitas de los puestos (los usa FairUnease: cambian y titilan).
+    private static readonly List<Renderer> FairStallSigns = new List<Renderer>();
+    private static readonly List<Renderer> FairStallLights = new List<Renderer>();
     private static readonly List<StallInfo> FairStalls = new List<StallInfo>();
     private static Vector3 FortuneStallSpot = new Vector3(13f, 1.5f, 5f);
 
@@ -122,6 +126,7 @@ public static partial class AtmosphereBuilder
         f.escenario = FairTextureMat("FeriaEscenario", "Feria_Escenario");
 
         foreach (Material s in m.signsH5.mats) if (s != null && !SignCatalog.IsWarning(s.name)) f.carteles.Add(s);
+        foreach (Material s in m.signsH5.mats) if (s != null && SignCatalog.IsWarning(s.name)) f.avisos.Add(s);
         foreach (Material s in m.signsK.mats) if (s != null) f.afiches.Add(s);
         foreach (Material s in m.signsV5.mats) if (s != null && !SignCatalog.IsWarning(s.name)) f.nobori.Add(s);
         f.gatoBuscado = AssetDatabase.LoadAssetAtPath<Material>(MaterialsDir + "/Carteles/P_es_01_fotocopia.mat");
@@ -152,6 +157,8 @@ public static partial class AtmosphereBuilder
     {
         FairVendorSpots.Clear();
         FairStalls.Clear();
+        FairStallSigns.Clear();
+        FairStallLights.Clear();
         // Mallas compartidas que arman otros menus: por si la feria se arma primero.
         BuildLathe(GetOrCreateMesh("Chochin"), ChochinProfile, 8);
         BuildShutter(GetOrCreateMesh("Persiana"), ShutterWidth, ShutterHeight, 0.12f, 0.04f);
@@ -387,13 +394,18 @@ public static partial class AtmosphereBuilder
                 if ((north ? skipNorth : skipSouth).Contains(i)) continue;
                 float x = StallFirstX + i * StallStep;
                 int type = north && i == 12 ? 8 : cycle[c++ % cycle.Length]; // la adivina, al lado del callejon
+                // Paso 36: de los cuatro tiro al blanco que salian, uno es el de los aros (S3, cerca de la
+                // entrada), otro el de las latas (N15, cerca del escenario) y los otros dos cambian.
+                if (!north && i == 3) type = 9;
+                else if (north && i == 15) type = 5;
+                else if (type == 5) type = north ? 3 : 0;
                 var pos = new Vector3(x, 0f, north ? RowNorthZ : RowSouthZ);
                 BuildStall(g, (north ? "N" : "S") + i, pos, north ? 180f : 0f, type, 3300 + row * 50 + i, m, f);
             }
         }
     }
 
-    private static readonly string[] StallNames = { "Comida", "Frutas", "Juguetes", "Mascaras", "Peces", "TiroAlBlanco", "Farolitos", "Bebidas", "Adivina" };
+    private static readonly string[] StallNames = { "Comida", "Frutas", "Juguetes", "Mascaras", "Peces", "TiroAlBlanco", "Farolitos", "Bebidas", "Adivina", "Aros" };
 
     /// <summary>Un puesto. Espacio local: el frente (del lado de la gente) en z = 0 mirando a +Z.</summary>
     private static void BuildStall(Transform parent, string id, Vector3 pos, float yaw, int type, int seed, Mats m, FairMats f)
@@ -430,7 +442,7 @@ public static partial class AtmosphereBuilder
         {
             Vector2 size = FitSign(sign, 1.7f, 0.36f);
             d.Box(new Vector3(0f, 2.0f, 0.13f), new Vector3(size.x + 0.08f, size.y + 0.08f, 0.04f), FNegro);
-            SignFace(t, "Cartel", new Vector3(0f, 2.0f, 0.16f), size, 180f, sign);
+            FairStallSigns.Add(SignFace(t, "Cartel", new Vector3(0f, 2.0f, 0.16f), size, 180f, sign));
         }
 
         var goods = new MeshDraft();
@@ -443,7 +455,8 @@ public static partial class AtmosphereBuilder
 
         FairDraft(t, "Estructura", d, f.paleta, true);
         FairDraft(t, "Mercaderia", goods, f.paleta, true);
-        FairDraft(t, "Bombitas", lit, f.farolitoAmarillo, false);
+        GameObject bulbs = FairDraft(t, "Bombitas", lit, f.farolitoAmarillo, false);
+        if (bulbs != null) FairStallLights.Add(bulbs.GetComponent<MeshRenderer>());
 
         Material stripes = type == 8 ? f.toldos[1] : f.toldos[rng.Next(f.toldos.Length)];
         GameObject canopy = MeshChild(t, "Toldo", CanopyMesh(3.2f, 2.3f, 2.45f, 2.2f, 0.25f), stripes, Vector3.zero);
@@ -451,10 +464,14 @@ public static partial class AtmosphereBuilder
 
         // Donde se para el vendedor (Paso 33): detras del mostrador; en los peces, al costado de la
         // pileta; la adivina, sentada detras de su mesita.
-        Vector3 vendorLocal = type == 4 ? new Vector3(1.15f, 0f, -0.2f) : type == 8 ? new Vector3(0f, 0f, -1.45f) : new Vector3(0f, 0f, -1.0f);
+        // Paso 36: en los juegos, al costado (no tapa las latas ni las botellas).
+        bool game = type == 5 || type == 9;
+        Vector3 vendorLocal = type == 4 ? new Vector3(1.15f, 0f, -0.2f) : type == 8 ? new Vector3(0f, 0f, -1.45f)
+            : game ? new Vector3(1.12f, 0f, -1.0f) : new Vector3(0f, 0f, -1.0f);
         Vector3 vendor = t.TransformPoint(vendorLocal);
         FairVendorSpots.Add(vendor);
-        FairStalls.Add(new StallInfo { pos = pos, yaw = yaw, type = type, vendor = vendor });
+        FairStalls.Add(new StallInfo { pos = pos, yaw = yaw, type = type, vendor = vendor, game = game });
+        if (game) BuildStallGame(t, type, f); // AtmosphereBuilder.FairGames.cs
         if (type == 8) FortuneStallSpot = t.TransformPoint(new Vector3(0f, 1.6f, -0.8f));
     }
 
@@ -533,15 +550,17 @@ public static partial class AtmosphereBuilder
                 for (int k = 0; k < 3; k++) d.Box(new Vector3(-0.8f + k * 0.8f, 0.15f, 0.35f), new Vector3(0.3f, 0.3f, 0.3f), FRojo); // banquitos
                 break;
 
-            case 5: // tiro al blanco: botellas en estantes, premios y aros en el mostrador
-                for (int s = 0; s < 3; s++)
-                {
-                    float y = 1.0f + s * 0.4f;
-                    d.Box(new Vector3(0f, y, -1.8f), new Vector3(2.6f, 0.04f, 0.3f), FMadera);
-                    for (int k = 0; k < 9; k++) d.Cylinder(new Vector3(-1.15f + k * 0.29f, y + 0.02f, -1.8f), 0.05f, 0.22f, 6, FVerde);
-                }
-                for (int k = 0; k < 6; k++) d.Box(new Vector3(-0.9f + k * 0.12f, top + 0.01f, -0.3f), new Vector3(0.1f, 0.02f, 0.1f), FRojo);
-                d.Box(new Vector3(0.9f, top + 0.15f, -0.4f), new Vector3(0.3f, 0.3f, 0.25f), FRosa);
+            case 5: // Paso 36: tiro al blanco (latas). Las latas y las pelotitas las arma BuildStallGame.
+                StallPrizeMasks(d);
+                d.Box(new Vector3(0.95f, top + 0.05f, -0.3f), new Vector3(0.3f, 0.1f, 0.22f), FMadera); // canastita
+                d.Box(new Vector3(-0.9f, top + 0.12f, -0.4f), new Vector3(0.36f, 0.24f, 0.2f), FBlanco); // cartelito
+                d.Box(new Vector3(-0.9f, top + 0.16f, -0.29f), new Vector3(0.24f, 0.05f, 0.01f), FRojo);
+                break;
+
+            case 9: // Paso 36: aros. Botellas en la mesa de atras (las bocas las marca BuildStallGame) y peluches.
+                StallPrizePlush(d);
+                RingBottles(d);
+                d.Box(new Vector3(-0.9f, top + 0.01f, -0.3f), new Vector3(0.7f, 0.02f, 0.3f), FRojo); // pañito de los aros
                 break;
 
             case 6: // farolitos de colores colgados del toldo

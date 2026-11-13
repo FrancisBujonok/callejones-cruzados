@@ -687,6 +687,7 @@ public static partial class AtmosphereBuilder
             for (int k = 0; k < count; k++)
             {
                 float x = count == 1 ? (float)(rng.NextDouble() - 0.5) * 1.2f : (k == 0 ? -0.45f : 0.45f);
+                if (s.game) x = k == 0 ? 1.1f : -1.1f; // Paso 36: el lugar del medio es para jugar
                 Look c = RandomLook(rng, false);
                 if (k == 1 && rng.NextDouble() < 0.3) c.scale = 0.66f; // un nene con su papa o su mama
                 StillPerson(customers, Name("Cliente"), s.pos + q * new Vector3(x, 0f, 0.72f), s.yaw + 180f + (float)(rng.NextDouble() - 0.5) * 20f,

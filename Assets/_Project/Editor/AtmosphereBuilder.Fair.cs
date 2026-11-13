@@ -128,6 +128,7 @@ public static partial class AtmosphereBuilder
         // 8. Paso 33: autos en la calle y gente en la feria (AtmosphereBuilder.FairLife.cs).
         BuildFairTraffic(world, f, signals);
         BuildFairPeople(world, f);
+        BuildFairUnease(world, f); // Paso 36: lo raro de a poco (AtmosphereBuilder.FairGames.cs)
 
         // 9. Marcas (solo se ven en Scene): los carriles, el paseo y los lugares de los vendedores.
         BuildFairMarkers(world);
