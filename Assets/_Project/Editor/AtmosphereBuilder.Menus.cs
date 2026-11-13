@@ -113,6 +113,17 @@ public static partial class AtmosphereBuilder
         thought.gameObject.AddComponent<ThoughtText>().Setup(thought, thoughtLabel);
         thought.alpha = 0f;
 
+        // Paso 36: el aviso de accion ("E - Jugar a los aros") y la mira de los juegos (InteractPrompt).
+        CanvasGroup action = UiPanel(root.transform, "Accion");
+        action.blocksRaycasts = false;
+        action.interactable = false;
+        Transform ac = UiContent(action.transform);
+        TMP_Text actionLabel = UiText(ac, "Texto", "", 170f, 276f, 300f, 16f, 11f, UiPaper, TextAlignmentOptions.Top, 2f);
+        GameObject aim = UiBox(ac, "Mira", new Color(1f, 1f, 1f, 0.8f), 319f, 179f, 2f, 2f).gameObject;
+        // La mira esta dentro del grupo: mientras se juega, el aviso ("Clic o E: tirar") siempre se ve.
+        action.gameObject.AddComponent<InteractPrompt>().Setup(action, actionLabel, aim);
+        action.alpha = 0f;
+
         // La tarjeta del capitulo va arriba de todo: se ve sobre el negro del fundido.
         CanvasGroup card = UiPanel(root.transform, "Tarjeta");
         card.blocksRaycasts = false;

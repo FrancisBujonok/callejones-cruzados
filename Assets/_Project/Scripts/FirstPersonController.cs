@@ -10,6 +10,7 @@ using UnityEngine.InputSystem;
 /// - Se mueve con CharacterController: sin fisica, preciso, se frena contra paredes.
 /// Funciona con el Input System nuevo, con el viejo o con ambos activos.
 /// Paso 27: con Shift se trota (Stamina, en el mismo objeto): un poco mas rapido, solo hacia adelante.
+/// Paso 36: MovementLocked deja al jugador quieto pero mirando (lo usan los juegos de los puestos).
 /// </summary>
 [RequireComponent(typeof(CharacterController))]
 public class FirstPersonController : MonoBehaviour
@@ -31,6 +32,9 @@ public class FirstPersonController : MonoBehaviour
     [SerializeField] private float mouseSensitivity = 0.1f;
     [Tooltip("Angulo maximo para mirar arriba o abajo.")]
     [SerializeField] private float maxLookAngle = 80f;
+
+    /// <summary>Paso 36: mientras esta en true, el jugador no camina (pero puede mirar).</summary>
+    public bool MovementLocked { get; set; }
 
     private CharacterController controller;
     private float pitch;             // rotacion acumulada de la camara en X (arriba/abajo)
@@ -63,7 +67,7 @@ public class FirstPersonController : MonoBehaviour
         if (Cursor.lockState != CursorLockMode.Locked) return;
 
         Look(ReadLookDelta());
-        Move(ReadMoveInput());
+        Move(MovementLocked ? Vector2.zero : ReadMoveInput());
     }
 
     // ---------- Mirada ----------
