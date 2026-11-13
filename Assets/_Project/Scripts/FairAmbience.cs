@@ -48,6 +48,12 @@ public class FairAmbience : MonoBehaviour
         [System.NonSerialized] public int last = -1;
     }
 
+    /// <summary>
+    /// Paso 33: avisa cada vez que una capa suena (nombre de la capa, duracion del clip). Lo usa
+    /// el que toca el tambor (FairPerson) para golpear cuando suena el tambor.
+    /// </summary>
+    public static event System.Action<string, float> Played;
+
     [SerializeField] private Layer[] layers;
     [Tooltip("El que escucha (la camara del jugador). Vacio = el AudioListener de la escena.")]
     [SerializeField] private Transform listener;
@@ -104,6 +110,7 @@ public class FairAmbience : MonoBehaviour
             source.volume = layer.volume;
             source.pitch = 1f + Random.Range(-layer.pitchJitter, layer.pitchJitter);
             source.Play();
+            Played?.Invoke(layer.name, source.clip.length / Mathf.Max(0.1f, source.pitch));
         }
     }
 

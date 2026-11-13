@@ -22,11 +22,19 @@ using UnityEngine.SceneManagement;
 ///   z = -6.5..-14.5 la calle (dos carriles, para los autos de mas adelante)
 ///   z = -17.5 fachadas de enfrente
 ///
-/// El jugador arranca en x = -33.5, debajo del arco, mirando el pasillo. Se puede caminar entre
-/// x = -34 y 34 (vallas de obra en las puntas) y de la vereda hasta las fachadas. El capitulo
-/// termina entrando al callejon (ChapterExit), detras del gato (LeadingCat).
+/// Paso 33: la peatonal sigue antes y despues de la feria. El jugador arranca en x = -66, en la
+/// parada de colectivo (se acaba de bajar: el colectivo arranca a los pocos segundos), y camina
+/// por una cuadra comun (un almacen abierto, maquinas expendedoras, bicicletas, un carrito de
+/// comida) hasta el arco de la feria, en x = -30. Detras del escenario (x de 34 a 50) estan los
+/// camiones y la gente que trabaja. Se puede caminar entre x = -72 y 50 (vallas de obra).
+/// Por la calle pasan autos (FairTraffic) y en la feria hay gente: vendedores, clientes, gente
+/// sentada y gente que pasea (FairPerson, FairWalker).
 ///
-/// Lo que se ve (calle, edificios, puestos, decoracion) esta en AtmosphereBuilder.FairWorld.cs.
+/// El capitulo termina entrando al callejon (ChapterExit), pero recien despues de seguir al gato
+/// por la feria (CatTrail): hasta entonces la entrada esta tapada (AlleyGate).
+///
+/// Lo que se ve de la feria esta en AtmosphereBuilder.FairWorld.cs; la cuadra de antes, la de
+/// atras del escenario, los autos, la gente y el gato, en AtmosphereBuilder.FairLife.cs.
 /// Aca: la escena, la luz del atardecer, el jugador, los menus y el flujo, el sonido y la salida.
 /// </summary>
 public static partial class AtmosphereBuilder
@@ -36,8 +44,10 @@ public static partial class AtmosphereBuilder
     private const string FairVolumePath = SettingsDir + "/FeriaVolume.asset";
     private const string SunsetSkyPath = MaterialsDir + "/CieloAtardecer.mat";
 
-    // Donde arranca el jugador y donde esta la entrada al callejon.
-    private static readonly Vector3 FairStart = new Vector3(-33.5f, 1.1f, 1.5f);
+    // Donde arranca el jugador (en la parada) y donde esta la entrada al callejon.
+    private static readonly Vector3 FairStart = new Vector3(-66.6f, 1.1f, -3.5f);
+    // Hasta donde se camina (vallas de obra) y donde esta la parada del colectivo (Paso 33).
+    private const float FairWestX = -72f, FairEastX = 50f, BusStopX = -64f;
     private const float AlleyX0 = 7f, AlleyX1 = 10f, AlleyDepth = 10f;
     private const float FairBackZ = 12f;
 
@@ -98,6 +108,8 @@ public static partial class AtmosphereBuilder
         // 5. Lo que se ve: calle, edificios, puestos y decoracion (AtmosphereBuilder.FairWorld.cs).
         Transform world = new GameObject("Feria").transform;
         BuildFairWorld(world, m, f);
+        BuildFairApproach(Group(world, "CuadraDeAntes"), m, f);      // Paso 33 (FairLife.cs)
+        BuildFairBackstage(Group(world, "DetrasDelEscenario"), m, f); // Paso 33
 
         // 6. La salida: el callejon, el gato y el fin del capitulo.
         BuildFairExit(world, m, f, controller.transform);
@@ -105,7 +117,11 @@ public static partial class AtmosphereBuilder
         // 7. Sonido.
         SetupFairSound(world);
 
-        // 8. Para mas adelante: carriles de autos y lugares para la gente (solo se ven en Scene).
+        // 8. Paso 33: autos en la calle y gente en la feria (AtmosphereBuilder.FairLife.cs).
+        BuildFairTraffic(world, f);
+        BuildFairPeople(world, f);
+
+        // 9. Marcas (solo se ven en Scene): los carriles, el paseo y los lugares de los vendedores.
         BuildFairMarkers(world);
 
         if (sun != null) sun.transform.SetAsFirstSibling();
@@ -324,7 +340,7 @@ public static partial class AtmosphereBuilder
         Layer("Gente", "Feria", new Vector2(2.2f, 3.5f), 0.5f, new Vector3(0f, 1.6f, 1.5f), new Vector3(64f, 0f, 5f), 26f, 4, 12f);
         Layer("Tambor", "Tambor", new Vector2(8f, 14f), 0.6f, new Vector3(31f, 1.2f, 1.5f), Vector3.zero, 48f, 2);
         Layer("Campanillas", "Campanillas", new Vector2(10f, 18f), 0.35f, FortuneStallSpot, Vector3.zero, 14f, 1);
-        Layer("Musico", "Guitarra", new Vector2(9f, 14f), 0.3f, new Vector3(-12f, 1.2f, -4.6f), Vector3.zero, 18f, 2);
+        Layer("Musico", "Guitarra", new Vector2(9f, 14f), 0.3f, new Vector3(-4f, 1.0f, -4.5f), Vector3.zero, 18f, 2); // el del banco (Paso 33)
         Layer("Perros", "Perro", new Vector2(25f, 45f), 0.3f, new Vector3(0f, 3f, 30f), new Vector3(120f, 0f, 12f), 60f, 2);
         go.AddComponent<FairAmbience>().Setup(layers.ToArray());
     }

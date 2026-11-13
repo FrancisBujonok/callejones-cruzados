@@ -39,8 +39,10 @@ public static partial class AtmosphereBuilder
     };
     private static readonly Color FairNoWindow = new Color(0f, 0f, 0f, 1f);
 
-    // Lo llenan los puestos; lo usan el sonido y las marcas para mas adelante.
+    // Lo llenan los puestos; lo usan el sonido, la gente (Paso 33) y las marcas.
     private static readonly List<Vector3> FairVendorSpots = new List<Vector3>();
+    private struct StallInfo { public Vector3 pos; public float yaw; public int type; public Vector3 vendor; }
+    private static readonly List<StallInfo> FairStalls = new List<StallInfo>();
     private static Vector3 FortuneStallSpot = new Vector3(13f, 1.5f, 5f);
 
     // Puestos: centros en x y las dos filas (el frente del puesto, del lado del pasillo).
@@ -149,6 +151,7 @@ public static partial class AtmosphereBuilder
     private static void BuildFairWorld(Transform world, Mats m, FairMats f)
     {
         FairVendorSpots.Clear();
+        FairStalls.Clear();
         // Mallas compartidas que arman otros menus: por si la feria se arma primero.
         BuildLathe(GetOrCreateMesh("Chochin"), ChochinProfile, 8);
         BuildShutter(GetOrCreateMesh("Persiana"), ShutterWidth, ShutterHeight, 0.12f, 0.04f);
@@ -429,7 +432,12 @@ public static partial class AtmosphereBuilder
         GameObject canopy = MeshChild(t, "Toldo", CanopyMesh(3.2f, 2.3f, 2.45f, 2.2f, 0.25f), stripes, Vector3.zero);
         canopy.GetComponent<MeshRenderer>().shadowCastingMode = ShadowCastingMode.TwoSided;
 
-        FairVendorSpots.Add(t.TransformPoint(new Vector3(0f, 0f, -1.0f)));
+        // Donde se para el vendedor (Paso 33): detras del mostrador; en los peces, al costado de la
+        // pileta; la adivina, sentada detras de su mesita.
+        Vector3 vendorLocal = type == 4 ? new Vector3(1.15f, 0f, -0.2f) : type == 8 ? new Vector3(0f, 0f, -1.45f) : new Vector3(0f, 0f, -1.0f);
+        Vector3 vendor = t.TransformPoint(vendorLocal);
+        FairVendorSpots.Add(vendor);
+        FairStalls.Add(new StallInfo { pos = pos, yaw = yaw, type = type, vendor = vendor });
         if (type == 8) FortuneStallSpot = t.TransformPoint(new Vector3(0f, 1.6f, -0.8f));
     }
 
@@ -690,15 +698,15 @@ public static partial class AtmosphereBuilder
         var d = new MeshDraft();
         var heads = new MeshDraft();
 
-        // Bolardos a lo largo del cordon.
-        for (float x = -33f; x <= 33f; x += 1.6f)
+        // Bolardos a lo largo del cordon (Paso 33: toda la peatonal, de una valla a la otra).
+        for (float x = FairWestX + 1f; x <= FairEastX - 1f; x += 1.6f)
         {
             d.Cylinder(new Vector3(x, 0f, -6.2f), 0.09f, 0.85f, 6, FNegro);
             d.Cylinder(new Vector3(x, 0.62f, -6.2f), 0.095f, 0.1f, 6, FAmarillo);
         }
 
         // Faroles de calle, con el afiche del gato perdido en algunos.
-        float[] lamps = { -30f, -17f, -4f, 9f, 22f };
+        float[] lamps = { -69f, -56f, -43f, -30f, -17f, -4f, 9f, 22f, 35f, 48f };
         for (int i = 0; i < lamps.Length; i++)
         {
             float x = lamps[i];
@@ -713,7 +721,7 @@ public static partial class AtmosphereBuilder
         }
 
         // Arboles en canteros, con bancos entre medio.
-        float[] trees = { -23.5f, -10.5f, 2.5f, 15.5f, 28.5f };
+        float[] trees = { -62.5f, -49.5f, -36.5f, -23.5f, -10.5f, 2.5f, 15.5f, 28.5f, 41.5f };
         foreach (float x in trees)
         {
             d.Box(new Vector3(x, 0.25f, -4.9f), new Vector3(1.2f, 0.5f, 1.2f), FConcreto);
@@ -723,20 +731,20 @@ public static partial class AtmosphereBuilder
             FairBall(d, new Vector3(x + 0.4f, 4.1f, -4.6f), 0.85f, FVerdeClaro);
             AddSolid(g, "Cantero", new Vector3(x, 0.6f, -4.9f), new Vector3(1.2f, 1.2f, 1.2f));
         }
-        foreach (float x in new[] { -17f, -4f, 9f, 22f })
+        foreach (float x in new[] { -43f, -17f, -4f, 9f, 22f })
         {
             FairBench(d, new Vector3(x, 0f, -4.6f), 0f);
             AddSolid(g, "Banco", new Vector3(x, 0.4f, -4.6f), new Vector3(1.8f, 0.8f, 0.6f));
         }
-        foreach (float x in new[] { -12.5f, 5.5f, 18.5f })
+        foreach (float x in new[] { -58.5f, -40.5f, -12.5f, 5.5f, 18.5f, 37.5f })
         {
             d.Cylinder(new Vector3(x, 0f, -4.3f), 0.25f, 0.85f, 8, FVerde);
             d.Cylinder(new Vector3(x, 0.85f, -4.3f), 0.27f, 0.05f, 8, FNegro);
             AddSolid(g, "Tacho", new Vector3(x, 0.45f, -4.3f), new Vector3(0.5f, 0.9f, 0.5f));
         }
 
-        // Parada de colectivo frente a la senda peatonal.
-        const float bx = -27f, bz = -5.3f;
+        // Parada de colectivo (Paso 33: al principio, donde se baja el jugador).
+        const float bx = BusStopX, bz = -5.3f;
         foreach (float sx in new[] { -1.3f, 1.3f })
             d.Box(new Vector3(bx + sx, 1.2f, bz + 0.3f), new Vector3(0.08f, 2.4f, 0.08f), FMetal);
         d.Box(new Vector3(bx, 2.45f, bz), new Vector3(2.9f, 0.08f, 1.3f), FMetal);
@@ -746,6 +754,9 @@ public static partial class AtmosphereBuilder
         d.Box(new Vector3(bx + 1.7f, 2.9f, bz - 0.4f), new Vector3(0.45f, 0.45f, 0.04f), FAzul);
         if (f.afiches.Count > 0)
             SignFace(g, "AficheParada", new Vector3(bx - 0.6f, 1.45f, bz + 0.6f), new Vector2(0.6f, 0.8f), 180f, f.afiches[f.afiches.Count / 2]);
+        // Lo primero que se ve al bajar del colectivo: el afiche del gato perdido, en la parada.
+        if (f.gatoBuscado != null)
+            SignFace(g, "GatoBuscadoParada", new Vector3(bx + 0.55f, 1.5f, bz + 0.6f), new Vector2(0.36f, 0.5f), 180f, f.gatoBuscado);
         AddSolid(g, "Parada", new Vector3(bx, 1.2f, bz + 0.45f), new Vector3(2.8f, 2.4f, 0.5f));
 
         FairDraft(g, "Cosas", d, f.paleta, true);
@@ -908,7 +919,7 @@ public static partial class AtmosphereBuilder
     private static void BuildFairBounds(Transform g, FairMats f)
     {
         var d = new MeshDraft();
-        foreach (float x in new[] { -34.3f, 34.3f })
+        foreach (float x in new[] { FairWestX - 0.3f, FairEastX + 0.3f })
         {
             for (float z = -6f; z < 11.8f; z += 2.05f)
             {
@@ -919,7 +930,7 @@ public static partial class AtmosphereBuilder
             }
             AddSolid(g, "Valla", new Vector3(x, 1.5f, 2.75f), new Vector3(0.4f, 3f, 18.5f));
         }
-        AddSolid(g, "Cordon", new Vector3(0f, 1.5f, -6.35f), new Vector3(69f, 3f, 0.3f));
+        AddSolid(g, "Cordon", new Vector3((FairWestX + FairEastX) * 0.5f, 1.5f, -6.35f), new Vector3(FairEastX - FairWestX + 1f, 3f, 0.3f));
         FairDraft(g, "Vallas", d, f.paleta, true);
     }
 
@@ -972,21 +983,23 @@ public static partial class AtmosphereBuilder
         if (f.gatoBuscado != null)
             SignFace(g, "GatoBuscado", new Vector3(AlleyX1 - 0.03f, 1.5f, z0 + 1.2f), new Vector2(0.3f, 0.42f), 90f, f.gatoBuscado);
 
-        // El gato y el fin del capitulo.
-        BuildLeadingCat(g, f, player, new Vector3(xc, 0f, z0 + 0.6f),
-            new[] { new Vector3(xc, 0f, z0 + 3f), new Vector3(xc + 0.2f, 0f, z0 + 7f), new Vector3(xc, 0f, z1 - 0.5f) });
+        // El fin del capitulo, el tapon de la entrada y el recorrido del gato (Paso 33).
         var exit = new GameObject("FinDelCapitulo");
         exit.transform.SetParent(g, false);
         exit.transform.localPosition = new Vector3(xc, 1.5f, z0 + 6.5f);
         exit.AddComponent<ChapterExit>().Setup("Prototipo", player, new Vector3(AlleyX1 - AlleyX0, 3f, 2f));
+        AlleyGate gate = BuildAlleyGate(g, m, f);
+        BuildCatTrail(world, f, player, gate, exit,
+            new[] { new Vector3(xc, 0f, z0 + 3f), new Vector3(xc + 0.2f, 0f, z0 + 7f), new Vector3(xc, 0f, z1 - 0.5f) });
     }
 
     /// <summary>Un gato blanco con manchas negras, sentado, mirando hacia la feria (low poly).</summary>
-    private static void BuildLeadingCat(Transform parent, FairMats f, Transform player, Vector3 at, Vector3[] path)
+    private static LeadingCat BuildLeadingCat(Transform parent, string name, FairMats f, Transform player, Vector3 at, float yaw,
+        Vector3[] path, float callDistance = 6f)
     {
-        Transform cat = Group(parent, "Gato");
+        Transform cat = Group(parent, name);
         cat.localPosition = at;
-        cat.localRotation = Quaternion.Euler(0f, 180f, 0f);
+        cat.localRotation = Quaternion.Euler(0f, yaw, 0f);
         cat.localScale = Vector3.one * 1.25f; // un poco mas grande que uno real: si no, en la penumbra no se ve
 
         var body = new MeshDraft();
@@ -1018,7 +1031,12 @@ public static partial class AtmosphereBuilder
         AudioSource voice = NewSource(cat, "Voz", null, false, 40);
         voice.transform.localPosition = new Vector3(0f, 0.3f, 0f);
         Make3D(voice, 2f, 28f);
-        cat.gameObject.AddComponent<LeadingCat>().Setup(player, head, tail, voice, LoadRealSounds("Gato"), path);
+        LeadingCat leading = cat.gameObject.AddComponent<LeadingCat>();
+        leading.Setup(player, head, tail, voice, LoadRealSounds("Gato"), path);
+        var so = new SerializedObject(leading);
+        so.FindProperty("callDistance").floatValue = callDistance;
+        so.ApplyModifiedPropertiesWithoutUndo();
+        return leading;
     }
 
     // ================================================================== ayudas de malla
