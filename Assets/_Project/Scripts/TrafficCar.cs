@@ -1,9 +1,13 @@
 using UnityEngine;
 
 /// <summary>
-/// Paso 33: un auto de la calle de la feria. Va derecho por su carril (a lo largo de X), frena si
-/// tiene otro auto adelante y acelera cuando se libera. Las ruedas giran segun la velocidad, la
-/// carroceria se mece un poco y el motor sube de tono al acelerar.
+/// Paso 33: un auto de la calle de la feria. Va derecho por su carril, frena si tiene otro auto
+/// adelante y acelera cuando se libera. Las ruedas giran segun la velocidad, la carroceria se
+/// mece un poco y el motor sube de tono al acelerar.
+///
+/// Paso 35: el carril puede ir a lo largo de X (la calle de la feria) o de Z (la transversal del
+/// cruce), y el auto frena en la linea de detencion si el semaforo esta en rojo (o en amarillo y
+/// todavia le da para frenar). Eso lo calcula FairTraffic (StopDistance).
 ///
 /// No usa fisica: lo mueve FairTraffic (lo saca del deposito, lo pone en un carril y lo guarda
 /// cuando llega al final). El modelo mira hacia +Z; las ruedas giran alrededor de su X local.
@@ -31,9 +35,15 @@ public class TrafficCar : MonoBehaviour
     public float Speed { get; private set; }
     public int Lane { get; private set; } = -1;
     public bool Driving => Lane >= 0;
+    /// <summary>Posicion a lo largo de su carril (X o Z del mundo).</summary>
+    public float Along => alongZ ? transform.position.z : transform.position.x;
+    /// <summary>Donde esta la trompa, a lo largo del carril.</summary>
+    public float Front => Along + direction * length * 0.5f;
+    public float Direction => direction;
 
     private FairTraffic traffic;
-    private float cruise, direction, endX, holdUntil, bobPhase;
+    private float cruise, direction, end, holdUntil, bobPhase;
+    private bool alongZ;
     private float basePitch = 1f, baseVolume = 0.4f;
     private Vector3 bodyRest;
 
@@ -56,19 +66,24 @@ public class TrafficCar : MonoBehaviour
         if (engine != null) { basePitch = engine.pitch; baseVolume = engine.volume; }
     }
 
-    /// <summary>Lo pone a andar en un carril. holdSeconds: cuanto espera quieto antes de arrancar.</summary>
-    public void Launch(FairTraffic owner, int lane, float x, float z, float dir, float laneEndX, float startSpeed, float holdSeconds = 0f)
+    /// <summary>
+    /// Lo pone a andar en un carril. along: donde arranca a lo largo del carril; offset: el centro
+    /// del carril en el otro eje. holdSeconds: cuanto espera quieto antes de arrancar.
+    /// </summary>
+    public void Launch(FairTraffic owner, int lane, float along, float offset, bool laneAlongZ, float dir, float laneEnd,
+        float startSpeed, float holdSeconds = 0f)
     {
         traffic = owner;
         Lane = lane;
+        alongZ = laneAlongZ;
         direction = dir;
-        endX = laneEndX;
+        end = laneEnd;
         cruise = Random.Range(cruiseRange.x, cruiseRange.y);
         Speed = Mathf.Min(startSpeed, cruise);
         holdUntil = Time.time + holdSeconds;
         bobPhase = Random.value * 10f;
-        transform.position = new Vector3(x, 0f, z);
-        transform.rotation = Quaternion.Euler(0f, dir > 0f ? 90f : -90f, 0f);
+        transform.position = alongZ ? new Vector3(offset, 0f, along) : new Vector3(along, 0f, offset);
+        transform.rotation = Quaternion.Euler(0f, alongZ ? (dir > 0f ? 0f : 180f) : (dir > 0f ? 90f : -90f), 0f);
         gameObject.SetActive(true);
         if (engine != null && !engine.isPlaying)
         {
@@ -91,19 +106,19 @@ public class TrafficCar : MonoBehaviour
         float dt = Time.deltaTime;
         if (dt <= 0f) return;
 
-        // Cuanto quiere ir: la de crucero, menos si el de adelante esta cerca (para quedar a unos
-        // 6 m + 1 s de distancia), y cero mientras espera (el colectivo en la parada).
+        // Cuanto quiere ir: la de crucero, menos si el de adelante (o la linea de un semaforo en
+        // rojo) esta cerca, y cero mientras espera (el colectivo en la parada).
         float target = cruise;
-        float gap = traffic.GapAhead(this);
+        float gap = Mathf.Min(traffic.GapAhead(this), traffic.StopDistance(this));
         if (gap < float.MaxValue)
         {
             float safe = 5f + Speed * 1.1f;
-            target = Mathf.Min(target, cruise * Mathf.Clamp01((gap - 3f) / safe));
+            target = Mathf.Min(target, cruise * Mathf.Clamp01((gap - 1.5f) / safe));
         }
         if (Time.time < holdUntil) target = 0f;
         Speed = Mathf.MoveTowards(Speed, target, (target > Speed ? acceleration : braking) * dt);
 
-        transform.position += Vector3.right * (direction * Speed * dt);
+        transform.position += (alongZ ? Vector3.forward : Vector3.right) * (direction * Speed * dt);
 
         // Ruedas: una vuelta cada 2 * pi * radio metros.
         if (wheels != null && wheelRadius > 0f)
@@ -128,7 +143,6 @@ public class TrafficCar : MonoBehaviour
             engine.volume = baseVolume * (0.6f + 0.4f * k);
         }
 
-        if ((direction > 0f && transform.position.x > endX) || (direction < 0f && transform.position.x < endX))
-            traffic.Recycle(this);
+        if ((Along - end) * direction > 0f) traffic.Recycle(this);
     }
 }
