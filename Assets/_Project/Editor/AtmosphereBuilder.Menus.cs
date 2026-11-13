@@ -105,6 +105,14 @@ public static partial class AtmosphereBuilder
         CanvasGroup ending = UiPanel(root.transform, "Final");
         var endRefs = BuildEnding(ending.transform, s);
 
+        // Paso 35: lo que piensa el personaje (ThoughtText), una linea abajo de la pantalla.
+        CanvasGroup thought = UiPanel(root.transform, "Pensamiento");
+        thought.blocksRaycasts = false;
+        thought.interactable = false;
+        TMP_Text thoughtLabel = BuildThought(thought.transform);
+        thought.gameObject.AddComponent<ThoughtText>().Setup(thought, thoughtLabel);
+        thought.alpha = 0f;
+
         // La tarjeta del capitulo va arriba de todo: se ve sobre el negro del fundido.
         CanvasGroup card = UiPanel(root.transform, "Tarjeta");
         card.blocksRaycasts = false;
@@ -395,6 +403,14 @@ public static partial class AtmosphereBuilder
     private struct CardRefs { public TMP_Text number, name; }
 
     /// <summary>La tarjeta del capitulo: "CAPITULO 1", una raya naranja y el nombre, centrados.</summary>
+    /// <summary>Paso 35: una franja oscura abajo, con el pensamiento en letras claras.</summary>
+    private static TMP_Text BuildThought(Transform panel)
+    {
+        Transform c = UiContent(panel);
+        UiBox(c, "Fondo", new Color(0f, 0f, 0f, 0.55f), 110f, 300f, 420f, 26f);
+        return UiText(c, "Texto", "", 110f, 304f, 420f, 20f, 13f, UiPaper, TextAlignmentOptions.Top);
+    }
+
     private static CardRefs BuildChapterCard(Transform panel)
     {
         Transform c = UiContent(panel);

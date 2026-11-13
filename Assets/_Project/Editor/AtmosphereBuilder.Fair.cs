@@ -46,8 +46,13 @@ public static partial class AtmosphereBuilder
 
     // Donde arranca el jugador (en la parada) y donde esta la entrada al callejon.
     private static readonly Vector3 FairStart = new Vector3(-66.6f, 1.1f, -3.5f);
-    // Hasta donde se camina (vallas de obra) y donde esta la parada del colectivo (Paso 33).
-    private const float FairWestX = -72f, FairEastX = 50f, BusStopX = -64f;
+    // Hasta donde se camina y donde esta la parada del colectivo (Paso 33). Paso 35: sin vallas;
+    // al oeste se llega hasta el cordon del cruce, al este hasta pasar el escenario.
+    private const float FairWestX = -78f, FairEastX = 50f, BusStopX = -64f;
+    // Paso 35: el cruce detras del comienzo. Calzada de la transversal de -86 a -78; veredas de
+    // -89 a -86 y de -78 a -74. La calle de la feria sigue de -152 a 142.
+    private const float CrossRoadX0 = -86f, CrossRoadX1 = -78f, CrossWalkX0 = -89f, CrossWalkX1 = -74f;
+    private const float StreetWestX = -152f, StreetEastX = 142f;
     private const float AlleyX0 = 7f, AlleyX1 = 10f, AlleyDepth = 10f;
     private const float FairBackZ = 12f;
 
@@ -110,6 +115,9 @@ public static partial class AtmosphereBuilder
         BuildFairWorld(world, m, f);
         BuildFairApproach(Group(world, "CuadraDeAntes"), m, f);      // Paso 33 (FairLife.cs)
         BuildFairBackstage(Group(world, "DetrasDelEscenario"), m, f); // Paso 33
+        TrafficSignals signals = BuildFairCrossing(Group(world, "Cruce"), m, f); // Paso 35 (FairEnds.cs)
+        BuildFairPlaza(Group(world, "Plaza"), m, f);                  // Paso 35
+        BuildFairEastStreet(Group(world, "CalleSigue"), m, f);        // Paso 35
 
         // 6. La salida: el callejon, el gato y el fin del capitulo.
         BuildFairExit(world, m, f, controller.transform);
@@ -118,7 +126,7 @@ public static partial class AtmosphereBuilder
         SetupFairSound(world);
 
         // 8. Paso 33: autos en la calle y gente en la feria (AtmosphereBuilder.FairLife.cs).
-        BuildFairTraffic(world, f);
+        BuildFairTraffic(world, f, signals);
         BuildFairPeople(world, f);
 
         // 9. Marcas (solo se ven en Scene): los carriles, el paseo y los lugares de los vendedores.

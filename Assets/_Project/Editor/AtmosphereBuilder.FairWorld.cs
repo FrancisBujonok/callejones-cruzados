@@ -170,34 +170,79 @@ public static partial class AtmosphereBuilder
 
     private static void BuildFairGround(Transform g, FairMats f)
     {
-        // La peatonal (de la vereda a las fachadas) y la vereda de enfrente.
-        FloorPiece(g, "Peatonal", f.baldosa, new Vector3(0f, 0f, 2.75f), new Vector3(222f, 0f, 18.5f));
-        FloorPiece(g, "VeredaEnfrente", f.baldosa, new Vector3(1f, 0f, -16f), new Vector3(222f, 0f, 3f));
-        FloorPiece(g, "Calle", f.asfalto, new Vector3(1f, -0.15f, -10.5f), new Vector3(222f, 0f, 8f));
+        // Paso 35: la calle sigue de x = -152 a 142 y la corta la transversal del cruce (calzada de
+        // x = -86 a -78). La peatonal llega hasta el cordon de la transversal; del otro lado, la plaza.
+        float eastW = StreetEastX - CrossRoadX1, westW = CrossRoadX0 - StreetWestX;
+        FloorPiece(g, "Peatonal", f.baldosa, new Vector3((CrossRoadX1 + StreetEastX) * 0.5f, 0f, 2.75f), new Vector3(eastW, 0f, 18.5f));
+        FloorPiece(g, "PeatonalOeste", f.baldosa, new Vector3((StreetWestX + CrossRoadX0) * 0.5f, 0f, 2.75f), new Vector3(westW, 0f, 18.5f));
+        FloorPiece(g, "VeredaEnfrente", f.baldosa, new Vector3((CrossRoadX1 + StreetEastX) * 0.5f, 0f, -16f), new Vector3(eastW, 0f, 3f));
+        FloorPiece(g, "VeredaEnfrenteOeste", f.baldosa, new Vector3((StreetWestX + CrossRoadX0) * 0.5f, 0f, -16f), new Vector3(westW, 0f, 3f));
+        FloorPiece(g, "Calle", f.asfalto, new Vector3(-5f, -0.15f, -10.5f), new Vector3(310f, 0f, 8f));
+        // La transversal (sin la parte de la calle principal, que ya tiene piso) y sus veredas.
+        float rx = (CrossRoadX0 + CrossRoadX1) * 0.5f, rw = CrossRoadX1 - CrossRoadX0;
+        FloorPiece(g, "TransversalSur", f.asfalto, new Vector3(rx, -0.15f, (-150f - 14.5f) * 0.5f), new Vector3(rw, 0f, 150f - 14.5f));
+        FloorPiece(g, "TransversalNorte", f.asfalto, new Vector3(rx, -0.15f, (150f - 6.5f) * 0.5f), new Vector3(rw, 0f, 150f + 6.5f));
+        foreach (var (x0, x1, nameSide) in new[] { (CrossWalkX0, CrossRoadX0, "Oeste"), (CrossRoadX1, CrossWalkX1, "Este") })
+        {
+            FloorPiece(g, "VeredaTrans" + nameSide + "N", f.baldosa, new Vector3((x0 + x1) * 0.5f, 0f, (150f + 12f) * 0.5f), new Vector3(x1 - x0, 0f, 150f - 12f));
+            FloorPiece(g, "VeredaTrans" + nameSide + "S", f.baldosa, new Vector3((x0 + x1) * 0.5f, 0f, (-150f - 17.5f) * 0.5f), new Vector3(x1 - x0, 0f, 150f - 17.5f));
+        }
         FloorPiece(g, "PisoCallejon", null, new Vector3((AlleyX0 + AlleyX1) * 0.5f, 0.005f, FairBackZ + AlleyDepth * 0.5f), new Vector3(AlleyX1 - AlleyX0, 0f, AlleyDepth));
 
-        // Un solo collider grande para el piso (la calle queda 15 cm mas abajo, pero no se llega).
+        // Un solo collider grande para el piso (las calles quedan 15 cm mas abajo, pero no se llega).
         var floor = new GameObject("PisoCollider");
         floor.transform.SetParent(g, false);
         BoxCollider box = floor.AddComponent<BoxCollider>();
-        box.center = new Vector3(0f, -0.1f, 4f);
-        box.size = new Vector3(240f, 0.2f, 60f);
+        box.center = new Vector3(0f, -0.1f, 0f);
+        box.size = new Vector3(340f, 0.2f, 320f);
 
         var d = new MeshDraft();
-        // Cordones (15 cm) y lineas de la calle.
-        LongBoxX(d, -110f, 112f, -0.075f, -6.65f, 0.15f, 0.3f, FConcreto);
-        LongBoxX(d, -110f, 112f, -0.075f, -14.35f, 0.15f, 0.3f, FConcreto);
+        // Cordones (15 cm): los de la calle principal, cortados en el cruce, y los de la transversal.
+        foreach (float z in new[] { -6.65f, -14.35f })
+        {
+            LongBoxX(d, -160f, CrossRoadX0, -0.075f, z, 0.15f, 0.3f, FConcreto);
+            LongBoxX(d, CrossRoadX1, 150f, -0.075f, z, 0.15f, 0.3f, FConcreto);
+        }
+        foreach (float x in new[] { CrossRoadX0 - 0.15f, CrossRoadX1 + 0.15f })
+        {
+            LongBoxZ(d, -150f, -14.5f, -0.075f, x, 0.15f, 0.3f, FConcreto);
+            LongBoxZ(d, -6.5f, 150f, -0.075f, x, 0.15f, 0.3f, FConcreto);
+        }
         FairDraft(g, "Cordones", d, f.paleta, false);
 
         var paint = new MeshDraft();
-        for (float x = -110f; x < 112f; x += 6f)
-            paint.Box(new Vector3(x + 1.5f, -0.145f, -10.5f), new Vector3(3f, 0.01f, 0.15f), FBlanco);
-        LongBoxX(paint, -110f, 112f, -0.145f, -7.2f, 0.01f, 0.12f, FBlanco);
-        LongBoxX(paint, -110f, 112f, -0.145f, -13.8f, 0.01f, 0.12f, FBlanco);
-        // Senda peatonal frente a la parada del colectivo.
+        for (float x = -160f; x < 150f; x += 6f)
+            if (x + 3f < CrossRoadX0 - 1f || x > CrossRoadX1 + 1f)
+                paint.Box(new Vector3(x + 1.5f, -0.145f, -10.5f), new Vector3(3f, 0.01f, 0.15f), FBlanco);
+        foreach (float z in new[] { -7.2f, -13.8f })
+        {
+            LongBoxX(paint, -160f, CrossRoadX0 - 1f, -0.145f, z, 0.01f, 0.12f, FBlanco);
+            LongBoxX(paint, CrossRoadX1 + 1f, 150f, -0.145f, z, 0.01f, 0.12f, FBlanco);
+        }
+        // Senda peatonal a mitad de la feria.
         for (float z = -13.6f; z <= -7.4f; z += 0.8f)
             paint.Box(new Vector3(-27f, -0.145f, z), new Vector3(3f, 0.01f, 0.4f), FBlanco);
+        // El cruce: la senda que cruza la transversal (por donde vino el jugador), las lineas de
+        // detencion de los cuatro carriles y la linea del medio de la transversal.
+        for (float x = CrossRoadX0 + 0.5f; x < CrossRoadX1; x += 1f)
+            paint.Box(new Vector3(x, -0.145f, 2f), new Vector3(0.5f, 0.01f, 4f), FBlanco);
+        paint.Box(new Vector3(CrossRoadX0 - 1f, -0.145f, -8.5f), new Vector3(0.35f, 0.01f, 3.8f), FBlanco);
+        paint.Box(new Vector3(CrossRoadX1 + 1f, -0.145f, -12.5f), new Vector3(0.35f, 0.01f, 3.8f), FBlanco);
+        paint.Box(new Vector3(rx - 2f, -0.145f, -15.3f), new Vector3(3.8f, 0.01f, 0.35f), FBlanco);
+        paint.Box(new Vector3(rx + 2f, -0.145f, 5f), new Vector3(3.8f, 0.01f, 0.35f), FBlanco);
+        for (float z = -150f; z < 150f; z += 6f)
+            if ((z + 3f < -15.6f || z > 5.3f) && !(z > -1f && z < 5f))
+                paint.Box(new Vector3(rx, -0.145f, z + 1.5f), new Vector3(0.15f, 0.01f, 3f), FBlanco);
         FairDraft(g, "Pintura", paint, f.pintura, false);
+    }
+
+    /// <summary>Como LongBoxX, pero a lo largo de Z (cordones de la transversal).</summary>
+    private static void LongBoxZ(MeshDraft d, float z0, float z1, float y, float x, float height, float width, int palette)
+    {
+        int count = Mathf.Max(1, Mathf.CeilToInt((z1 - z0) / 3f));
+        float step = (z1 - z0) / count;
+        for (int i = 0; i < count; i++)
+            d.Box(new Vector3(x, y, z0 + step * (i + 0.5f)), new Vector3(width, height, step), palette);
     }
 
     /// <summary>
@@ -671,21 +716,23 @@ public static partial class AtmosphereBuilder
         var heads = new MeshDraft();
 
         // Bolardos a lo largo del cordon (Paso 33: toda la peatonal, de una valla a la otra).
-        for (float x = FairWestX + 1f; x <= FairEastX - 1f; x += 1.6f)
+        // Paso 35: tambien mas alla de los bordes (se ven de lejos), menos en el cruce.
+        for (float x = StreetWestX + 2f; x <= StreetEastX - 2f; x += 1.6f)
         {
+            if (x > CrossWalkX0 - 1f && x < FairWestX + 1f) continue;
             d.Cylinder(new Vector3(x, 0f, -6.2f), 0.09f, 0.85f, 6, FNegro);
             d.Cylinder(new Vector3(x, 0.62f, -6.2f), 0.095f, 0.1f, 6, FAmarillo);
         }
 
         // Faroles de calle, con el afiche del gato perdido en algunos.
-        float[] lamps = { -69f, -56f, -43f, -30f, -17f, -4f, 9f, 22f, 35f, 48f };
+        float[] lamps = { -147f, -134f, -121f, -108f, -95f, -69f, -56f, -43f, -30f, -17f, -4f, 9f, 22f, 35f, 48f, 61f, 74f, 87f, 100f, 113f, 126f, 139f };
         for (int i = 0; i < lamps.Length; i++)
         {
             float x = lamps[i];
             d.Cylinder(new Vector3(x, 0f, -5.9f), 0.08f, 5.6f, 6, FVerde);
             d.Box(new Vector3(x, 5.55f, -6.5f), new Vector3(0.07f, 0.07f, 1.2f), FVerde);
             heads.Box(new Vector3(x, 5.42f, -7.05f), new Vector3(0.28f, 0.12f, 0.45f), FBlanco);
-            if (f.gatoBuscado != null && i % 2 == 0)
+            if (f.gatoBuscado != null && i % 2 == 0 && x > FairWestX && x < FairEastX)
             {
                 SignFace(g, "GatoBuscado" + i, new Vector3(x, 1.6f, -5.81f), new Vector2(0.3f, 0.42f), 180f, f.gatoBuscado);
                 SignFace(g, "GatoBuscadoB" + i, new Vector3(x, 1.55f, -5.99f), new Vector2(0.3f, 0.42f), 0f, f.gatoBuscado);
@@ -693,7 +740,7 @@ public static partial class AtmosphereBuilder
         }
 
         // Arboles en canteros, con bancos entre medio.
-        float[] trees = { -62.5f, -49.5f, -36.5f, -23.5f, -10.5f, 2.5f, 15.5f, 28.5f, 41.5f };
+        float[] trees = { -140.5f, -127.5f, -114.5f, -101.5f, -62.5f, -49.5f, -36.5f, -23.5f, -10.5f, 2.5f, 15.5f, 28.5f, 41.5f, 54.5f, 67.5f, 80.5f, 93.5f, 106.5f, 119.5f, 132.5f };
         foreach (float x in trees)
         {
             d.Box(new Vector3(x, 0.25f, -4.9f), new Vector3(1.2f, 0.5f, 1.2f), FConcreto);
@@ -703,12 +750,12 @@ public static partial class AtmosphereBuilder
             FairBall(d, new Vector3(x + 0.4f, 4.1f, -4.6f), 0.85f, FVerdeClaro);
             AddSolid(g, "Cantero", new Vector3(x, 0.6f, -4.9f), new Vector3(1.2f, 1.2f, 1.2f));
         }
-        foreach (float x in new[] { -43f, -17f, -4f, 9f, 22f })
+        foreach (float x in new[] { -134f, -108f, -43f, -17f, -4f, 9f, 22f, 61f, 87f, 113f })
         {
             FairBench(d, new Vector3(x, 0f, -4.6f), 0f);
             AddSolid(g, "Banco", new Vector3(x, 0.4f, -4.6f), new Vector3(1.8f, 0.8f, 0.6f));
         }
-        foreach (float x in new[] { -58.5f, -40.5f, -12.5f, 5.5f, 18.5f, 37.5f })
+        foreach (float x in new[] { -121.5f, -58.5f, -40.5f, -12.5f, 5.5f, 18.5f, 37.5f, 74.5f, 100.5f })
         {
             d.Cylinder(new Vector3(x, 0f, -4.3f), 0.25f, 0.85f, 8, FVerde);
             d.Cylinder(new Vector3(x, 0.85f, -4.3f), 0.27f, 0.05f, 8, FNegro);
@@ -887,23 +934,47 @@ public static partial class AtmosphereBuilder
 
     // ------------------------------------------------------------------ limites
 
-    /// <summary>Vallas de obra en las puntas y paredes invisibles (la calle y las puntas).</summary>
+    /// <summary>
+    /// Paso 35: sin vallas. Paredes invisibles donde el personaje no quiere seguir (el cordon del
+    /// cruce, la vereda de la transversal, la otra punta pasando el escenario y el cordon de la
+    /// calle), cada una con su franja de pensamientos (ThoughtZone).
+    /// </summary>
     private static void BuildFairBounds(Transform g, FairMats f)
     {
-        var d = new MeshDraft();
-        foreach (float x in new[] { FairWestX - 0.3f, FairEastX + 0.3f })
-        {
-            for (float z = -6f; z < 11.8f; z += 2.05f)
-            {
-                d.Box(new Vector3(x, 0.55f, z + 1f), new Vector3(0.06f, 0.9f, 1.9f), FBlanco);
-                d.Box(new Vector3(x, 0.75f, z + 1f), new Vector3(0.07f, 0.18f, 1.9f), FRojo);
-                d.Box(new Vector3(x, 0.4f, z + 1f), new Vector3(0.07f, 0.12f, 1.9f), FRojo);
-                d.Box(new Vector3(x, 0.05f, z + 0.1f), new Vector3(0.5f, 0.1f, 0.12f), FNegro);
-            }
-            AddSolid(g, "Valla", new Vector3(x, 1.5f, 2.75f), new Vector3(0.4f, 3f, 18.5f));
-        }
+        AddSolid(g, "BordeCruce", new Vector3(FairWestX - 0.15f, 1.5f, 2.75f), new Vector3(0.3f, 3f, 18.5f));
+        AddSolid(g, "BordeVeredaTrans", new Vector3((FairWestX + CrossWalkX1) * 0.5f, 1.5f, FairBackZ + 0.15f), new Vector3(CrossWalkX1 - FairWestX, 3f, 0.3f));
+        AddSolid(g, "BordeEste", new Vector3(FairEastX + 0.15f, 1.5f, 2.75f), new Vector3(0.3f, 3f, 18.5f));
         AddSolid(g, "Cordon", new Vector3((FairWestX + FairEastX) * 0.5f, 1.5f, -6.35f), new Vector3(FairEastX - FairWestX + 1f, 3f, 0.3f));
-        FairDraft(g, "Vallas", d, f.paleta, true);
+
+        string[] back =
+        {
+            "Recién crucé. No tengo ganas de volver.",
+            "La feria está para el otro lado.",
+            "¿Dar toda la vuelta a la manzana? Ahora no.",
+        };
+        string[] further =
+        {
+            "Más allá ya no hay feria. Mejor vuelvo.",
+            "Todavía no vi bien la feria.",
+            "Por ahí no hay nada que me interese.",
+        };
+        string[] street =
+        {
+            "Con estos autos, mejor no cruzar.",
+            "No tengo nada que hacer del otro lado.",
+        };
+        Zone("NoQuiereIrCruce", new Vector3(FairWestX + 0.7f, 1.5f, 2.75f), new Vector3(1.4f, 3f, 18.5f), back);
+        Zone("NoQuiereIrTransversal", new Vector3((FairWestX + CrossWalkX1) * 0.5f, 1.5f, FairBackZ - 0.6f), new Vector3(CrossWalkX1 - FairWestX, 3f, 1.3f), back);
+        Zone("NoQuiereIrMasAlla", new Vector3(FairEastX - 0.7f, 1.5f, 2.75f), new Vector3(1.4f, 3f, 18.5f), further);
+        Zone("NoQuiereCruzarLaCalle", new Vector3((FairWestX + FairEastX) * 0.5f, 1.5f, -5.6f), new Vector3(FairEastX - FairWestX, 3f, 1.3f), street);
+
+        void Zone(string name, Vector3 center, Vector3 size, string[] lines)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(g, false);
+            go.transform.localPosition = center;
+            go.AddComponent<ThoughtZone>().Setup(size, lines);
+        }
     }
 
     // ------------------------------------------------------------------ la salida (el callejon)

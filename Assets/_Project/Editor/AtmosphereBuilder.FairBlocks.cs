@@ -47,7 +47,10 @@ public static partial class AtmosphereBuilder
         greenCross = Mat("CruzVerde", Hex("#3AB860"), 0.3f, 0f, null, Hex("#40D070") * 1.6f);
         int n = 0;
 
-        void Row(float from, float to, float z, float yaw, string prefix, bool far, bool tallAtStart, bool tallAtEnd)
+        // Paso 35: una fila puede ir a lo largo de X (las de la calle de la feria) o de Z (las de la
+        // transversal del cruce). line = la otra coordenada (donde esta la fachada).
+        void Row(float from, float to, float z, float yaw, string prefix, bool far, bool tallAtStart, bool tallAtEnd,
+            bool alongZ = false)
         {
             var specials = new List<GroundKind> { GroundKind.Restaurante, GroundKind.Farmacia, GroundKind.Peluqueria, GroundKind.Karaoke };
             bool templeDone = false, parkingDone = false;
@@ -72,7 +75,7 @@ public static partial class AtmosphereBuilder
                 {
                     // El templo y el estacionamiento: uno de cada uno, enfrente, en lugares fijos
                     // (pasando x = -45 y x = 5), para que siempre esten a la vista desde la feria.
-                    bool gapOk = far && prev != BlockKind.Templo && prev != BlockKind.Estacionamiento;
+                    bool gapOk = far && !alongZ && prev != BlockKind.Templo && prev != BlockKind.Estacionamiento;
                     if (gapOk && !templeDone && x >= -45f) kind = BlockKind.Templo;
                     else if (gapOk && !parkingDone && x >= 5f) kind = BlockKind.Estacionamiento;
                     else kind = PickBlock(rng, prev);
@@ -100,9 +103,10 @@ public static partial class AtmosphereBuilder
                 if (len < 3f) len = remaining;
 
                 float cx = x + len * 0.5f;
-                bool near = Mathf.Abs(cx) < 62f;
+                // Cerca (con locales especiales y mas detalle): lo que se ve desde la feria o el cruce.
+                bool near = alongZ ? Mathf.Abs(cx) < 45f : cx > -100f && cx < 62f;
                 Transform side = Group(g, prefix + n);
-                side.localPosition = new Vector3(cx, 0f, z);
+                side.localPosition = alongZ ? new Vector3(z, 0f, cx) : new Vector3(cx, 0f, z);
                 side.localRotation = Quaternion.Euler(0f, yaw, 0f);
                 string name = "FeriaB_" + prefix + n;
 
@@ -129,9 +133,26 @@ public static partial class AtmosphereBuilder
             }
         }
 
-        Row(-110f, AlleyX0, FairBackZ, 90f, "Norte", false, false, true);
-        Row(AlleyX1, 112f, FairBackZ, 90f, "Norte", false, true, false);
-        Row(-110f, 112f, -17.5f, -90f, "Sur", true, false, false);
+        // Paso 35: la calle sigue hasta x = -152 y 142 y se corta en x = -89..-74 (el cruce: calzada de
+        // -86 a -78, vereda de 3 m al oeste y de 4 m al este; los largos quedan multiplos de 3). Del otro lado del cruce, frente a la plaza.
+        Row(-152f, CrossWalkX0, FairBackZ, 90f, "NorteOeste", false, false, false);
+        Row(CrossWalkX1, AlleyX0, FairBackZ, 90f, "Norte", false, false, true);
+        Row(AlleyX1, 142f, FairBackZ, 90f, "Norte", false, true, false);
+        Row(-152f, CrossWalkX0, -17.5f, -90f, "SurOeste", true, false, false);
+        Row(CrossWalkX1, 142f, -17.5f, -90f, "Sur", true, false, false);
+        // Las dos veredas de la transversal, hacia el norte (detras de las fachadas) y hacia el sur.
+        Row(FairBackZ + BlockDepth + 0.5f, 121.5f, CrossWalkX0, 0f, "TransOesteN", false, false, false, true);
+        Row(FairBackZ + BlockDepth + 0.5f, 121.5f, CrossWalkX1, 180f, "TransEsteN", false, false, false, true);
+        Row(-121f, -17.5f - BlockDepth - 0.5f, CrossWalkX0, 0f, "TransOesteS", false, false, false, true);
+        Row(-121f, -17.5f - BlockDepth - 0.5f, CrossWalkX1, 180f, "TransEsteS", false, false, false, true);
+        // Las puntas de la peatonal: un edificio de frente cierra la vista en cada extremo.
+        foreach (var (x, yaw, nameEnd) in new[] { (142f, 180f, "PuntaEste"), (-152f, 0f, "PuntaOeste") })
+        {
+            Transform side = Group(g, nameEnd);
+            side.localPosition = new Vector3(x, 0f, 2.75f);
+            side.localRotation = Quaternion.Euler(0f, yaw, 0f);
+            BuildBlock(side, "FeriaB_" + nameEnd, BlockKind.Alto, 18f, 6, GroundKind.Locales, false, false, false, rng, shutter, m, f);
+        }
         BuildFairSkyline(Group(g, "Fondo"), m);
     }
 
@@ -677,9 +698,11 @@ public static partial class AtmosphereBuilder
         int n = 0;
         void Row(float z, float yaw, string prefix)
         {
-            float x = -122f;
-            while (x < 122f)
+            float x = -172f;
+            while (x < 172f)
             {
+                // Hueco para la transversal del cruce (se ve la calle seguir hacia el fondo).
+                if (x > -104f && x < -60f) { x = -60f; continue; }
                 float len = 9f + 3f * rng.Next(5);
                 int floors = 4 + rng.Next(6);   // 4 a 9 pisos: que no se arme otro muro
                 int style = rng.Next(4);

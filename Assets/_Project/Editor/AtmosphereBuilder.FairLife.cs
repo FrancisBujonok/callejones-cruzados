@@ -257,7 +257,7 @@ public static partial class AtmosphereBuilder
 
     private enum CarModel { Sedan, Compacto, Taxi, Furgon, Camioneta, Colectivo }
 
-    private static void BuildFairTraffic(Transform world, FairMats f)
+    private static void BuildFairTraffic(Transform world, FairMats f, TrafficSignals signals = null)
     {
         Transform g = Group(world, "Transito");
         AudioClip carSound = GetOrCreateSound("Auto_Motor", 4f, 1301, true, SynthCarEngine);
@@ -297,14 +297,29 @@ public static partial class AtmosphereBuilder
         Add(CarModel.Furgon, FPlasticoAzul, FBlanco, 0.5f, new Vector2(6.5f, 9f));
         Add(CarModel.Camioneta, FBlanco, FBlanco, 0.6f, new Vector2(6f, 8.5f));
         Add(CarModel.Colectivo, FBlanco, FVerde, 0.12f, new Vector2(6f, 8f));
+        // Paso 35: mas autos, porque ahora tambien pasan por la transversal del cruce.
+        Add(CarModel.Sedan, FCrema, FCrema, 1f, normal);
+        Add(CarModel.Sedan, FRojo, FRojo, 0.8f, normal);
+        Add(CarModel.Compacto, FBlanco, FAzul, 1f, new Vector2(6.5f, 9.5f));
+        Add(CarModel.Taxi, FAmarillo, FNegro, 0.8f, normal);
+        Add(CarModel.Furgon, FBlanco, FRojo, 0.6f, new Vector2(6.5f, 9f));
 
         // Mano izquierda (como en Japon): hacia el este por el carril de la vereda de la feria.
+        // Paso 35: la calle es mas larga (los autos aparecen y desaparecen en la niebla, a 150 m)
+        // y hay un cruce con semaforos: cada carril que pasa por el tiene su linea de detencion.
+        float rx = (CrossRoadX0 + CrossRoadX1) * 0.5f;
         var lanes = new[]
         {
-            new FairTraffic.Lane { name = "HaciaElEste", z = -8.5f, direction = 1f, fromX = -118f, toX = 118f, every = new Vector2(4f, 11f) },
-            new FairTraffic.Lane { name = "HaciaElOeste", z = -12.5f, direction = -1f, fromX = 118f, toX = -118f, every = new Vector2(4f, 11f) },
+            new FairTraffic.Lane { name = "HaciaElEste", z = -8.5f, direction = 1f, fromX = -155f, toX = 150f, every = new Vector2(4f, 11f),
+                signalGroup = 0, stopAt = CrossRoadX0 - 1.3f },
+            new FairTraffic.Lane { name = "HaciaElOeste", z = -12.5f, direction = -1f, fromX = 150f, toX = -155f, every = new Vector2(4f, 11f),
+                signalGroup = 0, stopAt = CrossRoadX1 + 1.3f },
+            new FairTraffic.Lane { name = "TransversalAlNorte", alongZ = true, z = rx - 2f, direction = 1f, fromX = -150f, toX = 150f,
+                every = new Vector2(7f, 16f), signalGroup = 1, stopAt = -15.6f },
+            new FairTraffic.Lane { name = "TransversalAlSur", alongZ = true, z = rx + 2f, direction = -1f, fromX = 150f, toX = -150f,
+                every = new Vector2(7f, 16f), signalGroup = 1, stopAt = 5.3f },
         };
-        g.gameObject.AddComponent<FairTraffic>().Setup(lanes, cars.ToArray(), bus, 0, BusStopX);
+        g.gameObject.AddComponent<FairTraffic>().Setup(lanes, cars.ToArray(), bus, 0, BusStopX, signals);
     }
 
     /// <summary>
