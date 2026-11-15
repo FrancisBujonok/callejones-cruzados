@@ -7,7 +7,7 @@ using UnityEngine.InputSystem;
 /// <summary>
 /// Paso 36: los premios que el jugador se lleva de la feria. Es "static": sobrevive al cambio de
 /// escena, asi el capitulo 2 (los callejones) puede preguntar si el jugador tiene un premio
-/// (FairPrizes.Has("Peluche")) y cambiar algo.
+/// (FairPrizes.Has("Peluche")) y cambiar algo. Premios: Peluche, Mascara (de zorro), Pez.
 /// </summary>
 public static class FairPrizes
 {
@@ -15,29 +15,37 @@ public static class FairPrizes
     public static bool Has(string prize) => won.Contains(prize);
     public static void Add(string prize) => won.Add(prize);
     public static IEnumerable<string> All => won;
+    /// <summary>Paso 37: se vacia al cargar la feria (FairPocket.ResetAll).</summary>
+    public static void Clear() => won.Clear();
 }
 
 /// <summary>
-/// Paso 36: lo comun de los juegos de los puestos (RingToss, CanToss). Opcionales:
+/// Paso 36: lo comun de los juegos de los puestos (RingToss, CanToss y, desde el Paso 37,
+/// FishScoop). Opcionales:
 ///
-/// 1. Cerca del puesto y mirandolo aparece el aviso "E - jugar".
-/// 2. Con E, el jugador se para delante del mostrador y queda quieto (puede mirar). Aparece la
-///    mira. Clic o E tira; Q deja el juego.
-/// 3. Al terminar las tiradas (o si gana antes), el vendedor dice algo y, si gano, el jugador se
-///    lleva el premio (FairPrizes). Se puede volver a jugar, pero premio hay uno solo.
+/// 1. Cerca del puesto y mirandolo aparece el aviso "E - jugar (2 monedas)".
+/// 2. Con E se paga (Paso 37) y el jugador se para delante del mostrador y queda quieto (puede
+///    mirar). Aparece la mira. Clic o E tira; Q deja el juego.
+/// 3. Al terminar, el personaje piensa lo que paso y, si gano, se lleva el premio (FairPrizes).
+///    Se puede volver a jugar, pero premio hay uno solo. Si tiene la tarjeta, le sellan el
+///    casillero de este juego (Paso 37), gane o pierda.
 ///
-/// Lo que dice el vendedor sale en la linea de pensamiento (ThoughtText), entre comillas.
+/// Lo que pasa sale en la linea de pensamiento (ThoughtText).
 /// </summary>
 public abstract class StallGame : MonoBehaviour
 {
     [Header("Juego")]
     [SerializeField] protected string gameName = "Jugar";
-    [Tooltip("Nombre del premio para FairPrizes (Peluche, Mascara).")]
+    [Tooltip("Nombre del premio para FairPrizes (Peluche, Mascara, Pez).")]
     [SerializeField] protected string prizeId = "Peluche";
     [SerializeField] protected int shots = 3;
     [Tooltip("Donde se para el jugador para jugar (mirando al puesto, +Z de este punto).")]
     [SerializeField] protected Transform playSpot;
     [SerializeField] protected float promptDistance = 2.4f;
+    [Tooltip("Paso 37: cuanto cuesta cada partida (monedas).")]
+    [SerializeField] protected int price = 2;
+    [Tooltip("Paso 37: el casillero de la tarjeta de sellos (Aros, Latas, Peces).")]
+    [SerializeField] protected string stampId = "";
 
     [Header("Lo que dice el vendedor")]
     [SerializeField] protected string startLine = "«Tres tiros.»";
@@ -47,10 +55,10 @@ public abstract class StallGame : MonoBehaviour
 
     protected Transform player;
     protected Camera cam;
-    private FirstPersonController fpc;
+    protected FirstPersonController fpc;
     private CharacterController controller;
     private bool playing, finishing;
-    private int left;
+    protected int left;
     private float finishAt, promptAgainAt;
     protected bool won;
 
@@ -80,7 +88,12 @@ public abstract class StallGame : MonoBehaviour
         {
             if (Busy()) Simulate(Time.deltaTime); // lo que todavia cae despues de terminar
             if (Time.time < promptAgainAt || !Near()) return;
-            InteractPrompt.Show("E  -  " + gameName);
+            if (!FairPocket.CanPay(price))
+            {
+                InteractPrompt.Show(gameName + " (" + price + " monedas)  -  no me alcanza");
+                return;
+            }
+            InteractPrompt.Show("E  -  " + gameName + " (" + price + " monedas)");
             if (UsePressed()) Begin();
             return;
         }
@@ -91,20 +104,35 @@ public abstract class StallGame : MonoBehaviour
             if (Time.time >= finishAt) Finish();
             return;
         }
-        InteractPrompt.Show("Clic o E: tirar (" + left + ")     Q: dejar");
         if (QuitPressed()) { Finish(); return; }
+        PlayInput();
+        if (Done())
+        {
+            finishing = true;
+            finishAt = Time.time + (won ? 0.6f : 1.0f);
+        }
+    }
+
+    /// <summary>
+    /// Lo que se hace con el mouse mientras se juega. Por defecto: clic o E tira (aros, latas).
+    /// FishScoop lo cambia (mantener apretado para meter el poi).
+    /// </summary>
+    protected virtual void PlayInput()
+    {
+        InteractPrompt.Show("Clic o E: tirar (" + left + ")     Q: dejar");
         if (left > 0 && (ThrowPressed() || UsePressed()) && CanThrow())
         {
             left--;
             Transform c = cam != null ? cam.transform : player;
             Throw(c.position + c.forward * 0.35f - c.up * 0.08f, c.forward);
         }
-        if (won || (left == 0 && !Busy()))
-        {
-            finishing = true;
-            finishAt = Time.time + (won ? 0.6f : 1.0f);
-        }
     }
+
+    /// <summary>La partida termino (gano, o no quedan tiros y no vuela nada).</summary>
+    protected virtual bool Done() => won || (left == 0 && !Busy());
+
+    /// <summary>Al empezar una partida (despues de pararse frente al puesto).</summary>
+    protected virtual void OnBegin() { }
 
     private bool Near()
     {
@@ -119,6 +147,8 @@ public abstract class StallGame : MonoBehaviour
 
     private void Begin()
     {
+        if (!FairPocket.Pay(price)) return;
+        PocketSounds.Play("Moneda");
         playing = true;
         finishing = false;
         won = false;
@@ -132,6 +162,8 @@ public abstract class StallGame : MonoBehaviour
         if (fpc != null) fpc.MovementLocked = true;
         InteractPrompt.Crosshair(true);
         ThoughtText.Show(startLine, 3f);
+        FairPerson.Serve(transform.position);
+        OnBegin();
     }
 
     private void Finish()
@@ -148,7 +180,11 @@ public abstract class StallGame : MonoBehaviour
             ThoughtText.Show(first ? winLine : againWinLine, 4f);
         }
         else ThoughtText.Show(loseLine, 3f);
+        // Paso 37: el sello, un momento despues (asi se lee primero lo que paso).
+        if (!FairPocket.HasStamp(stampId)) Invoke(nameof(GiveStamp), 1.2f);
     }
+
+    private void GiveStamp() => FairPocket.Stamp(stampId);
 
     /// <summary>Vuelve a poner todo en su lugar para una partida nueva.</summary>
     protected abstract void ResetTargets();
@@ -161,12 +197,14 @@ public abstract class StallGame : MonoBehaviour
     protected virtual bool CanThrow() => !Busy();
 
 #if ENABLE_INPUT_SYSTEM
-    private static bool UsePressed() => Keyboard.current != null && Keyboard.current.eKey.wasPressedThisFrame;
-    private static bool QuitPressed() => Keyboard.current != null && Keyboard.current.qKey.wasPressedThisFrame;
-    private static bool ThrowPressed() => Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame;
+    protected static bool UsePressed() => Keyboard.current != null && Keyboard.current.eKey.wasPressedThisFrame;
+    protected static bool QuitPressed() => Keyboard.current != null && Keyboard.current.qKey.wasPressedThisFrame;
+    protected static bool ThrowPressed() => Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame;
+    protected static bool ThrowHeld() => Mouse.current != null && Mouse.current.leftButton.isPressed;
 #else
-    private static bool UsePressed() => Input.GetKeyDown(KeyCode.E);
-    private static bool QuitPressed() => Input.GetKeyDown(KeyCode.Q);
-    private static bool ThrowPressed() => Input.GetMouseButtonDown(0);
+    protected static bool UsePressed() => Input.GetKeyDown(KeyCode.E);
+    protected static bool QuitPressed() => Input.GetKeyDown(KeyCode.Q);
+    protected static bool ThrowPressed() => Input.GetMouseButtonDown(0);
+    protected static bool ThrowHeld() => Input.GetMouseButton(0);
 #endif
 }

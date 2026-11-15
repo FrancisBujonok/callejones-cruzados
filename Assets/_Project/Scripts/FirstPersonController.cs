@@ -36,6 +36,13 @@ public class FirstPersonController : MonoBehaviour
     /// <summary>Paso 36: mientras esta en true, el jugador no camina (pero puede mirar).</summary>
     public bool MovementLocked { get; set; }
 
+    /// <summary>Paso 37: pone la mirada arriba/abajo (grados; positivo = hacia abajo). Lo usa la pesca.</summary>
+    public void SetPitch(float degrees)
+    {
+        pitch = Mathf.Clamp(degrees, -maxLookAngle, maxLookAngle);
+        if (cameraPivot != null) cameraPivot.localRotation = Quaternion.Euler(pitch, 0f, 0f);
+    }
+
     private CharacterController controller;
     private float pitch;             // rotacion acumulada de la camara en X (arriba/abajo)
     private float verticalVelocity;  // velocidad de caida en Y

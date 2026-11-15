@@ -77,7 +77,12 @@ public class FairUnease : MonoBehaviour
         lights = flickerLights;
     }
 
-    private void Awake() => ResetAll();
+    private void Awake()
+    {
+        FairPocket.ResetAll(); // Paso 37: monedas, tarjeta y premios de cero al cargar la feria
+        ResetAll();
+    }
+    // Al salir de la feria se calma todo, pero el bolsillo se queda (lo lleva al capitulo 2).
     private void OnDestroy() => ResetAll();
 
     private static void ResetAll()
@@ -114,7 +119,7 @@ public class FairUnease : MonoBehaviour
             catFactor = at / (float)(catTrail.Count - 1);
             final = catTrail.Current >= catTrail.Count - 1;
         }
-        Level = Mathf.Clamp01(Mathf.Max(Mathf.Max(timeFactor, catFactor), boost));
+        Level = Mathf.Clamp01(Mathf.Max(Mathf.Max(timeFactor, catFactor), boost) + (FairPocket.PawStamp ? 0.2f : 0f)); // Paso 37: la patita
         if (boost >= 1f) final = true;
 
         // Lo que hacen los otros scripts.

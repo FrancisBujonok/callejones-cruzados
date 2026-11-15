@@ -17,6 +17,7 @@ using UnityEngine.InputSystem;
 ///
 /// La barra es de prueba: queda al lado de la del miedo y F3 oculta las dos. En el juego no va
 /// a estar. Va en el Player; FirstPersonController le pide la velocidad.
+/// Paso 37: Feed (al comer brochetas en la feria) la llena y por un rato el trote no gasta.
 /// </summary>
 public class Stamina : MonoBehaviour
 {
@@ -48,6 +49,15 @@ public class Stamina : MonoBehaviour
     public float Multiplier { get; private set; } = 1f;
 
     private float sinceJog = 99f;
+    private float fedUntil = -1f;
+
+    /// <summary>Paso 37: llena la stamina y por 'seconds' segundos el trote no la gasta.</summary>
+    public void Feed(float seconds)
+    {
+        Value = 1f;
+        Exhausted = false;
+        fedUntil = Time.time + seconds;
+    }
     private float fearBuffer;
     private GUIStyle style;
 
@@ -66,7 +76,7 @@ public class Stamina : MonoBehaviour
 
         if (Jogging)
         {
-            Value = Mathf.Max(0f, Value - dt / secondsToEmpty);
+            if (Time.time >= fedUntil) Value = Mathf.Max(0f, Value - dt / secondsToEmpty);
             sinceJog = 0f;
             if (Value <= 0f) Exhausted = true;
             AddJogFear(dt);

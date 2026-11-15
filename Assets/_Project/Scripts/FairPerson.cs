@@ -34,6 +34,10 @@ public class FairPerson : MonoBehaviour
     /// <summary>Paso 36: todos los vendedores miran al jugador. Lo pone FairUnease.</summary>
     public static bool VendorsStare;
 
+    /// <summary>Paso 37: alguien compra o juega en un puesto: el vendedor de ahi atiende (un gesto).</summary>
+    public static event System.Action<Vector3> Served;
+    public static void Serve(Vector3 stall) => Served?.Invoke(stall);
+
     private Transform player;
     private Quaternion headRest, leftRest, rightRest, bodyRest;
     private float rank;
@@ -51,8 +55,17 @@ public class FairPerson : MonoBehaviour
         armRight = right;
     }
 
-    private void OnEnable() => FairAmbience.Played += OnSound;
-    private void OnDisable() => FairAmbience.Played -= OnSound;
+    private void OnEnable() { FairAmbience.Played += OnSound; Served += OnServed; }
+    private void OnDisable() { FairAmbience.Played -= OnSound; Served -= OnServed; }
+
+    private void OnServed(Vector3 stall)
+    {
+        if (role != Role.Vendor || Vector3.Distance(transform.position, stall) > 2.2f) return;
+        gestureStart = Time.time;
+        gestureLength = 1.6f;
+        gestureRight = true;
+        nextGesture = Time.time + 4f;
+    }
 
     private void Start()
     {
@@ -96,6 +109,7 @@ public class FairPerson : MonoBehaviour
     {
         if (player == null) return false;
         if (VendorsStare && role == Role.Vendor) return true;
+        if (MaskView.On) return false; // Paso 37: con la mascara puesta, no lo reconocen
         return rank < StareShare * 0.85f; // nunca todos: siempre queda alguien en lo suyo
     }
 
