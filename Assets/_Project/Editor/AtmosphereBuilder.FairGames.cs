@@ -74,6 +74,11 @@ public static partial class AtmosphereBuilder
         spot.localPosition = new Vector3(0f, 0f, 0.62f);
         spot.localRotation = Quaternion.Euler(0f, 180f, 0f); // mirando al puesto
 
+        if (type == 10)
+        {
+            BuildFishGame(t, spot, f); // Paso 37 (AtmosphereBuilder.FairPocket.cs)
+            return;
+        }
         if (type == 9)
         {
             var tops = new List<Transform>();
@@ -95,7 +100,7 @@ public static partial class AtmosphereBuilder
             }
             RingToss game = t.gameObject.AddComponent<RingToss>();
             var so = new SerializedObject(game);
-            GameTexts(so, spot, "Jugar a los aros", "Peluche",
+            GameTexts(so, spot, "Jugar a los aros", "Peluche", 2, "Aros",
                 "Me da tres aros. No le entiendo, pero hace el gesto de tirar.",
                 "¡Entró! Me da un peluche. Dice algo y se ríe.",
                 "Entró otra vez. Me hace que no con la mano: premio hay uno solo.",
@@ -133,7 +138,7 @@ public static partial class AtmosphereBuilder
             }
             CanToss game = t.gameObject.AddComponent<CanToss>();
             var so = new SerializedObject(game);
-            GameTexts(so, spot, "Jugar al tiro al blanco", "Mascara",
+            GameTexts(so, spot, "Jugar al tiro al blanco", "Mascara", 2, "Latas",
                 "Tres pelotitas. Hay que voltear una pirámide entera, creo.",
                 "¡Cayó toda! Me da una máscara de zorro.",
                 "Otra vez toda. Se ríe, pero no me da otra máscara.",
@@ -144,8 +149,11 @@ public static partial class AtmosphereBuilder
         }
     }
 
-    private static void GameTexts(SerializedObject so, Transform spot, string name, string prize, string start, string win, string again, string lose)
+    private static void GameTexts(SerializedObject so, Transform spot, string name, string prize, int price, string stamp,
+        string start, string win, string again, string lose)
     {
+        so.FindProperty("price").intValue = price;      // Paso 37
+        so.FindProperty("stampId").stringValue = stamp;
         so.FindProperty("playSpot").objectReferenceValue = spot;
         so.FindProperty("gameName").stringValue = name;
         so.FindProperty("prizeId").stringValue = prize;

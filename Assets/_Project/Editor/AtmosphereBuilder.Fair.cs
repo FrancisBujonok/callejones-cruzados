@@ -129,6 +129,7 @@ public static partial class AtmosphereBuilder
         BuildFairTraffic(world, f, signals);
         BuildFairPeople(world, f);
         BuildFairUnease(world, f); // Paso 36: lo raro de a poco (AtmosphereBuilder.FairGames.cs)
+        BuildFairPocket(world, f, cam, controller); // Paso 37: tarjeta de sellos, sonidos y la mano (FairPocket.cs)
 
         // 9. Marcas (solo se ven en Scene): los carriles, el paseo y los lugares de los vendedores.
         BuildFairMarkers(world);

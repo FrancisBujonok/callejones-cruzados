@@ -397,6 +397,7 @@ public static partial class AtmosphereBuilder
                 // Paso 36: de los cuatro tiro al blanco que salian, uno es el de los aros (S3, cerca de la
                 // entrada), otro el de las latas (N15, cerca del escenario) y los otros dos cambian.
                 if (!north && i == 3) type = 9;
+                else if (!north && i == 12) type = 10; // Paso 37: la pesca del pez dorado
                 else if (north && i == 15) type = 5;
                 else if (type == 5) type = north ? 3 : 0;
                 var pos = new Vector3(x, 0f, north ? RowNorthZ : RowSouthZ);
@@ -405,7 +406,7 @@ public static partial class AtmosphereBuilder
         }
     }
 
-    private static readonly string[] StallNames = { "Comida", "Frutas", "Juguetes", "Mascaras", "Peces", "TiroAlBlanco", "Farolitos", "Bebidas", "Adivina", "Aros" };
+    private static readonly string[] StallNames = { "Comida", "Frutas", "Juguetes", "Mascaras", "Peces", "TiroAlBlanco", "Farolitos", "Bebidas", "Adivina", "Aros", "PescaPeces" };
 
     /// <summary>Un puesto. Espacio local: el frente (del lado de la gente) en z = 0 mirando a +Z.</summary>
     private static void BuildStall(Transform parent, string id, Vector3 pos, float yaw, int type, int seed, Mats m, FairMats f)
@@ -421,7 +422,7 @@ public static partial class AtmosphereBuilder
         int cloth = new[] { FRojo, FAzul, FVerde, FAmarillo, FCrema }[rng.Next(5)];
         if (type == 8) cloth = FVioleta;
         var d = new MeshDraft();
-        bool tub = type == 4;
+        bool tub = type == 4 || type == 10;
         if (!tub)
         {
             d.Box(new Vector3(0f, 0.45f, -0.35f), new Vector3(2.8f, 0.9f, 0.6f), cloth);       // faldon del mostrador
@@ -465,13 +466,14 @@ public static partial class AtmosphereBuilder
         // Donde se para el vendedor (Paso 33): detras del mostrador; en los peces, al costado de la
         // pileta; la adivina, sentada detras de su mesita.
         // Paso 36: en los juegos, al costado (no tapa las latas ni las botellas).
-        bool game = type == 5 || type == 9;
-        Vector3 vendorLocal = type == 4 ? new Vector3(1.15f, 0f, -0.2f) : type == 8 ? new Vector3(0f, 0f, -1.45f)
+        bool game = type == 5 || type == 9 || type == 10;
+        Vector3 vendorLocal = type == 4 || type == 10 ? new Vector3(1.15f, 0f, -0.2f) : type == 8 ? new Vector3(0f, 0f, -1.45f)
             : game ? new Vector3(1.12f, 0f, -1.0f) : new Vector3(0f, 0f, -1.0f);
         Vector3 vendor = t.TransformPoint(vendorLocal);
         FairVendorSpots.Add(vendor);
         FairStalls.Add(new StallInfo { pos = pos, yaw = yaw, type = type, vendor = vendor, game = game });
         if (game) BuildStallGame(t, type, f); // AtmosphereBuilder.FairGames.cs
+        else BuildStallShop(t, type);          // Paso 37: comprar (AtmosphereBuilder.FairPocket.cs)
         if (type == 8) FortuneStallSpot = t.TransformPoint(new Vector3(0f, 1.6f, -0.8f));
     }
 
@@ -555,6 +557,10 @@ public static partial class AtmosphereBuilder
                 d.Box(new Vector3(0.95f, top + 0.05f, -0.3f), new Vector3(0.3f, 0.1f, 0.22f), FMadera); // canastita
                 d.Box(new Vector3(-0.9f, top + 0.12f, -0.4f), new Vector3(0.36f, 0.24f, 0.2f), FBlanco); // cartelito
                 d.Box(new Vector3(-0.9f, top + 0.16f, -0.29f), new Vector3(0.24f, 0.05f, 0.01f), FRojo);
+                break;
+
+            case 10: // Paso 37: la pesca. La pileta, el cuenco y los peces los arma FishPool / BuildFishGame.
+                FishPool(t, d, f);
                 break;
 
             case 9: // Paso 36: aros. Botellas en la mesa de atras (las bocas las marca BuildStallGame) y peluches.

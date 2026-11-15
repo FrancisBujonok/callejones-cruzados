@@ -85,6 +85,19 @@ public static partial class AtmosphereBuilder
 
         // Orden = orden de dibujo: lo de abajo en la jerarquia tapa a lo de arriba.
         // El fundido negro va arriba del inicio, la pausa y las opciones; el final, arriba del fundido.
+        // Paso 37: la mascara puesta (MaskView). Va primero: queda debajo de todos los menus y textos.
+        CanvasGroup mask = UiPanel(root.transform, "Mascara");
+        mask.blocksRaycasts = false;
+        mask.interactable = false;
+        var maskImage = new GameObject("Vista", typeof(RectTransform)).AddComponent<RawImage>();
+        maskImage.gameObject.layer = UiLayer;
+        maskImage.transform.SetParent(mask.transform, false);
+        Stretch((RectTransform)maskImage.transform);
+        maskImage.texture = GetMaskOverlayTexture();
+        maskImage.raycastTarget = false;
+        mask.gameObject.AddComponent<MaskView>().Setup(mask, maskImage);
+        mask.alpha = 0f;
+
         CanvasGroup title = UiPanel(root.transform, "Inicio");
         var titleRefs = BuildTitle(title.transform, s);
 
@@ -123,6 +136,13 @@ public static partial class AtmosphereBuilder
         // La mira esta dentro del grupo: mientras se juega, el aviso ("Clic o E: tirar") siempre se ve.
         action.gameObject.AddComponent<InteractPrompt>().Setup(action, actionLabel, aim);
         action.alpha = 0f;
+
+        // Paso 37: el bolsillo (Tab): monedas, tarjeta de sellos y lo que se lleva (PocketView).
+        CanvasGroup pocket = UiPanel(root.transform, "Bolsillo");
+        pocket.blocksRaycasts = false;
+        pocket.interactable = false;
+        BuildPocket(pocket);
+        pocket.alpha = 0f;
 
         // La tarjeta del capitulo va arriba de todo: se ve sobre el negro del fundido.
         CanvasGroup card = UiPanel(root.transform, "Tarjeta");
@@ -420,6 +440,57 @@ public static partial class AtmosphereBuilder
         Transform c = UiContent(panel);
         UiBox(c, "Fondo", new Color(0f, 0f, 0f, 0.55f), 110f, 300f, 420f, 26f);
         return UiText(c, "Texto", "", 110f, 304f, 420f, 20f, 13f, UiPaper, TextAlignmentOptions.Top);
+    }
+
+    /// <summary>
+    /// Paso 37: el bolsillo, un papel al centro: las monedas, la tarjeta de sellos (seis casilleros
+    /// y un rincon vacio donde aparece la patita), lo que se lleva y la ayuda de la mascara.
+    /// </summary>
+    private static void BuildPocket(CanvasGroup panel)
+    {
+        Transform c = UiContent(panel.transform);
+        Color ink = UiInk, soft = UiInkSoft, cell = Hex("#D8C4A0"), cardColor = Hex("#EFE2C6");
+        // Medidas grandes: la interfaz sale a 240 lineas, y debajo de 10 puntos no se lee.
+        UiBox(c, "Sombra", new Color(0f, 0f, 0f, 0.45f), 153f, 33f, 340f, 262f);
+        UiBox(c, "Papel", UiPaper, 150f, 30f, 340f, 262f);
+        UiText(c, "Titulo", "BOLSILLO", 150f, 37f, 340f, 14f, 10f, soft, TextAlignmentOptions.Top, 6f);
+        TMP_Text coins = UiText(c, "Monedas", "Monedas: 20", 150f, 54f, 340f, 18f, 14f, ink, TextAlignmentOptions.Top);
+
+        GameObject noCard = UiText(c, "SinTarjeta", "Sin tarjeta de sellos.", 150f, 130f, 340f, 16f, 12f, soft, TextAlignmentOptions.Top).gameObject;
+
+        var cardRoot = UiRect(c, "Tarjeta", 162f, 78f, 316f, 134f);
+        UiBox(cardRoot, "Fondo", cardColor, 0f, 0f, 316f, 134f);
+        UiText(cardRoot, "Titulo", "TARJETA DE SELLOS", 0f, 4f, 316f, 12f, 9f, soft, TextAlignmentOptions.Top, 3f);
+        string[] labels = { "AROS", "LATAS", "PECES", "COMIDA", "BEBIDA", "MÁSCARA" };
+        var stamps = new GameObject[labels.Length];
+        for (int i = 0; i < labels.Length; i++)
+        {
+            float x = 10f + (i % 3) * 102f, y = 20f + (i / 3) * 56f;
+            UiBox(cardRoot, "Casillero" + i, cell, x, y, 92f, 50f);
+            UiText(cardRoot, "Nombre" + i, labels[i], x, y + 35f, 92f, 12f, 10f, soft, TextAlignmentOptions.Top, 1f);
+            // El sello: un rectangulo rojo inclinado con el nombre, como de goma.
+            RectTransform stamp = UiRect(cardRoot, "Sello" + i, x + 12f, y + 5f, 68f, 26f);
+            stamp.localRotation = Quaternion.Euler(0f, 0f, i % 2 == 0 ? 6f : -5f);
+            UiBox(stamp, "Tinta", new Color(UiRed.r, UiRed.g, UiRed.b, 0.9f), 0f, 0f, 68f, 26f);
+            UiBox(stamp, "Hueco", cell, 2f, 2f, 64f, 22f);
+            UiText(stamp, "Texto", labels[i], 0f, 6f, 68f, 14f, 11f, UiRed, TextAlignmentOptions.Top, 1f);
+            stamps[i] = stamp.gameObject;
+        }
+        // El rincon de la patita (arriba a la derecha): vacio hasta que se completa la tarjeta.
+        RectTransform paw = UiRect(cardRoot, "Patita", 290f, 1f, 20f, 20f);
+        Color pawInk = new Color(UiRed.r, UiRed.g, UiRed.b, 0.9f);
+        UiBox(paw, "Almohadilla", pawInk, 5f, 9f, 11f, 9f);
+        UiBox(paw, "Dedo0", pawInk, 1f, 4f, 4f, 5f);
+        UiBox(paw, "Dedo1", pawInk, 6f, 0f, 4f, 5f);
+        UiBox(paw, "Dedo2", pawInk, 12f, 0f, 4f, 5f);
+        UiBox(paw, "Dedo3", pawInk, 16f, 4f, 4f, 5f);
+        paw.localRotation = Quaternion.Euler(0f, 0f, -12f);
+
+        TMP_Text items = UiText(c, "Lleva", "Nada más.", 164f, 218f, 312f, 52f, 11f, ink, TextAlignmentOptions.Top);
+        items.textWrappingMode = TextWrappingModes.Normal;
+        TMP_Text hint = UiText(c, "Ayuda", "", 150f, 274f, 340f, 14f, 10f, soft, TextAlignmentOptions.Top);
+
+        panel.gameObject.AddComponent<PocketView>().Setup(panel, coins, items, hint, cardRoot.gameObject, noCard, stamps, paw.gameObject);
     }
 
     private static CardRefs BuildChapterCard(Transform panel)
