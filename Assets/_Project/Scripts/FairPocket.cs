@@ -19,6 +19,21 @@ public static class FairPocket
 
     private static readonly HashSet<string> items = new HashSet<string>();
     private static readonly HashSet<string> stamps = new HashSet<string>();
+    private static readonly HashSet<string> flags = new HashSet<string>();
+
+    /// <summary>Paso 38: lo que le dijo la adivina (vacio si no fue). El papelito es el item "Papelito".</summary>
+    public static string Fortune { get; private set; } = "";
+
+    /// <summary>Paso 38: cosas que pasaron (por ejemplo "DuenoGato": hablo con la duena del gato).</summary>
+    public static bool HasFlag(string id) => flags.Contains(id);
+    public static void SetFlag(string id) { if (!string.IsNullOrEmpty(id) && flags.Add(id)) Changed?.Invoke(); }
+
+    public static void SetFortune(string text)
+    {
+        Fortune = text;
+        AddItem("Papelito");
+        Changed?.Invoke();
+    }
 
     public static int Coins { get; private set; } = StartCoins;
     public static bool HasCard { get; private set; }
@@ -36,6 +51,8 @@ public static class FairPocket
         Coins = StartCoins;
         items.Clear();
         stamps.Clear();
+        flags.Clear();
+        Fortune = "";
         HasCard = false;
         PawStamp = false;
         FairPrizes.Clear();

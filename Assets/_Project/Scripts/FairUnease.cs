@@ -66,6 +66,8 @@ public class FairUnease : MonoBehaviour
     private Transform player;
 
     public float Level { get; private set; }
+    /// <summary>Paso 38: el nivel de ahora, para los que no tienen la referencia (FairTalk).</summary>
+    public static float CurrentLevel { get; private set; }
     private float timeFactor, catFactor;
 
     /// <summary>Lo usa la herramienta de editor.</summary>
@@ -89,6 +91,7 @@ public class FairUnease : MonoBehaviour
     {
         FairPerson.StareShare = 0f;
         FairPerson.VendorsStare = false;
+        CurrentLevel = 0f;
         FairWalker.ResetUnease();
         FairAmbience.RepeatAmount = 0f;
         FairAmbience.CrowdFade = 0f;
@@ -121,6 +124,7 @@ public class FairUnease : MonoBehaviour
         }
         Level = Mathf.Clamp01(Mathf.Max(Mathf.Max(timeFactor, catFactor), boost) + (FairPocket.PawStamp ? 0.2f : 0f)); // Paso 37: la patita
         if (boost >= 1f) final = true;
+        CurrentLevel = Level;
 
         // Lo que hacen los otros scripts.
         FairPerson.StareShare = Ramp(0.15f, 1f) * 0.75f;

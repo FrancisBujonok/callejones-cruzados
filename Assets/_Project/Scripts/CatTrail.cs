@@ -91,7 +91,15 @@ public class CatTrail : MonoBehaviour
             if (gate != null && !gate.IsOpen) return; // aparece cuando el carro ya no esta (Update)
         }
         if (sightings[i] != null) sightings[i].gameObject.SetActive(true);
+        // Paso 38 (provisorio): si hablo con la duena, la segunda aparicion se lo recuerda.
+        if (i == 1 && FairPocket.HasFlag("DuenoGato") && !saidOwner)
+        {
+            saidOwner = true;
+            ThoughtText.Show("Si lo agarro, se lo llevo a la señora del arco.", 4f);
+        }
     }
+
+    private bool saidOwner;
 
 #if ENABLE_INPUT_SYSTEM
     private static bool SkipPressed() => Keyboard.current != null && Keyboard.current.f9Key.wasPressedThisFrame;

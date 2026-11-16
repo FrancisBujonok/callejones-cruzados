@@ -119,8 +119,14 @@ public class PocketView : MonoBehaviour
 
         var list = new List<string>();
         foreach (string p in FairPrizes.All) list.Add(Names.TryGetValue(p, out string n) ? n : p);
-        foreach (string p in FairPocket.Items) list.Add(Names.TryGetValue(p, out string n) ? n : p);
-        if (items != null) items.text = list.Count == 0 ? "Nada más." : "Llevo " + Join(list) + ".";
+        foreach (string p in FairPocket.Items)
+        {
+            if (p == "Papelito") continue; // Paso 38: va aparte, con lo que dice
+            list.Add(Names.TryGetValue(p, out string n) ? n : p);
+        }
+        string carried = list.Count == 0 ? "Nada más." : "Llevo " + Join(list) + ".";
+        if (FairPocket.HasItem("Papelito")) carried += " Y el papelito de la adivina: " + FairPocket.Fortune;
+        if (items != null) items.text = carried;
         if (hint != null) hint.text = MaskView.Available() > 0 ? "M: ponerme o sacarme la máscara" : "";
     }
 
