@@ -30,6 +30,9 @@ public static partial class AtmosphereBuilder
     private const string FontsDir = Root + "/Fonts";
     private const string UiFontFile = FontsDir + "/DotGothic16-Regular.ttf";
     private const string UiFontAssetPath = FontsDir + "/DotGothic16 SDF.asset";
+    // Paso 39: la fuente de la opcion "Texto: Legible".
+    private const string LegibleFontFile = FontsDir + "/AtkinsonHyperlegible-Regular.ttf";
+    private const string LegibleFontAssetPath = FontsDir + "/AtkinsonHyperlegible SDF.asset";
     private const string CalibrationSign = Root + "/Textures/Carteles/V5_tw_06_papel.png";
 
     // Los caracteres que usan los menus (la fuente agrega solos los que falten, pero asi ya estan).
@@ -82,6 +85,8 @@ public static partial class AtmosphereBuilder
         scaler.referenceResolution = new Vector2(640f, 360f);
         scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
         root.AddComponent<GraphicRaycaster>();
+        // Paso 39: la opcion "Texto" (Retro / Nitido / Legible) cambia el modo del Canvas y la fuente.
+        root.AddComponent<UiTextStyle>().Setup(canvas, uiCam, uiFont, EnsureLegibleFont());
 
         // Orden = orden de dibujo: lo de abajo en la jerarquia tapa a lo de arriba.
         // El fundido negro va arriba del inicio, la pausa y las opciones; el final, arriba del fundido.
@@ -159,6 +164,7 @@ public static partial class AtmosphereBuilder
             ("backToTitleButton", pauseRefs.title), ("pauseQuitButton", pauseRefs.quit), ("pauseSeen", pauseRefs.seen),
             ("volumeSlider", optionRefs.volume), ("brightnessSlider", optionRefs.brightness),
             ("sensitivitySlider", optionRefs.sensitivity), ("cameraSlider", optionRefs.camera),
+            ("textSlider", optionRefs.text), ("textValue", optionRefs.textValue),
             ("optionsBackButton", optionRefs.back), ("calibrationSign", optionRefs.sign),
             ("ticket", endRefs.ticket), ("stepsValue", endRefs.steps), ("changesValue", endRefs.changes),
             ("timeValue", endRefs.time), ("ticketNumber", endRefs.number), ("endingButtons", endRefs.buttons),
@@ -281,7 +287,7 @@ public static partial class AtmosphereBuilder
 
     // ------------------------------------------------------------------ opciones
 
-    private struct OptionRefs { public Slider volume, brightness, sensitivity, camera; public Button back; public RawImage sign; }
+    private struct OptionRefs { public Slider volume, brightness, sensitivity, camera, text; public TMP_Text textValue; public Button back; public RawImage sign; }
 
     private static OptionRefs BuildOptionsPanel(Transform panel, UiSprites s)
     {
@@ -332,7 +338,10 @@ public static partial class AtmosphereBuilder
         backRect.gameObject.AddComponent<SelectOnHover>();
         UiText(sheet, "Ayuda", "↑↓ elegir · ← → cambiar", 200f, 268f, 208f, 14f, 12f, UiBrown, TextAlignmentOptions.TopRight);
 
-        UiChain(refs.volume, refs.brightness, refs.sensitivity, refs.camera, refs.back);
+        // Paso 39: Texto (Retro / Nitido / Legible), con flechas como las barras.
+        refs.text = UiChoiceRow(sheet, "Texto", "Texto", 194f, GameSettings.TextStyleNames.Length - 1, out refs.textValue);
+
+        UiChain(refs.volume, refs.brightness, refs.sensitivity, refs.camera, refs.text, refs.back);
         return refs;
     }
 
@@ -365,6 +374,34 @@ public static partial class AtmosphereBuilder
         slider.wholeNumbers = true;
         slider.value = 5;
         // El nombre de la fila cambia de color cuando la barra esta elegida.
+        slider.targetGraphic = text;
+        slider.colors = UiColors(UiInkSoft, UiRed);
+        rt.gameObject.AddComponent<SelectOnHover>();
+        rt.gameObject.AddComponent<MenuItemMarker>().Setup(bar);
+        return slider;
+    }
+
+    /// <summary>
+    /// Paso 39: una fila de opciones con valores con nombre ("< RETRO >"): un Slider sin barra, que se
+    /// cambia con las flechas o con un clic (izquierda, medio o derecha). GameUI pone el nombre.
+    /// </summary>
+    private static Slider UiChoiceRow(Transform sheet, string name, string label, float y, int max, out TMP_Text value)
+    {
+        Image bar = UiBox(sheet, name + "Marca", UiRed, 13f, y, 3f, 26f);
+        TMP_Text text = UiText(sheet, name + "Nombre", label, 22f, y + 5f, 170f, 16f, 14f, Color.white, TextAlignmentOptions.TopLeft);
+        RectTransform rt = UiRect(sheet, name, 190f, y + 3f, 110f, 20f);
+        Image hit = rt.gameObject.AddComponent<Image>();
+        hit.color = new Color(1f, 1f, 1f, 0f); // invisible: solo para el clic
+        hit.raycastTarget = true;
+        value = UiText(rt, "Valor", "< RETRO >", 0f, 2f, 110f, 16f, 13f, UiInk, TextAlignmentOptions.Top, 2f);
+        var slider = rt.gameObject.AddComponent<Slider>();
+        slider.fillRect = null;
+        slider.handleRect = null;
+        slider.direction = Slider.Direction.LeftToRight;
+        slider.minValue = 0;
+        slider.maxValue = max;
+        slider.wholeNumbers = true;
+        slider.value = 0;
         slider.targetGraphic = text;
         slider.colors = UiColors(UiInkSoft, UiRed);
         rt.gameObject.AddComponent<SelectOnHover>();
@@ -438,8 +475,9 @@ public static partial class AtmosphereBuilder
     private static TMP_Text BuildThought(Transform panel)
     {
         Transform c = UiContent(panel);
-        UiBox(c, "Fondo", new Color(0f, 0f, 0f, 0.55f), 110f, 300f, 420f, 26f);
-        return UiText(c, "Texto", "", 110f, 304f, 420f, 20f, 13f, UiPaper, TextAlignmentOptions.Top);
+        // Paso 39: mas ancha (las frases largas, como las de la adivina, se pasaban del borde).
+        UiBox(c, "Fondo", new Color(0f, 0f, 0f, 0.55f), 70f, 300f, 500f, 26f);
+        return UiText(c, "Texto", "", 70f, 304f, 500f, 20f, 13f, UiPaper, TextAlignmentOptions.Top);
     }
 
     /// <summary>
@@ -706,6 +744,32 @@ public static partial class AtmosphereBuilder
 
         asset.TryAddCharacters(UiChars, out string missing);
         if (!string.IsNullOrEmpty(missing)) Debug.LogWarning("[Callejones] DotGothic16 no tiene: " + missing);
+        EditorUtility.SetDirty(asset);
+        AssetDatabase.SaveAssets();
+        return asset;
+    }
+
+    /// <summary>Paso 39: la fuente facil de leer (Atkinson Hyperlegible, licencia OFL), como la otra.</summary>
+    private static TMP_FontAsset EnsureLegibleFont()
+    {
+        var asset = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(LegibleFontAssetPath);
+        if (asset != null) return asset;
+        var font = AssetDatabase.LoadAssetAtPath<Font>(LegibleFontFile);
+        if (font == null)
+        {
+            Debug.LogWarning("[Callejones] No encuentro " + LegibleFontFile + ": la opcion Texto Legible usa la fuente de siempre.");
+            return null;
+        }
+        asset = TMP_FontAsset.CreateFontAsset(font, 48, 6, GlyphRenderMode.SDFAA, 1024, 1024, AtlasPopulationMode.Dynamic, true);
+        if (asset == null) return null;
+        asset.name = "AtkinsonHyperlegible SDF";
+        AssetDatabase.CreateAsset(asset, LegibleFontAssetPath);
+        asset.atlasTextures[0].name = "AtkinsonHyperlegible Atlas";
+        AssetDatabase.AddObjectToAsset(asset.atlasTextures[0], asset);
+        asset.material.name = "AtkinsonHyperlegible Material";
+        AssetDatabase.AddObjectToAsset(asset.material, asset);
+        asset.TryAddCharacters(UiChars, out string missing);
+        if (!string.IsNullOrEmpty(missing)) Debug.Log("[Callejones] Atkinson Hyperlegible no tiene: " + missing);
         EditorUtility.SetDirty(asset);
         AssetDatabase.SaveAssets();
         return asset;

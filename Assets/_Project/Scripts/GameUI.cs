@@ -51,6 +51,9 @@ public class GameUI : MonoBehaviour
     [SerializeField] private Slider sensitivitySlider;
     [Tooltip("Paso 31: movimiento de camara.")]
     [SerializeField] private Slider cameraSlider;
+    [Tooltip("Paso 39: Texto (0 Retro, 1 Nitido, 2 Legible) y la etiqueta que muestra el elegido.")]
+    [SerializeField] private Slider textSlider;
+    [SerializeField] private TMPro.TMP_Text textValue;
     [SerializeField] private Button optionsBackButton;
     [Tooltip("Cartel oscuro para calibrar el brillo: se aclara o se oscurece con la barra.")]
     [SerializeField] private Graphic calibrationSign;
@@ -123,6 +126,11 @@ public class GameUI : MonoBehaviour
         if (calibrationSign != null) calibrationBase = calibrationSign.color;
         if (sensitivitySlider != null) sensitivitySlider.onValueChanged.AddListener(v => GameSettings.SetSensitivity(Mathf.RoundToInt(v)));
         if (cameraSlider != null) cameraSlider.onValueChanged.AddListener(v => GameSettings.SetCameraMotion(Mathf.RoundToInt(v)));
+        if (textSlider != null) textSlider.onValueChanged.AddListener(v =>
+        {
+            GameSettings.SetTextStyle(Mathf.RoundToInt(v));
+            ShowTextStyle();
+        });
 
         if (ticket != null) ticketRest = ticket.anchoredPosition;
     }
@@ -218,6 +226,8 @@ public class GameUI : MonoBehaviour
         if (brightnessSlider != null) brightnessSlider.SetValueWithoutNotify(GameSettings.Brightness);
         if (sensitivitySlider != null) sensitivitySlider.SetValueWithoutNotify(GameSettings.Sensitivity);
         if (cameraSlider != null) cameraSlider.SetValueWithoutNotify(GameSettings.CameraMotion);
+        if (textSlider != null) textSlider.SetValueWithoutNotify(GameSettings.TextStyle);
+        ShowTextStyle();
         UpdateCalibration();
     }
 
@@ -310,5 +320,11 @@ public class GameUI : MonoBehaviour
             yield return null;
         }
         group.alpha = target;
+    }
+
+    /// <summary>Paso 39: "< NITIDO >" al lado de la opcion Texto.</summary>
+    private void ShowTextStyle()
+    {
+        if (textValue != null) textValue.text = "< " + GameSettings.TextStyleNames[GameSettings.TextStyle] + " >";
     }
 }

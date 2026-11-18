@@ -5,6 +5,7 @@ using UnityEngine.Rendering.Universal;
 /// <summary>
 /// Las opciones del jugador (Paso 17): volumen, brillo y sensibilidad del mouse.
 /// Paso 31: movimiento de camara (balanceo, vaiven y vista que se cierra con el miedo).
+/// Paso 39: estilo del texto (TextStyle: 0 Retro, 1 Nitido, 2 Legible; lo aplica UiTextStyle).
 /// Cada una va de 0 a 10, como las barras del menu de opciones, y se guarda en PlayerPrefs
 /// (queda guardada entre partidas, incluso despues de cerrar el juego).
 ///
@@ -19,6 +20,14 @@ public static class GameSettings
     private const string BrightnessKey = "Callejones.Brillo";
     private const string SensitivityKey = "Callejones.Sensibilidad";
     private const string CameraMotionKey = "Callejones.MovimientoCamara";
+    private const string TextStyleKey = "Callejones.Texto";
+
+    /// <summary>Paso 39: los nombres de los estilos de texto, en orden.</summary>
+    public static readonly string[] TextStyleNames = { "RETRO", "NÍTIDO", "LEGIBLE" };
+    /// <summary>Paso 39: 0 = retro (240 lineas), 1 = nitido (resolucion de la pantalla), 2 = otra fuente.</summary>
+    public static int TextStyle { get; private set; } = 0;
+    /// <summary>Paso 39: avisa cuando cambia el estilo del texto.</summary>
+    public static event System.Action<int> TextStyleChanged;
 
     /// <summary>Volumen general: 0 = mudo, 10 = maximo.</summary>
     public static int MasterVolume { get; private set; } = 8;
@@ -51,6 +60,14 @@ public static class GameSettings
         Brightness = Mathf.Clamp(PlayerPrefs.GetInt(BrightnessKey, Brightness), 0, Max);
         Sensitivity = Mathf.Clamp(PlayerPrefs.GetInt(SensitivityKey, Sensitivity), 1, Max);
         CameraMotion = Mathf.Clamp(PlayerPrefs.GetInt(CameraMotionKey, CameraMotion), 0, Max);
+        TextStyle = Mathf.Clamp(PlayerPrefs.GetInt(TextStyleKey, TextStyle), 0, TextStyleNames.Length - 1);
+    }
+
+    public static void SetTextStyle(int value)
+    {
+        TextStyle = Mathf.Clamp(value, 0, TextStyleNames.Length - 1);
+        PlayerPrefs.SetInt(TextStyleKey, TextStyle);
+        TextStyleChanged?.Invoke(TextStyle);
     }
 
     public static void SetMasterVolume(int value)
