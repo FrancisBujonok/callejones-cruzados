@@ -155,19 +155,25 @@ public static partial class AtmosphereBuilder
         EditorUtility.SetDirty(mat);
     }
 
-    /// <summary>Pixeles duros, sin mipmaps ni compresion: asi se ven las letras como en la PS1.</summary>
+    /// <summary>
+    /// Pixeles duros y sin compresion: asi se ven las letras como en la PS1.
+    /// Paso 39: con mipmaps (sigue con pixeles duros). Sin mipmaps, un cartel o una fachada lejana
+    /// tiene mas pixeles de textura que de pantalla, y al moverse cada cuadro toma otros: las
+    /// ventanas y las letras "hierven". Con mipmaps, de lejos se usa una version mas chica.
+    /// </summary>
     private static void SetupSignImport(string path)
     {
         var importer = AssetImporter.GetAtPath(path) as TextureImporter;
         if (importer == null) return;
-        if (importer.filterMode == FilterMode.Point && !importer.mipmapEnabled &&
+        if (importer.filterMode == FilterMode.Point && importer.mipmapEnabled && Mathf.Approximately(importer.mipMapBias, -0.3f) &&
             importer.textureCompression == TextureImporterCompression.Uncompressed &&
             importer.npotScale == TextureImporterNPOTScale.None && importer.wrapMode == TextureWrapMode.Clamp)
             return;
 
         importer.textureType = TextureImporterType.Default;
         importer.filterMode = FilterMode.Point;
-        importer.mipmapEnabled = false;
+        importer.mipmapEnabled = true;
+        importer.mipMapBias = -0.3f; // un poco mas nitido de lejos, sin volver a titilar
         importer.textureCompression = TextureImporterCompression.Uncompressed;
         importer.npotScale = TextureImporterNPOTScale.None; // los PNG no miden potencias de 2
         importer.wrapMode = TextureWrapMode.Clamp;

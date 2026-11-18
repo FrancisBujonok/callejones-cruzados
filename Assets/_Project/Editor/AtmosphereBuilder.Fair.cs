@@ -275,7 +275,11 @@ public static partial class AtmosphereBuilder
         UniversalAdditionalCameraData data = cam.GetUniversalAdditionalCameraData();
         data.renderPostProcessing = true;
         data.antialiasing = AntialiasingMode.None;
-        camGo.AddComponent<RetroSettings>();
+        // Paso 39: los vertices saltan en una grilla de 240 lineas (la de la imagen), no de 160: con
+        // 160 cada vertice saltaba un pixel y medio y las texturas de las paredes lejanas temblaban.
+        var retroSo = new SerializedObject(camGo.AddComponent<RetroSettings>());
+        retroSo.FindProperty("vertexSnap").floatValue = 240f;
+        retroSo.ApplyModifiedPropertiesWithoutUndo();
         camGo.AddComponent<SkyFog>();
         camGo.AddComponent<FairSky>();
 
