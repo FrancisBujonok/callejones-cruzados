@@ -37,6 +37,10 @@ using UnityEngine.InputSystem;
 /// cuerpo. La inclinacion cuenta: la cabeza sale de la esquina antes que los pies.
 /// Para probar: F8 la hace asomarse ya (si hay una esquina adelante).
 ///
+/// Paso 40: FairEchoes la cambia segun lo que paso en la feria (ChanceScale, NoSteps,
+/// PeekShareOverride): con la mascara puesta aparece menos; si la adivina dijo "lo que te sigue no
+/// camina", no da pasos y casi siempre espera adelante.
+///
 /// Va en el objeto "Figura" (raiz de la escena). Lo arma Callejones > Figura y trote.
 /// </summary>
 public class FigurePresence : MonoBehaviour
@@ -131,6 +135,13 @@ public class FigurePresence : MonoBehaviour
     [Tooltip("Prototipo: F8 la hace asomarse en una esquina de adelante.")]
     [SerializeField] private bool peekKey = true;
 
+    /// <summary>Paso 40: multiplica la probabilidad de aparecer en cada intento (1 = normal).</summary>
+    public static float ChanceScale = 1f;
+    /// <summary>Paso 40: true = nunca da pasos hacia el jugador.</summary>
+    public static bool NoSteps;
+    /// <summary>Paso 40: si es 0 o mas, reemplaza la parte de las veces que se asoma adelante con miedo alto.</summary>
+    public static float PeekShareOverride = -1f;
+
     public State Current { get; private set; } = State.Hidden;
     public int Appearances { get; private set; }
     public string LastEvent { get; private set; } = "-";
@@ -212,10 +223,11 @@ public class FigurePresence : MonoBehaviour
         {
             if (playTime < availableAt || playTime < nextCheck) return;
             nextCheck = playTime + checkEvery;
-            if (fear == null || Random.value >= chancePerCheck) return;
+            if (fear == null || Random.value >= chancePerCheck * ChanceScale) return;
             // Paso 31: con miedo alto, casi siempre atras; con miedo medio, asomada adelante.
             float f = fear.Normalized;
-            if (f >= appearFromFear && Random.value >= peekShareHighFear) TryAppear(false);
+            float share = PeekShareOverride >= 0f ? PeekShareOverride : peekShareHighFear;
+            if (f >= appearFromFear && Random.value >= share) TryAppear(false);
             else if (f >= peekFromFear) TryPeek(false);
             return;
         }
@@ -363,7 +375,7 @@ public class FigurePresence : MonoBehaviour
     /// <summary>Cuando dejas de mirarla: un paso hacia vos (y te mira de frente), o se va.</summary>
     private void Decide()
     {
-        if (steps < maxSteps && Random.value < stepChance && TryStep()) return;
+        if (!NoSteps && steps < maxSteps && Random.value < stepChance && TryStep()) return;
         Hide("ya no esta");
     }
 

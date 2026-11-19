@@ -43,6 +43,11 @@ public partial class CorridorTreadmill
     public bool LoopActive => activePlan != null;
     /// <summary>Cuantos bucles empezaron en la partida.</summary>
     public int LoopsStarted => loopCount;
+    /// <summary>
+    /// Paso 40: el jugador piso el cruce de una pasada del bucle (numero de pasada desde 0, la pieza
+    /// del cruce). La tercera pasada es la 2. Lo usa FairEchoes ("a la tercera, mira arriba").
+    /// </summary>
+    public event System.Action<int, CorridorSegment> LoopCrossReached;
 
     // Valores especiales de LoopStep.next.
     private const int NoStep = -1;     // nada (por ejemplo, la conexion por donde se entra)
@@ -123,6 +128,7 @@ public partial class CorridorTreadmill
         {
             activePlan.reachedCopy = current.loopCopy;
             Debug.Log($"[CorridorTreadmill] Bucle #{activePlan.number}: pasada {current.loopCopy + 1} de {activePlan.lastCopy + 1}.");
+            LoopCrossReached?.Invoke(current.loopCopy, current.seg);
             if (current.loopCopy >= activePlan.lastCopy) EndLoop(activePlan, "el jugador llego a la pasada distinta", false);
             return;
         }

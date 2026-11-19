@@ -107,6 +107,9 @@ public partial class CorridorTreadmill : MonoBehaviour
     /// <summary>Se dispara justo antes de que una pieza vuelva al deposito.</summary>
     public event System.Action<CorridorSegment> PieceRecycled;
 
+    /// <summary>Paso 40: la pieza de la salida, si ya esta puesta en el camino (si no, null).</summary>
+    public CorridorSegment ExitSegment => exitNode != null ? exitSegment : null;
+
     /// <summary>Metros por el camino desde la pieza del jugador hasta esa pieza (infinito si no esta puesta).</summary>
     public float PathDistance(CorridorSegment segment) =>
         segment != null && nodes.TryGetValue(segment, out Node node) ? node.dist : float.PositiveInfinity;
