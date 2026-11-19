@@ -36,35 +36,29 @@ public static partial class AtmosphereBuilder
         }
     }
 
-    /// <summary>Peluches (ositos) colgados en la lona de atras, en dos filas.</summary>
-    private static void StallPrizePlush(MeshDraft d)
+    /// <summary>Peluches (ositos) colgados en la lona de atras, en dos filas. Paso 40: con textura.</summary>
+    private static void StallPrizePlush(Transform t)
     {
-        int[] colors = { FRosa, FAmarillo, FNaranja, FBlanco, FMadera }; // sin azul: la lona puede ser azul
+        BearColor[] colors = { BearColor.Rosa, BearColor.Amarillo, BearColor.Marron, BearColor.Blanco };
+        var prem = new MeshDraft();
         for (int k = 0; k < 9; k++)
         {
-            float x = -1.15f + (k % 5) * 0.575f + (k >= 5 ? 0.29f : 0f), y = k < 5 ? 1.85f : 1.4f;
-            int c = colors[k % colors.Length];
-            d.Box(new Vector3(x, y, -1.9f), new Vector3(0.2f, 0.22f, 0.12f), c);            // cuerpo
-            d.Box(new Vector3(x, y + 0.18f, -1.9f), new Vector3(0.16f, 0.14f, 0.12f), c);   // cabeza
-            d.Box(new Vector3(x - 0.07f, y + 0.27f, -1.9f), new Vector3(0.05f, 0.05f, 0.04f), c); // orejas
-            d.Box(new Vector3(x + 0.07f, y + 0.27f, -1.9f), new Vector3(0.05f, 0.05f, 0.04f), c);
-            d.Box(new Vector3(x, y + 0.16f, -1.835f), new Vector3(0.05f, 0.03f, 0.01f), FNegro); // hocico
+            float x = -1.15f + (k % 5) * 0.575f + (k >= 5 ? 0.29f : 0f), y = k < 5 ? 1.72f : 1.27f;
+            BearModel(prem, new Vector3(x, y, -1.9f), 1.05f, colors[k % colors.Length]);
         }
+        FairDraft(t, "Peluches", prem, ItemsMaterial(), true);
     }
 
-    /// <summary>Mascaras de zorro (blancas, con marcas rojas) colgadas en la lona de atras.</summary>
-    private static void StallPrizeMasks(MeshDraft d)
+    /// <summary>Mascaras de zorro colgadas en la lona de atras. Paso 40: con textura (blancas y negras).</summary>
+    private static void StallPrizeMasks(Transform t)
     {
+        var prem = new MeshDraft();
         for (int k = 0; k < 7; k++)
         {
             float x = -1.05f + k * 0.35f, y = 1.75f + (k % 2) * 0.22f;
-            d.Box(new Vector3(x, y, -1.96f), new Vector3(0.22f, 0.26f, 0.04f), FBlanco);
-            d.Box(new Vector3(x - 0.07f, y + 0.15f, -1.96f), new Vector3(0.06f, 0.08f, 0.03f), FBlanco); // orejas
-            d.Box(new Vector3(x + 0.07f, y + 0.15f, -1.96f), new Vector3(0.06f, 0.08f, 0.03f), FBlanco);
-            d.Box(new Vector3(x - 0.05f, y + 0.03f, -1.935f), new Vector3(0.06f, 0.02f, 0.01f), FRojo);  // ojos
-            d.Box(new Vector3(x + 0.05f, y + 0.03f, -1.935f), new Vector3(0.06f, 0.02f, 0.01f), FRojo);
-            d.Box(new Vector3(x, y - 0.08f, -1.935f), new Vector3(0.03f, 0.03f, 0.01f), FNegro);        // nariz
+            MaskModel(prem, new Vector3(x, y, -1.96f), 1f, k == 3 ? MaskKind.ZorroNegro : MaskKind.Zorro);
         }
+        FairDraft(t, "Mascaras", prem, ItemsMaterial(), true);
     }
 
     /// <summary>Lo que se mueve del juego (aros o latas y pelotitas) y su componente.</summary>

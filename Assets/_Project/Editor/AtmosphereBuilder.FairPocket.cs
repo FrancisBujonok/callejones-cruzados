@@ -40,6 +40,17 @@ public static partial class AtmosphereBuilder
         // Pois de repuesto, apilados del lado del vendedor.
         for (int k = 0; k < 4; k++) d.Cylinder(new Vector3(1.3f, 0.92f + k * 0.012f, -0.6f), 0.06f, 0.008f, 8, k % 2 == 0 ? FRojo : FBlanco);
         d.Box(new Vector3(1.3f, 0.45f, -0.6f), new Vector3(0.3f, 0.9f, 0.3f), FMaderaOscura);
+
+        // Paso 40: los premios, peces en bolsitas colgados de una varilla contra la lona.
+        d.Box(new Vector3(0f, 1.62f, -1.85f), new Vector3(2.4f, 0.03f, 0.03f), FMetal);
+        var bags = new MeshDraft();
+        for (int k = 0; k < 6; k++)
+        {
+            float x = -1.0f + k * 0.4f;
+            FishBagModel(bags, new Vector3(x, 1.32f, -1.85f), 1f);
+            d.Box(new Vector3(x, 1.58f, -1.85f), new Vector3(0.006f, 0.06f, 0.006f), FBlanco); // el hilo
+        }
+        FairDraft(t, "PecesPremio", bags, ItemsMaterial(), true);
     }
 
     private static void BuildFishGame(Transform t, Transform spot, FairMats f)

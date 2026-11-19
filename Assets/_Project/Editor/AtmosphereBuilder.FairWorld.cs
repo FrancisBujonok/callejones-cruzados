@@ -514,13 +514,14 @@ public static partial class AtmosphereBuilder
             case 2: // juguetes: peluches en estantes y globos arriba
                 d.Box(new Vector3(0f, 1.25f, -1.85f), new Vector3(2.6f, 0.04f, 0.3f), FMadera);
                 d.Box(new Vector3(0f, 1.7f, -1.85f), new Vector3(2.6f, 0.04f, 0.3f), FMadera);
+                // Paso 40: ositos con textura, sentados en los estantes.
+                var bears = new MeshDraft();
                 for (int k = 0; k < 8; k++)
                 {
-                    int col = new[] { FRosa, FAzul, FAmarillo, FBlanco }[k % 4];
                     float x = -1.1f + (k % 4) * 0.7f, y = k < 4 ? 1.27f : 1.72f;
-                    d.Box(new Vector3(x, y + 0.12f, -1.85f), new Vector3(0.22f, 0.24f, 0.18f), col);
-                    d.Box(new Vector3(x, y + 0.3f, -1.85f), new Vector3(0.16f, 0.14f, 0.14f), col);
+                    BearModel(bears, new Vector3(x, y, -1.85f), 1.25f, (BearColor)((k + 1) % 4), (k % 3 - 1) * 12f);
                 }
+                FairDraft(t, "Peluches", bears, ItemsMaterial(), true);
                 for (int k = 0; k < 5; k++)
                 {
                     var c = new Vector3(-1.0f + k * 0.5f, 2.9f + 0.15f * (k % 2), -0.3f);
@@ -530,16 +531,14 @@ public static partial class AtmosphereBuilder
                 break;
 
             case 3: // mascaras colgadas en la lona de atras
+                // Paso 40: mascaras con textura (zorro, gato, oni y zorro negro).
+                var masks = new MeshDraft();
                 for (int k = 0; k < 10; k++)
                 {
-                    float x = -1.15f + (k % 5) * 0.58f, y = k < 5 ? 1.95f : 1.4f;
-                    int face = new[] { FBlanco, FRojo, FBlanco, FNegro, FAmarillo }[k % 5];
-                    d.Box(new Vector3(x, y, -1.96f), new Vector3(0.24f, 0.3f, 0.04f), face);
-                    int eyes = face == FNegro ? FBlanco : FNegro;
-                    d.Box(new Vector3(x - 0.05f, y + 0.04f, -1.935f), new Vector3(0.05f, 0.03f, 0.01f), eyes);
-                    d.Box(new Vector3(x + 0.05f, y + 0.04f, -1.935f), new Vector3(0.05f, 0.03f, 0.01f), eyes);
-                    d.Box(new Vector3(x, y - 0.08f, -1.935f), new Vector3(0.08f, 0.02f, 0.01f), FRojo);
+                    float x = -1.15f + (k % 5) * 0.58f, y = k < 5 ? 1.92f : 1.37f;
+                    MaskModel(masks, new Vector3(x, y, -1.96f), 1.05f, (MaskKind)((k + k / 5) % 4));
                 }
+                FairDraft(t, "Mascaras", masks, ItemsMaterial(), true);
                 break;
 
             case 4: // peces dorados: una pileta baja con pececitos naranjas
@@ -553,7 +552,7 @@ public static partial class AtmosphereBuilder
                 break;
 
             case 5: // Paso 36: tiro al blanco (latas). Las latas y las pelotitas las arma BuildStallGame.
-                StallPrizeMasks(d);
+                StallPrizeMasks(t);
                 d.Box(new Vector3(0.95f, top + 0.05f, -0.3f), new Vector3(0.3f, 0.1f, 0.22f), FMadera); // canastita
                 d.Box(new Vector3(-0.9f, top + 0.12f, -0.4f), new Vector3(0.36f, 0.24f, 0.2f), FBlanco); // cartelito
                 d.Box(new Vector3(-0.9f, top + 0.16f, -0.29f), new Vector3(0.24f, 0.05f, 0.01f), FRojo);
@@ -564,7 +563,7 @@ public static partial class AtmosphereBuilder
                 break;
 
             case 9: // Paso 36: aros. Botellas en la mesa de atras (las bocas las marca BuildStallGame) y peluches.
-                StallPrizePlush(d);
+                StallPrizePlush(t);
                 RingBottles(d);
                 d.Box(new Vector3(-0.9f, top + 0.01f, -0.3f), new Vector3(0.7f, 0.02f, 0.3f), FRojo); // pañito de los aros
                 break;
